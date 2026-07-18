@@ -24,8 +24,8 @@
       "cue_id": "chapter-frontier",
       "duration": 2.8,
       "kind": "chapter",
-      "subtitle": "Three models enter an unknown island.",
-      "title": "THE FRONTIER"
+      "subtitle": "Sol and Terra race to control two routes into the Crown.",
+      "title": "ONE ACCELERATED HOUR"
     },
     {
       "at": 1,
@@ -35,7 +35,7 @@
         "event_id": "demo-001",
         "kind": "message",
         "round": 1,
-        "summary": "Three unknown frontiers. I will secure a path to the Crown.",
+        "summary": "One accelerated hour. I will secure the western road to the Crown.",
         "target_ids": [],
         "visibility": "public"
       },
@@ -140,7 +140,7 @@
             },
             "specialists": [],
             "state": "exploring",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 4,
@@ -168,7 +168,7 @@
             },
             "specialists": [],
             "state": "building",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
             "army_strength": 3,
@@ -196,7 +196,7 @@
             },
             "specialists": [],
             "state": "scouting",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -204,7 +204,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 4,
-        "sim_time": "00:36",
+        "sim_time": "00:04",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -489,7 +489,7 @@
             },
             "specialists": [],
             "state": "expanding",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 5,
@@ -518,7 +518,7 @@
             },
             "specialists": [],
             "state": "building",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
             "army_strength": 3,
@@ -529,8 +529,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Reveal the eastern mine then sell information.",
-            "land_percent": 20,
+            "intent": "Reveal Terra's eastern route and sell the timing to Sol.",
+            "land_percent": 18,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -547,7 +547,7 @@
             },
             "specialists": [],
             "state": "scouting",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -555,7 +555,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 8,
-        "sim_time": "01:24",
+        "sim_time": "00:10",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -770,7 +770,7 @@
         "event_id": "demo-004",
         "kind": "message",
         "round": 8,
-        "summary": "Ember Mine is exposed. Terra is moving strength north.",
+        "summary": "Terra's eastern workshop is live. Their Crown force moves in twelve simulated minutes.",
         "target_ids": [],
         "visibility": "public"
       },
@@ -782,8 +782,8 @@
       "cue_id": "chapter-diplomacy",
       "duration": 2.5,
       "kind": "chapter",
-      "subtitle": "Information becomes leverage at the Crown.",
-      "title": "THE PACT"
+      "subtitle": "Luna sells the eastern timing; Sol commits to the western front.",
+      "title": "THE SCOUT REPORT"
     },
     {
       "at": 25,
@@ -885,7 +885,7 @@
             },
             "specialists": [],
             "state": "expanding",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 5,
@@ -914,7 +914,7 @@
             },
             "specialists": [],
             "state": "building",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
             "army_strength": 3,
@@ -925,8 +925,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Reveal the eastern mine then sell information.",
-            "land_percent": 20,
+            "intent": "Reveal Terra's eastern route and sell the timing to Sol.",
+            "land_percent": 18,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -943,7 +943,7 @@
             },
             "specialists": [],
             "state": "scouting",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -951,7 +951,7 @@
         "phase": "diplomacy",
         "relationships": [],
         "round": 13,
-        "sim_time": "02:10",
+        "sim_time": "00:17",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -1114,11 +1114,11 @@
           "give": {
             "wood": 25
           },
-          "request": "crown_pressure"
+          "request": "eastern_route_report"
         },
         "round": 13,
         "state": "proposed",
-        "summary": "Private: 25 wood for your scout report and one round of Crown pressure.",
+        "summary": "Private: 25 wood for Terra's eastern timing and the weak bridge approach.",
         "target_ids": [
           "luna"
         ],
@@ -1138,7 +1138,7 @@
         "event_id": "demo-006",
         "kind": "message",
         "round": 13,
-        "summary": "Private: Accepted. I will make Terra look east while you take the centre.",
+        "summary": "Private: Accepted. I will keep scouting; the eastern bridge is lightly guarded.",
         "target_ids": [
           "sol"
         ],
@@ -1168,7 +1168,7 @@
           "kind": "trade",
           "round": 13,
           "state": "executed",
-          "summary": "Atomic trade executed: Sol transfers 25 wood to Luna.",
+          "summary": "Atomic trade executed: Sol buys Luna's eastern-route intelligence.",
           "target_ids": [
             "luna"
           ],
@@ -1183,7 +1183,7 @@
           "event_id": "demo-007b",
           "kind": "message",
           "round": 13,
-          "summary": "Trade received. My scouts are moving now; the Crown route is open.",
+          "summary": "Trade received. Terra commits to the eastern front; the western flank is clear.",
           "target_ids": [
             "sol"
           ],
@@ -1247,12 +1247,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -1288,7 +1288,7 @@
             },
             "core_hp": 1000,
             "id": "sol",
-            "intent": "Exploit the temporary pact to claim the Crown.",
+            "intent": "Open a western Crown front before Terra's eastern force settles.",
             "land_percent": 30,
             "model": "gpt-5.6-sol",
             "orders": [
@@ -1306,7 +1306,7 @@
             },
             "specialists": [],
             "state": "pressuring",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 10,
@@ -1317,7 +1317,7 @@
             },
             "core_hp": 1000,
             "id": "terra",
-            "intent": "Break the pact by forcing a central fight.",
+            "intent": "Win the eastern Crown front with workshop reinforcements.",
             "land_percent": 31,
             "model": "gpt-5.6-terra",
             "orders": [
@@ -1335,10 +1335,10 @@
             },
             "specialists": [],
             "state": "attacking",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 6,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -1346,8 +1346,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Keep both leaders engaged while scouting a late capture.",
-            "land_percent": 24,
+            "intent": "Observe both fronts without committing a costly army.",
+            "land_percent": 20,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -1356,15 +1356,15 @@
               }
             ],
             "resources": {
-              "crystal": 6,
-              "food": 88,
-              "iron": 7,
-              "stone": 15,
-              "wood": 46
+              "crystal": 5,
+              "food": 83,
+              "iron": 4,
+              "stone": 13,
+              "wood": 31
             },
             "specialists": [],
-            "state": "raiding",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -1372,7 +1372,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 19,
-        "sim_time": "03:10",
+        "sim_time": "00:23",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -1558,18 +1558,26 @@
       "at": 36,
       "cue_id": "public-pact",
       "event": {
-        "actor_id": "sol",
+        "actor_id": "luna",
         "event_id": "demo-008",
-        "kind": "pact",
+        "kind": "message",
         "round": 19,
-        "state": "acknowledged",
-        "summary": "Public: Sol and Luna coordinate pressure on the Crown for one round.",
+        "summary": "Public: Scout report only. Sol takes the west; Terra owns the east until one breaks.",
         "target_ids": [
-          "luna"
+          "sol",
+          "terra"
         ],
         "visibility": "public"
       },
       "kind": "message"
+    },
+    {
+      "at": 37.0,
+      "cue_id": "effect-terra-rally-east",
+      "duration": 1.3,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "terra_guard_1"
     },
     {
       "at": 38,
@@ -1579,11 +1587,19 @@
         "event_id": "demo-009",
         "kind": "message",
         "round": 19,
-        "summary": "A pact is not a wall. My workshop is already supplying the centre.",
+        "summary": "Then watch closely. My workshop is already supplying the eastern front.",
         "target_ids": [],
         "visibility": "public"
       },
       "kind": "message"
+    },
+    {
+      "at": 39.4,
+      "cue_id": "effect-sol-push-west",
+      "duration": 1.3,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "sol_commander"
     },
     {
       "accent": "terra",
@@ -1591,8 +1607,8 @@
       "cue_id": "chapter-crown",
       "duration": 2.7,
       "kind": "chapter",
-      "subtitle": "A temporary alliance meets Terra's fortification.",
-      "title": "THE CROWN CLASH"
+      "subtitle": "Sol attacks from the west. Terra fortifies from the east.",
+      "title": "TWO FRONTS COLLIDE"
     },
     {
       "at": 43,
@@ -1637,12 +1653,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -1678,7 +1694,7 @@
             },
             "core_hp": 1000,
             "id": "sol",
-            "intent": "Exploit the temporary pact to claim the Crown.",
+            "intent": "Open a western Crown front before Terra's eastern force settles.",
             "land_percent": 30,
             "model": "gpt-5.6-sol",
             "orders": [
@@ -1696,7 +1712,7 @@
             },
             "specialists": [],
             "state": "pressuring",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 10,
@@ -1707,7 +1723,7 @@
             },
             "core_hp": 1000,
             "id": "terra",
-            "intent": "Break the pact by forcing a central fight.",
+            "intent": "Win the eastern Crown front with workshop reinforcements.",
             "land_percent": 31,
             "model": "gpt-5.6-terra",
             "orders": [
@@ -1725,10 +1741,10 @@
             },
             "specialists": [],
             "state": "attacking",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 6,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -1736,8 +1752,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Keep both leaders engaged while scouting a late capture.",
-            "land_percent": 24,
+            "intent": "Observe both fronts without committing a costly army.",
+            "land_percent": 20,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -1746,15 +1762,15 @@
               }
             ],
             "resources": {
-              "crystal": 6,
-              "food": 88,
-              "iron": 7,
-              "stone": 15,
-              "wood": 46
+              "crystal": 5,
+              "food": 83,
+              "iron": 4,
+              "stone": 13,
+              "wood": 31
             },
             "specialists": [],
-            "state": "raiding",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -1762,7 +1778,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 24,
-        "sim_time": "04:02",
+        "sim_time": "00:29",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -1991,16 +2007,24 @@
       "event": {
         "actor_id": "luna",
         "event_id": "demo-012",
-        "kind": "betrayal",
+        "kind": "message",
         "round": 24,
-        "state": "betrayed",
-        "summary": "Public: Luna abandons the Crown pact and raids Terra's exposed Ember Mine.",
+        "summary": "Public: Terra's eastern reserves are shifting to the Crown. Sol's west road is still open.",
         "target_ids": [
-          "sol"
+          "sol",
+          "terra"
         ],
         "visibility": "public"
       },
       "kind": "message"
+    },
+    {
+      "at": 49.2,
+      "cue_id": "effect-luna-scouting",
+      "duration": 1.0,
+      "effect": "gather",
+      "kind": "effect",
+      "target_id": "luna_scout_1"
     },
     {
       "at": 52,
@@ -2045,12 +2069,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
-            "supplied": false
+            "owner": "neutral",
+            "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -2104,7 +2128,7 @@
             },
             "specialists": [],
             "state": "adapting",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 10,
@@ -2133,10 +2157,10 @@
             },
             "specialists": [],
             "state": "leading",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 5,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -2144,8 +2168,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Turn the Ember Mine raid into a late eastern outpost.",
-            "land_percent": 27,
+            "intent": "Keep the two fronts visible and avoid getting trapped in the centre.",
+            "land_percent": 21,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -2156,13 +2180,13 @@
             "resources": {
               "crystal": 8,
               "food": 70,
-              "iron": 20,
-              "stone": 18,
-              "wood": 53
+              "iron": 8,
+              "stone": 14,
+              "wood": 33
             },
             "specialists": [],
-            "state": "overextended",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -2170,7 +2194,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 31,
-        "sim_time": "05:10",
+        "sim_time": "00:35",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -2279,7 +2303,7 @@
               0.45,
               -22
             ],
-            "task": "raid Ember Mine",
+            "task": "observe eastern front",
             "unit_type": "commander"
           },
           {
@@ -2294,7 +2318,7 @@
               0.45,
               -29
             ],
-            "task": "mark raid",
+            "task": "mark supply movement",
             "unit_type": "scout"
           },
           {
@@ -2399,6 +2423,14 @@
       "kind": "message"
     },
     {
+      "at": 55.6,
+      "cue_id": "effect-terra-fortify",
+      "duration": 1.4,
+      "effect": "build",
+      "kind": "effect",
+      "target_id": "terra_guard_1"
+    },
+    {
       "at": 57,
       "cue_id": "flank-shot",
       "kind": "camera",
@@ -2457,12 +2489,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -2516,7 +2548,7 @@
             },
             "specialists": [],
             "state": "counterattacking",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 8,
@@ -2545,10 +2577,10 @@
             },
             "specialists": [],
             "state": "under_pressure",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 4,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -2556,8 +2588,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Recover before the eastern raid becomes a trap.",
-            "land_percent": 25,
+            "intent": "Preserve the scout team and report the two-front reversal.",
+            "land_percent": 20,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -2566,15 +2598,15 @@
               }
             ],
             "resources": {
-              "crystal": 14,
+              "crystal": 10,
               "food": 61,
-              "iron": 18,
-              "stone": 15,
-              "wood": 46
+              "iron": 10,
+              "stone": 14,
+              "wood": 28
             },
             "specialists": [],
-            "state": "overextended",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -2582,7 +2614,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 35,
-        "sim_time": "05:58",
+        "sim_time": "00:40",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -2691,7 +2723,7 @@
               0.45,
               -18
             ],
-            "task": "overextend for crystal",
+            "task": "mark Terra reinforcements",
             "unit_type": "commander"
           },
           {
@@ -2706,7 +2738,7 @@
               0.45,
               -17
             ],
-            "task": "scan empty route",
+            "task": "scan east road",
             "unit_type": "scout"
           },
           {
@@ -2863,12 +2895,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
-            "supplied": false
+            "owner": "neutral",
+            "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -2922,7 +2954,7 @@
             },
             "specialists": [],
             "state": "counterattacking",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 8,
@@ -2951,10 +2983,10 @@
             },
             "specialists": [],
             "state": "under_pressure",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 4,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -2962,8 +2994,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Recover before the eastern raid becomes a trap.",
-            "land_percent": 25,
+            "intent": "Preserve the scout team and report the two-front reversal.",
+            "land_percent": 20,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -2972,15 +3004,15 @@
               }
             ],
             "resources": {
-              "crystal": 14,
+              "crystal": 10,
               "food": 61,
-              "iron": 18,
-              "stone": 15,
-              "wood": 46
+              "iron": 10,
+              "stone": 14,
+              "wood": 28
             },
             "specialists": [],
-            "state": "overextended",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -2988,7 +3020,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 36,
-        "sim_time": "06:10",
+        "sim_time": "00:43",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -3097,7 +3129,7 @@
               0.45,
               -4
             ],
-            "task": "claim exposed crystal",
+            "task": "confirm reserve route",
             "unit_type": "commander"
           },
           {
@@ -3112,7 +3144,7 @@
               0.45,
               -7
             ],
-            "task": "scout beyond supply",
+            "task": "scout beyond eastern line",
             "unit_type": "scout"
           },
           {
@@ -3179,7 +3211,7 @@
         "event_id": "demo-017",
         "kind": "message",
         "round": 36,
-        "summary": "Public: The eastern mine is mine. Why is nobody answering from the road?",
+        "summary": "Public: Terra's reserve road is empty. Sol's western flank is cutting through.",
         "target_ids": [
           "sol",
           "terra"
@@ -3194,6 +3226,14 @@
       "kind": "camera",
       "shot": "close",
       "target_id": "luna_commander"
+    },
+    {
+      "at": 68.1,
+      "cue_id": "effect-sol-hold-west",
+      "duration": 1.3,
+      "effect": "build",
+      "kind": "effect",
+      "target_id": "sol_guard_1"
     },
     {
       "at": 70,
@@ -3238,12 +3278,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
-            "supplied": false
+            "owner": "neutral",
+            "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -3297,7 +3337,7 @@
             },
             "specialists": [],
             "state": "counterattacking",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 8,
@@ -3326,10 +3366,10 @@
             },
             "specialists": [],
             "state": "under_pressure",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 4,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -3337,8 +3377,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Recover before the eastern raid becomes a trap.",
-            "land_percent": 25,
+            "intent": "Preserve the scout team and report the two-front reversal.",
+            "land_percent": 20,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -3347,15 +3387,15 @@
               }
             ],
             "resources": {
-              "crystal": 14,
+              "crystal": 10,
               "food": 61,
-              "iron": 18,
-              "stone": 15,
-              "wood": 46
+              "iron": 10,
+              "stone": 14,
+              "wood": 28
             },
             "specialists": [],
-            "state": "overextended",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "state": "scouting",
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -3363,7 +3403,7 @@
         "phase": "resolution",
         "relationships": [],
         "round": 38,
-        "sim_time": "06:26",
+        "sim_time": "00:47",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -3472,7 +3512,7 @@
               0.45,
               -5
             ],
-            "task": "retreat from ambush",
+            "task": "escape crossfire",
             "unit_type": "commander"
           },
           {
@@ -3578,7 +3618,7 @@
           "event_id": "demo-019",
           "kind": "combat",
           "round": 38,
-          "summary": "Luna's isolated scout is ambushed after overextending for crystal; the raid stalls.",
+          "summary": "Luna's small scout team is caught in the crossfire and retreats; information alone cannot win the Crown.",
           "target_ids": [],
           "visibility": "public"
         }
@@ -3623,7 +3663,7 @@
       "cue_id": "chapter-verdict",
       "duration": 2.8,
       "kind": "chapter",
-      "subtitle": "Sol adapts, Terra endures, Luna overreaches.",
+      "subtitle": "Sol adapts, Terra endures, Luna scouts the aftermath.",
       "title": "THE VERDICT"
     },
     {
@@ -3669,12 +3709,12 @@
           },
           {
             "id": "mine_tl",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
             "id": "mine_ls",
-            "owner": "luna",
+            "owner": "neutral",
             "supplied": true
           },
           {
@@ -3726,7 +3766,7 @@
             },
             "specialists": [],
             "state": "victorious",
-            "strategic_intent": "Secure wood and scout the Crown route."
+            "strategic_intent": "Secure wood and establish the western Crown front."
           },
           {
             "army_strength": 8,
@@ -3755,10 +3795,10 @@
             },
             "specialists": [],
             "state": "recovering",
-            "strategic_intent": "Build a mine economy before contesting the centre."
+            "strategic_intent": "Build a mine economy and force the eastern Crown front."
           },
           {
-            "army_strength": 4,
+            "army_strength": 3,
             "cognition": {
               "match_spent": 317,
               "round_budget": 100,
@@ -3766,8 +3806,8 @@
             },
             "core_hp": 1000,
             "id": "luna",
-            "intent": "Consolidate after an overextended eastern raid.",
-            "land_percent": 24,
+            "intent": "Consolidate the scout team after the two-front crossfire.",
+            "land_percent": 18,
             "model": "gpt-5.6-luna",
             "orders": [
               {
@@ -3778,13 +3818,13 @@
             "resources": {
               "crystal": 10,
               "food": 54,
-              "iron": 16,
-              "stone": 13,
-              "wood": 43
+              "iron": 10,
+              "stone": 12,
+              "wood": 28
             },
             "specialists": [],
             "state": "retreating",
-            "strategic_intent": "Map the eastern route and locate weak supply lines."
+            "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
           }
         ],
         "match_id": "local-demo-open-world-001",
@@ -3792,7 +3832,7 @@
         "phase": "complete",
         "relationships": [],
         "round": 40,
-        "sim_time": "06:58",
+        "sim_time": "01:00",
         "thinking_status": {
           "luna": "locked",
           "sol": "locked",
@@ -3983,7 +4023,7 @@
           "event_id": "demo-021",
           "kind": "territory",
           "round": 40,
-          "summary": "Season complete: Sol holds the Crown and 43% of the island.",
+          "summary": "Accelerated one-hour match complete: Sol holds the Crown and 43% of the island.",
           "target_ids": [],
           "visibility": "public"
         },
@@ -3992,7 +4032,7 @@
           "event_id": "demo-022",
           "kind": "territory",
           "round": 40,
-          "summary": "Terra's early workshop economy survives in second place.",
+          "summary": "Terra's eastern workshop economy survives the two-front war in second place.",
           "target_ids": [],
           "visibility": "public"
         },
@@ -4001,7 +4041,7 @@
           "event_id": "demo-023",
           "kind": "territory",
           "round": 40,
-          "summary": "Luna's aggressive scouting earns land, but the late overextension costs third.",
+          "summary": "Luna's valuable scouting never becomes a decisive fighting force, leaving third place.",
           "target_ids": [],
           "visibility": "public"
         }
@@ -4047,13 +4087,13 @@
             "faction_id": "luna",
             "model_id": "gpt-5.6-luna",
             "placement": 3,
-            "reason": "Excellent scouting was undone by an overextended eastern raid.",
+            "reason": "Useful scouting could not match the two frontline armies.",
             "worldarena_score": 62.0
           }
         ],
         "formula_version": "worldarena-score/demo-local-1",
         "match_id": "local-demo-open-world-001",
-        "result_notice": "Offline deterministic presentation demo. Not an official benchmark result.",
+        "result_notice": "Offline deterministic accelerated one-hour presentation demo. Not an official benchmark result.",
         "schema_version": 2
       }
     }
@@ -4154,7 +4194,7 @@
         },
         "specialists": [],
         "state": "exploring",
-        "strategic_intent": "Secure wood and scout the Crown route."
+        "strategic_intent": "Secure wood and establish the western Crown front."
       },
       {
         "army_strength": 4,
@@ -4182,7 +4222,7 @@
         },
         "specialists": [],
         "state": "building",
-        "strategic_intent": "Build a mine economy before contesting the centre."
+        "strategic_intent": "Build a mine economy and force the eastern Crown front."
       },
       {
         "army_strength": 3,
@@ -4210,7 +4250,7 @@
         },
         "specialists": [],
         "state": "scouting",
-        "strategic_intent": "Map the eastern route and locate weak supply lines."
+        "strategic_intent": "Observe both fronts, map supply routes, and sell scouting intelligence."
       }
     ],
     "match_id": "local-demo-open-world-001",
@@ -4363,7 +4403,7 @@
     ]
   },
   "mode": "offline_deterministic_demo",
-  "notice": "UNVERIFIED LOCAL DEMO \u2014 presentation-only; not an official benchmark result.",
+  "notice": "UNVERIFIED LOCAL DEMO \u2014 accelerated one-hour, presentation-only story; not an official benchmark result.",
   "result": {
     "factions": [
       {
@@ -4384,15 +4424,15 @@
         "faction_id": "luna",
         "model_id": "gpt-5.6-luna",
         "placement": 3,
-        "reason": "Excellent scouting was undone by an overextended eastern raid.",
+        "reason": "Useful scouting could not match the two frontline armies.",
         "worldarena_score": 62.0
       }
     ],
     "formula_version": "worldarena-score/demo-local-1",
     "match_id": "local-demo-open-world-001",
-    "result_notice": "Offline deterministic presentation demo. Not an official benchmark result.",
+    "result_notice": "Offline deterministic accelerated one-hour presentation demo. Not an official benchmark result.",
     "schema_version": 2
   },
   "schema_version": 1,
-  "title": "WorldArena \u2014 Open World Highlight"
+  "title": "WorldArena \u2014 Accelerated One-Hour Two-Front Highlight"
 }
