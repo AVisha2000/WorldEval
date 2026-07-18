@@ -17,6 +17,14 @@ const SpeechBubbleScript := preload("res://scripts/arena/presentation/arena_spee
 const RelationshipGraphScript := preload("res://scripts/arena/presentation/relationship_graph.gd")
 const ArenaPodiumScript := preload("res://scripts/arena/presentation/arena_podium.gd")
 
+const GRASS_TEXTURE := "res://art/textures/grass-warcraft-v1.png"
+const WATER_TEXTURE := "res://art/textures/water-warcraft-v1.png"
+const DIRT_PATH_TEXTURE := "res://art/textures/dirt-path-warcraft-v1.png"
+const WOOD_TEXTURE := "res://art/textures/wood-warcraft-v1.png"
+const ROCK_TEXTURE := "res://art/textures/rock-warcraft-v1.png"
+const ROOF_TEXTURE := "res://art/textures/roof-warcraft-v1.png"
+const CRYSTAL_TEXTURE := "res://art/textures/crystal-warcraft-v1.png"
+
 const FACTION_IDS := ["sol", "terra", "luna"]
 const FACTION_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
 const FACTION_COLORS := {
@@ -353,6 +361,10 @@ func set_showcase_status(verified: bool, label: String, detail: String) -> void:
 	)
 	showcase_banner_label.text = "%s  ·  %s" % [label, detail]
 	showcase_banner_label.add_theme_color_override("font_color", Color("9fe3d2") if verified else Color("ffd0a0"))
+	# A showcase is authored playback, not an inactive lobby.  Keep this small
+	# status truthful while avoiding an initial wall of "waiting" labels.
+	if live_status_label != null and current_phase == "setup":
+		live_status_label.text = "SHOWCASE REPLAY · AGENTS ACT IN PARALLEL"
 
 
 func _build_world() -> void:
@@ -386,6 +398,10 @@ func _build_world() -> void:
 		_build_district_resources(definition)
 		if str(definition.kind) == "core":
 			_build_core_structure(definition)
+		elif str(definition.kind) == "homeland":
+			_build_settlement_structure(definition)
+		elif str(definition.kind) == "mid mine":
+			_build_mine_structure(definition)
 	_build_graph_lines()
 
 	camera = Camera3D.new()
@@ -452,7 +468,8 @@ func _build_triangle_ground() -> void:
 	water_mesh.size = Vector2(760, 760)
 	water.mesh = water_mesh
 	water.position.y = -2.5
-	var water_material := _material(Color("174b68"))
+	var water_material := _material(Color("0f3c58"))
+	water_material.albedo_color = Color("0f3c58")
 	# PlaneMesh and custom terrain need two-sided faces in the compatibility
 	# renderer; otherwise the overview back-face culls the whole island.
 	water_material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -465,6 +482,7 @@ func _build_triangle_ground() -> void:
 	world_root.add_child(water)
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	const GRID := 48
 	const HALF := 245.0
@@ -481,6 +499,9 @@ func _build_triangle_ground() -> void:
 			height -= coast * 4.0
 			vertices.append(Vector3(x, height, z))
 			normals.append(Vector3.UP)
+			# Keep the hand-painted tile continuous across the island.  Repeating a
+			# vertical gradient every few metres creates distracting checker bands.
+			uvs.append(Vector2((x + HALF) / (HALF * 2.0), (z + HALF) / (HALF * 2.0)))
 	for z_index in range(GRID):
 		for x_index in range(GRID):
 			var a := z_index * (GRID + 1) + x_index
@@ -491,6 +512,7 @@ func _build_triangle_ground() -> void:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var terrain_mesh := ArrayMesh.new()
 	terrain_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -548,7 +570,7 @@ func _build_ambient_landscape() -> void:
 	]
 	for grove_index in range(groves.size()):
 		var center: Vector3 = groves[grove_index]
-		for tree_index in range(7):
+		for tree_index in range(13):
 			var seed := float(grove_index * 37 + tree_index * 13)
 			var spread := 6.0 + float(tree_index) * 1.45
 			var at := center + Vector3(sin(seed * 0.73) * spread, 0, cos(seed * 1.17) * spread)
@@ -591,7 +613,8 @@ func _create_mountain_cluster(center: Vector3, size_factor: float, seed: float) 
 		rock.position = Vector3(cos(angle) * distance, rock_size * 0.72, sin(angle) * distance)
 		rock.scale = Vector3(1.0 + fmod(rock_index, 2.0) * 0.22, 1.0, 0.78 + fmod(seed, 0.24))
 		rock.rotation_degrees = Vector3(fmod(seed * 2.0 + rock_index * 13.0, 20.0), fmod(seed * 3.0 + rock_index * 31.0, 360.0), fmod(seed + rock_index * 9.0, 14.0))
-		rock.material_override = _material(Color("59666a").lightened(fmod(seed + rock_index, 0.18)))
+		rock.material_override = _material(Color("d8d2c9").lightened(fmod(seed + rock_index, 0.08)))
+		(rock.material_override as StandardMaterial3D).albedo_texture = load(ROCK_TEXTURE)
 		ridge.add_child(rock)
 	# A dark mine mouth makes the landmark useful, not merely decorative.
 	var mouth := MeshInstance3D.new()
@@ -649,6 +672,7 @@ func _build_core_structure(definition: Dictionary) -> void:
 	roof.position.y = 9.4
 	roof.rotation_degrees.y = 45.0
 	roof.material_override = _material(Color("29333b"))
+	(roof.material_override as StandardMaterial3D).albedo_texture = load(ROOF_TEXTURE)
 	core.add_child(roof)
 	# A trio of huts gives each faction a legible base silhouette instead of a
 	# lone coloured token.
@@ -675,7 +699,123 @@ func _build_core_structure(definition: Dictionary) -> void:
 		var post_angle := float(post_index) * TAU / 10.0
 		post.position = Vector3(cos(post_angle) * 12.6, 1.25, sin(post_angle) * 12.6)
 		post.material_override = _material(Color("765238").lightened(fmod(float(post_index), 0.14)))
+		(post.material_override as StandardMaterial3D).albedo_texture = load(WOOD_TEXTURE)
 		core.add_child(post)
+
+
+func _build_settlement_structure(definition: Dictionary) -> void:
+	## Homeland camps mirror the reference image's three readable fortified bases.
+	var definition_id := str(definition.id)
+	var faction_id := definition_id.get_slice("_", 1)
+	if not FACTION_COLORS.has(faction_id):
+		return
+	var camp := Node3D.new()
+	camp.name = "%sSettlement" % faction_id.capitalize()
+	camp.position = definition.position
+	resources_root.add_child(camp)
+	var floor := MeshInstance3D.new()
+	var floor_mesh := CylinderMesh.new()
+	floor_mesh.top_radius = 16.0
+	floor_mesh.bottom_radius = 18.0
+	floor_mesh.height = 0.65
+	floor_mesh.radial_segments = 12
+	floor.mesh = floor_mesh
+	floor.position.y = 0.35
+	floor.material_override = _material(FACTION_COLORS[faction_id].darkened(0.55))
+	camp.add_child(floor)
+	for house_index in range(4):
+		var house := Node3D.new()
+		var angle := float(house_index) * TAU / 4.0 + 0.35
+		house.position = Vector3(cos(angle) * 8.0, 0.0, sin(angle) * 8.0)
+		camp.add_child(house)
+		var body := MeshInstance3D.new()
+		var body_mesh := BoxMesh.new()
+		body_mesh.size = Vector3(4.6, 2.8, 4.0)
+		body.mesh = body_mesh
+		body.position.y = 1.75
+		body.material_override = _material(FACTION_COLORS[faction_id].darkened(0.35))
+		house.add_child(body)
+		var roof := MeshInstance3D.new()
+		var roof_mesh := CylinderMesh.new()
+		roof_mesh.top_radius = 0.1
+		roof_mesh.bottom_radius = 3.4
+		roof_mesh.height = 2.2
+		roof_mesh.radial_segments = 4
+		roof.mesh = roof_mesh
+		roof.position.y = 4.25
+		roof.rotation_degrees.y = 45.0
+		roof.material_override = _material(FACTION_COLORS[faction_id].lightened(0.08), true)
+		(roof.material_override as StandardMaterial3D).albedo_texture = load(ROOF_TEXTURE)
+		house.add_child(roof)
+	for post_index in range(16):
+		var post := MeshInstance3D.new()
+		var post_mesh := CylinderMesh.new()
+		post_mesh.top_radius = 0.18
+		post_mesh.bottom_radius = 0.30
+		post_mesh.height = 3.0
+		post_mesh.radial_segments = 6
+		post.mesh = post_mesh
+		var post_angle := float(post_index) * TAU / 16.0
+		post.position = Vector3(cos(post_angle) * 17.0, 1.5, sin(post_angle) * 17.0)
+		post.material_override = _material(Color("835a38"))
+		(post.material_override as StandardMaterial3D).albedo_texture = load(WOOD_TEXTURE)
+		camp.add_child(post)
+	var camp_label := Label3D.new()
+	camp_label.text = "%s CAMP" % faction_id.to_upper()
+	camp_label.font_size = 15
+	camp_label.outline_size = 5
+	camp_label.modulate = FACTION_COLORS[faction_id].lightened(0.25)
+	camp_label.position.y = 9.0
+	camp_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	camp_label.pixel_size = 0.018
+	camp.add_child(camp_label)
+
+
+func _build_mine_structure(definition: Dictionary) -> void:
+	## Mine entrances and ore carts give the resource districts an immediate purpose.
+	var mine := Node3D.new()
+	mine.name = "%sMineEntrance" % str(definition.id)
+	mine.position = definition.position + Vector3(0, 0.15, 6.0)
+	resources_root.add_child(mine)
+	var arch := MeshInstance3D.new()
+	var arch_mesh := CylinderMesh.new()
+	arch_mesh.top_radius = 4.0
+	arch_mesh.bottom_radius = 5.0
+	arch_mesh.height = 5.5
+	arch_mesh.radial_segments = 10
+	arch.mesh = arch_mesh
+	arch.scale = Vector3(1.0, 1.0, 0.42)
+	arch.position.y = 2.75
+	arch.material_override = _material(Color("5b6667"))
+	mine.add_child(arch)
+	var mouth := MeshInstance3D.new()
+	var mouth_mesh := CylinderMesh.new()
+	mouth_mesh.top_radius = 2.3
+	mouth_mesh.bottom_radius = 2.8
+	mouth_mesh.height = 4.1
+	mouth_mesh.radial_segments = 10
+	mouth.mesh = mouth_mesh
+	mouth.scale = Vector3(1.0, 1.0, 0.36)
+	mouth.position = Vector3(0, 2.05, -0.35)
+	mouth.material_override = _material(Color("11181b"), true)
+	mine.add_child(mouth)
+	for rail_side in [-1.0, 1.0]:
+		var rail := MeshInstance3D.new()
+		var rail_mesh := BoxMesh.new()
+		rail_mesh.size = Vector3(0.14, 0.12, 10.0)
+		rail.mesh = rail_mesh
+		rail.position = Vector3(rail_side * 1.15, 0.25, -4.0)
+		rail.material_override = _material(Color("9b7347"))
+		mine.add_child(rail)
+	var mine_label := Label3D.new()
+	mine_label.text = str(definition.get("name", "MINE")).to_upper()
+	mine_label.font_size = 13
+	mine_label.outline_size = 4
+	mine_label.modulate = Color("ffd18c")
+	mine_label.position = Vector3(0, 7.2, 0)
+	mine_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mine_label.pixel_size = 0.016
+	mine.add_child(mine_label)
 
 
 func _build_district_resources(definition: Dictionary) -> void:
@@ -752,6 +892,12 @@ func _create_resource_marker(kind: String, at: Vector3, seed := 0.0) -> void:
 	body.position.y = 1.5 if kind == "tree" else 3.4 if kind == "crystal" else 1.7
 	marker.rotation.y = seed * 0.61
 	body.material_override = _material(color, kind == "crystal")
+	if kind == "crystal":
+		(body.material_override as StandardMaterial3D).albedo_texture = load(CRYSTAL_TEXTURE)
+	elif kind in ["stone", "iron"]:
+		(body.material_override as StandardMaterial3D).albedo_texture = load(ROCK_TEXTURE)
+	elif kind in ["deer", "boar", "wolf"]:
+		(body.material_override as StandardMaterial3D).albedo_texture = load(WOOD_TEXTURE)
 	marker.add_child(body)
 	if kind == "tree":
 		# Layered low-poly cones read as pines from the strategy camera and give
@@ -946,7 +1092,38 @@ func show_effect(effect_name: String, target_id := "", duration := 1.1, target_p
 	tween.tween_property(pulse, "scale", Vector3(final_scale, 1.0, final_scale), safe_duration)
 	tween.parallel().tween_property(material, "albedo_color:a", 0.0, safe_duration)
 	_build_effect_motif(burst, normalized_effect, color, safe_duration)
+	_show_world_action_label(normalized_effect, point, color, safe_duration)
 	tween.tween_callback(burst.queue_free)
+
+
+func _show_world_action_label(effect_name: String, at: Vector3, color: Color, duration: float) -> void:
+	var label := Label3D.new()
+	label.name = "ReplayAction_%s" % effect_name
+	label.text = _effect_action_text(effect_name)
+	label.font_size = 22
+	label.outline_size = 5
+	label.modulate = Color(color.r, color.g, color.b, 0.0)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.fixed_size = false
+	label.pixel_size = 0.016
+	label.position = at + Vector3(0, 3.4, 0)
+	world_root.add_child(label)
+	var tween := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 1.0, 0.14)
+	tween.parallel().tween_property(label, "position:y", label.position.y + 1.1, duration * 0.72)
+	tween.tween_interval(maxf(0.08, duration * 0.12))
+	tween.tween_property(label, "modulate:a", 0.0, duration * 0.24)
+	tween.tween_callback(label.queue_free)
+
+
+func _effect_action_text(effect_name: String) -> String:
+	match effect_name:
+		"build": return "BUILDING"
+		"gather": return "GATHERING"
+		"combat": return "CLASH"
+		"capture": return "CAPTURED"
+		"trade": return "TRADE"
+		_: return effect_name.to_upper()
 
 
 func _build_effect_motif(parent: Node3D, effect_name: String, color: Color, duration: float) -> void:
@@ -1080,7 +1257,7 @@ func _build_top_bar() -> void:
 
 	for faction_id in FACTION_IDS:
 		var status := Label.new()
-		status.text = "%s %s · WAITING" % [FACTION_GLYPHS[faction_id], faction_id.to_upper()]
+		status.text = "%s %s · READY" % [FACTION_GLYPHS[faction_id], faction_id.to_upper()]
 		status.add_theme_font_size_override("font_size", 10)
 		status.add_theme_color_override("font_color", FACTION_COLORS[faction_id].darkened(0.2))
 		status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1149,7 +1326,7 @@ func _create_faction_card(faction_id: String) -> Control:
 	title.add_theme_color_override("font_color", FACTION_COLORS[faction_id].lightened(0.2))
 	title_row.add_child(title)
 	var state := Label.new()
-	state.text = "WAITING"
+	state.text = "READY"
 	state.add_theme_font_size_override("font_size", 8)
 	state.add_theme_color_override("font_color", Color("9fe3d2"))
 	title_row.add_child(state)
@@ -1268,17 +1445,22 @@ func _build_command_and_replay_panel() -> void:
 	selected_title.add_theme_color_override("font_color", FACTION_COLORS.sol)
 	command_row.add_child(selected_title)
 	selected_intent = Label.new()
-	selected_intent.text = "Awaiting sealed plans."
+	selected_intent.text = "Showcase loaded — agents are entering the arena."
 	selected_intent.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	selected_intent.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	selected_intent.add_theme_font_size_override("font_size", 11)
 	selected_intent.add_theme_color_override("font_color", Color("edf7ed"))
 	command_row.add_child(selected_intent)
 	live_status_label = Label.new()
-	live_status_label.text = "WAITING FOR MATCH"
+	live_status_label.text = "SHOWCASE REPLAY"
 	live_status_label.add_theme_font_size_override("font_size", 9)
 	live_status_label.add_theme_color_override("font_color", Color("f4c95d"))
 	command_row.add_child(live_status_label)
+	var action_legend := Label.new()
+	action_legend.text = "WORLD ACTIONS   GATHER  ·  BUILD  ·  TRADE  ·  FIGHT  ·  CAPTURE"
+	action_legend.add_theme_font_size_override("font_size", 8)
+	action_legend.add_theme_color_override("font_color", Color("86a9a8"))
+	box.add_child(action_legend)
 
 	selected_orders = Label.new()
 	selected_orders.text = ""
@@ -1647,6 +1829,12 @@ func _create_speech_bubble(event: Dictionary) -> void:
 	bubble.selected.connect(func(event_id: String) -> void: event_focus_requested.emit(event_id))
 	bubble_layer.add_child(bubble)
 	bubble.size = bubble.get_combined_minimum_size()
+	# Speech appears as a quick callout instead of an abrupt UI block.  It stays
+	# readable long enough for uploadable captures, then the existing expiry logic
+	# removes it without retaining any communication data.
+	bubble.modulate = Color(1, 1, 1, 0)
+	var enter := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	enter.tween_property(bubble, "modulate:a", 1.0, 0.18)
 	active_bubbles[actor_id] = bubble
 
 
@@ -2062,12 +2250,12 @@ func _phase_color(phase: String) -> Color:
 
 func _status_text(status: String) -> String:
 	match status.to_lower():
-		"thinking": return "● THINKING"
+		"thinking": return "● REASONING"
 		"locked": return "✓ LOCKED"
 		"timeout": return "! TIMEOUT"
 		"fallback": return "! FALLBACK"
 		"executing": return "▶ ACTING"
-		_: return "○ WAITING"
+		_: return "○ STANDBY"
 
 
 func _status_color(status: String, faction_color: Color) -> Color:
@@ -2082,11 +2270,11 @@ func _status_color(status: String, faction_color: Color) -> Color:
 func _phase_explanation(phase: String) -> String:
 	match phase:
 		"diplomacy": return "MESSAGES REVEALED — NEXT ROUND KNOWLEDGE"
-		"thinking": return "SEALED PLANS — ALL MODELS RUN CONCURRENTLY"
+		"thinking": return "MODELS REASON IN PARALLEL — NEXT ACTIONS ARE SEALED"
 		"plans_locked": return "ALL PLANS LOCKED — SIMULTANEOUS REVEAL"
-		"resolution": return "GODOT RESOLVES PHYSICAL CONSEQUENCES"
+		"resolution": return "WORLD EXECUTES MOVEMENT, BUILDS, TRADES & CLASHES"
 		"complete": return "MATCH COMPLETE — REPLAY READY"
-		_: return phase.replace("_", " ").to_upper()
+		_: return "SHOWCASE REPLAY ACTIVE" if phase == "replay" else phase.replace("_", " ").to_upper()
 
 
 func _panel_style(fill: Color, border: Color, radius: int, margin: int) -> StyleBoxFlat:

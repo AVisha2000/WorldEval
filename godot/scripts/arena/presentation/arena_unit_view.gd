@@ -82,6 +82,12 @@ func apply_state(state: Dictionary) -> void:
 		_status_label.text = "NO SUPPLY"
 		_status_label.modulate = Color("ff7a70")
 		_status_label.visible = true
+	else:
+		var task_badge := _task_badge(_task)
+		if not task_badge.is_empty():
+			_status_label.text = task_badge
+			_status_label.modulate = _faction_color.lightened(0.32)
+			_status_label.visible = true
 
 
 func bubble_anchor() -> Vector3:
@@ -162,6 +168,21 @@ func _is_working() -> bool:
 
 func _is_scouting() -> bool:
 	return unit_type == "scout" and (_task.is_empty() or _task.contains("scout") or _task.contains("explore") or _task.contains("inspect"))
+
+
+func _task_badge(task: String) -> String:
+	var normalized := task.to_lower()
+	if normalized.contains("trade") or normalized.contains("negotiate") or normalized.contains("envoy"):
+		return "TRADE"
+	if normalized.contains("build") or normalized.contains("repair") or normalized.contains("workshop") or normalized.contains("shelter") or normalized.contains("palisade"):
+		return "BUILD"
+	if normalized.contains("fight") or normalized.contains("attack") or normalized.contains("guard") or normalized.contains("defend") or normalized.contains("ambush") or normalized.contains("counter"):
+		return "FIGHT"
+	if normalized.contains("scout") or normalized.contains("survey") or normalized.contains("inspect") or normalized.contains("mark"):
+		return "SCOUT"
+	if normalized.contains("gather") or normalized.contains("collect") or normalized.contains("chop") or normalized.contains("mine") or normalized.contains("haul") or normalized.contains("forage"):
+		return "GATHER"
+	return ""
 
 
 func _move_to(next_position: Vector3) -> void:
