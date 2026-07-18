@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "protocol": "world-arena/0.2",
+  "verified": true,
+  "replay_file": "unverified_replay.json",
+  "replay_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

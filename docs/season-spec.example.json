@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "formula_version": "worldarena-score/1.0.0",
+  "season_id": "example-season-v1",
+  "track": "agentic",
+  "base_seed": 20260718,
+  "competitors": [
+    {
+      "competitor_id": "model-a",
+      "model_id": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "prompt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "competitor_id": "model-b",
+      "model_id": "gpt-5.6-terra",
+      "reasoning_effort": "medium",
+      "prompt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "competitor_id": "model-c",
+      "model_id": "gpt-5.6-luna",
+      "reasoning_effort": "medium",
+      "prompt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "rules_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "map_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "tool_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "cognition_units": 120,
+  "decision_timeout_ms": 45000,
+  "specialist_timeout_ms": 12000
+}

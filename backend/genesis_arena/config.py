@@ -27,3 +27,4 @@ class Settings(BaseSettings):
     action_catalog_path: Path = REPOSITORY_ROOT / "game" / "actions.json"
     memory_dir: Path = REPOSITORY_ROOT / "memory"
     agents_dir: Path = REPOSITORY_ROOT / "agents"
+    runs_dir: Path = REPOSITORY_ROOT / "runs"

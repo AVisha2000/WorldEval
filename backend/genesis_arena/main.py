@@ -8,8 +8,9 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
+from .arena_api import arena_socket
 from .config import Settings
-from .models import Observation
+from .models import Observation, SimulationConfig
 from .orchestrator import Orchestrator
 
 settings = Settings()
@@ -22,9 +23,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Genesis Arena Controller",
-    version="0.1.0",
-    description="Validated agent-brain bridge for the Godot simulation.",
+    title="WorldArena Controller",
+    version="0.2.0",
+    description=(
+        "Validated model-planning bridge for survival_v1 and the simultaneous WorldArena."
+    ),
     lifespan=lifespan,
 )
 
@@ -36,6 +39,7 @@ async def health() -> Dict[str, object]:
         "status": "ok",
         "brain": orchestrator.provider_name,
         "catalog_version": orchestrator.catalog.version,
+        "protocols": ["genesis-arena/0.1", "world-arena/0.2"],
     }
 
 
@@ -85,6 +89,25 @@ async def world_socket(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "pong"})
                 continue
 
+            if message_type == "configure":
+                try:
+                    config = SimulationConfig.model_validate(message)
+                    models = orchestrator.configure(config)
+                except (ValidationError, ValueError) as exc:
+                    details = exc.errors() if isinstance(exc, ValidationError) else str(exc)
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "error": "invalid simulation configuration",
+                            "details": details,
+                        }
+                    )
+                    continue
+                await websocket.send_json(
+                    {"type": "configured", "agents": models, "brain": orchestrator.provider_name}
+                )
+                continue
+
             if message_type != "observation":
                 await websocket.send_json(
                     {"type": "error", "error": f"unsupported message type: {message_type!r}"}
@@ -104,12 +127,20 @@ async def world_socket(websocket: WebSocket) -> None:
                     "type": "thinking",
                     "agent_id": observation.agent_id,
                     "turn": observation.turn,
+                    "brain": orchestrator.provider_for(observation.agent_id),
                 }
             )
             command = await orchestrator.decide(observation)
             await websocket.send_json(command.model_dump(mode="json"))
     except (WebSocketDisconnect, json.JSONDecodeError):
         return
+
+
+@app.websocket("/ws/arena")
+async def arena_v1_socket(websocket: WebSocket) -> None:
+    """WorldArena v0.2 simultaneous three-faction protocol."""
+
+    await arena_socket(websocket, settings)
 
 
 def run() -> None:

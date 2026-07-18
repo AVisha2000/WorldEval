@@ -13,6 +13,10 @@ Godot resolves the world, while FastAPI validates plans, enforces budgets, and r
 evaluator, replay artifacts, and season scheduler are implemented. No official model leaderboard or
 completed 99-match benchmark season is published yet.
 
+**Rendered showcase:** The local demo recording is a pre-rendered showcase generated through the
+full simulation compute path. The recording stays local for upload, while its deterministic replay
+source and one-click renderer are published here as the fast presentation path.
+
 > [!NOTE]
 > This repository is independent of the 2026 paper
 > [*WorldArena: A Unified Benchmark for Evaluating Perception and Functional Utility of Embodied

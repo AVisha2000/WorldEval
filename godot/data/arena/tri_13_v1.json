@@ -1,0 +1,32 @@
+{
+  "id": "tri_13_v1",
+  "version": 1,
+  "districts": {
+    "core_sol": {"kind": "core", "owner": "sol", "resources": {}},
+    "core_terra": {"kind": "core", "owner": "terra", "resources": {}},
+    "core_luna": {"kind": "core", "owner": "luna", "resources": {}},
+    "home_sol": {"kind": "home", "owner": "sol", "resources": {"forest": 300, "stone": 200, "animals": 200}},
+    "home_terra": {"kind": "home", "owner": "terra", "resources": {"forest": 300, "stone": 200, "animals": 200}},
+    "home_luna": {"kind": "home", "owner": "luna", "resources": {"forest": 300, "stone": 200, "animals": 200}},
+    "mine_st": {"kind": "mine", "resources": {"forest": 100, "stone": 160, "iron": 220, "animals": 140}},
+    "mine_tl": {"kind": "mine", "resources": {"forest": 100, "stone": 160, "iron": 220, "animals": 140}},
+    "mine_ls": {"kind": "mine", "resources": {"forest": 100, "stone": 160, "iron": 220, "animals": 140}},
+    "wild_st": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
+    "wild_tl": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
+    "wild_ls": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
+    "crown": {"kind": "crown", "resources": {"stone": 220, "iron": 160, "animals": 120, "crystal": 120}}
+  },
+  "adjacency": {
+    "core_sol": ["home_sol"], "core_terra": ["home_terra"], "core_luna": ["home_luna"],
+    "home_sol": ["core_sol", "mine_st", "mine_ls", "wild_st", "wild_ls"],
+    "home_terra": ["core_terra", "mine_st", "mine_tl", "wild_st", "wild_tl"],
+    "home_luna": ["core_luna", "mine_ls", "mine_tl", "wild_ls", "wild_tl"],
+    "mine_st": ["home_sol", "home_terra", "wild_st", "crown"],
+    "mine_tl": ["home_terra", "home_luna", "wild_tl", "crown"],
+    "mine_ls": ["home_luna", "home_sol", "wild_ls", "crown"],
+    "wild_st": ["home_sol", "home_terra", "mine_st", "crown"],
+    "wild_tl": ["home_terra", "home_luna", "mine_tl", "crown"],
+    "wild_ls": ["home_luna", "home_sol", "mine_ls", "crown"],
+    "crown": ["mine_st", "mine_tl", "mine_ls", "wild_st", "wild_tl", "wild_ls"]
+  }
+}

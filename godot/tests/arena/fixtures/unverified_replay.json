@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "duration_seconds": 90,
+  "initial_snapshot": {"round": 1, "max_rounds": 40, "phase": "thinking"},
+  "cues": [
+    {"cue_id": "phase-open", "at": 0, "kind": "phase", "phase": "thinking", "statuses": {}},
+    {"cue_id": "first-impact", "at": 10, "kind": "events", "events": []},
+    {"cue_id": "wide-view", "at": 30, "kind": "perspective", "perspective_id": "spectator"},
+    {"cue_id": "evidence-podium", "at": 90, "kind": "result"}
+  ],
+  "result": {
+    "schema_version": 2,
+    "formula_version": "worldarena-score/1.0.0",
+    "match_id": "unverified-showcase-fixture",
+    "factions": [
+      {"faction_id": "sol", "model_id": "gpt-5.6-sol", "placement": 1, "worldarena_score": 80},
+      {"faction_id": "terra", "model_id": "gpt-5.6-terra", "placement": 2, "worldarena_score": 70},
+      {"faction_id": "luna", "model_id": "gpt-5.6-luna", "placement": 3, "worldarena_score": 60}
+    ]
+  }
+}
