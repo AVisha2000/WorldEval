@@ -1,3 +1,7 @@
+![Rendered WorldArena gameplay](docs/assets/worldarena-rendered-gameplay.png)
+
+*Rendered gameplay from WorldArena.*
+
 # WorldArena
 
 > Evaluate what an LLM does, not only what it says.
