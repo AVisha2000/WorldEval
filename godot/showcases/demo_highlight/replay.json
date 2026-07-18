@@ -731,7 +731,16 @@
             }
           },
           "round": 8,
-          "summary": "Terra secures Sunfall Mine and completes a forward workshop.",
+          "summary": "Terra's builders raise a palisade and complete a forward workshop.",
+          "target_ids": [],
+          "visibility": "public"
+        },
+        {
+          "actor_id": "terra",
+          "event_id": "demo-003b",
+          "kind": "build",
+          "round": 8,
+          "summary": "Stone becomes a defended route: workshop online, guards deployed.",
           "target_ids": [],
           "visibility": "public"
         }
@@ -1167,6 +1176,21 @@
           "visible_to": [
             "sol",
             "luna"
+          ]
+        },
+        {
+          "actor_id": "luna",
+          "event_id": "demo-007b",
+          "kind": "message",
+          "round": 13,
+          "summary": "Trade received. My scouts are moving now; the Crown route is open.",
+          "target_ids": [
+            "sol"
+          ],
+          "visibility": "participants",
+          "visible_to": [
+            "luna",
+            "sol"
           ]
         }
       ],

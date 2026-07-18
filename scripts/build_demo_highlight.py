@@ -143,7 +143,7 @@ def main() -> None:
     cues += [
         {"cue_id": "economy-snapshot", "at": 14, "kind": "snapshot", "snapshot": snapshot(8, "01:24", "resolution", u, [sol2, terra2, luna2], owners)},
         {"cue_id": "build-shot", "at": 14.1, "kind": "camera", "target_id": "terra_commander", "shot": "medium"},
-        {"cue_id": "workshop-complete", "at": 16, "kind": "events", "events": [event("demo-003", 8, "territory", "terra", "Terra secures Sunfall Mine and completes a forward workshop.", payload={"district_id": "mine_st", "district_state": {"owner": "terra", "supplied": True}})]},
+        {"cue_id": "workshop-complete", "at": 16, "kind": "events", "events": [event("demo-003", 8, "territory", "terra", "Terra's builders raise a palisade and complete a forward workshop.", payload={"district_id": "mine_st", "district_state": {"owner": "terra", "supplied": True}}), event("demo-003b", 8, "build", "terra", "Stone becomes a defended route: workshop online, guards deployed.")]},
         {"cue_id": "scout-shot", "at": 19, "kind": "camera", "target_id": "luna_scout_1", "shot": "close"},
         {"cue_id": "scout-report", "at": 20, "kind": "message", "event": event("demo-004", 8, "message", "luna", "Ember Mine is exposed. Terra is moving strength north.")},
     ]
@@ -159,7 +159,7 @@ def main() -> None:
         {"cue_id": "negotiation-shot", "at": 25.1, "kind": "camera", "target_id": "sol_commander", "shot": "medium"},
         {"cue_id": "private-offer", "at": 26, "kind": "message", "event": event("demo-005", 13, "offer", "sol", "Private: 25 wood for your scout report and one round of Crown pressure.", targets=["luna"], visibility="participants", state="proposed", payload={"give": {"wood": 25}, "request": "crown_pressure"})},
         {"cue_id": "private-accept", "at": 28, "kind": "message", "event": event("demo-006", 13, "message", "luna", "Private: Accepted. I will make Terra look east while you take the centre.", targets=["sol"], visibility="participants")},
-        {"cue_id": "trade-executed", "at": 30, "kind": "events", "events": [event("demo-007", 13, "trade", "sol", "Atomic trade executed: Sol transfers 25 wood to Luna.", targets=["luna"], visibility="participants", state="executed")]},
+        {"cue_id": "trade-executed", "at": 30, "kind": "events", "events": [event("demo-007", 13, "trade", "sol", "Atomic trade executed: Sol transfers 25 wood to Luna.", targets=["luna"], visibility="participants", state="executed"), event("demo-007b", 13, "message", "luna", "Trade received. My scouts are moving now; the Crown route is open.", targets=["sol"], visibility="participants")]},
     ]
 
     # 34s: centre converges, visibly walking from three approaches.
