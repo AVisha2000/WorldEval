@@ -17,6 +17,14 @@ const SpeechBubbleScript := preload("res://scripts/arena/presentation/arena_spee
 const RelationshipGraphScript := preload("res://scripts/arena/presentation/relationship_graph.gd")
 const ArenaPodiumScript := preload("res://scripts/arena/presentation/arena_podium.gd")
 
+const GRASS_TEXTURE := "res://art/textures/grass-warcraft-v1.png"
+const WATER_TEXTURE := "res://art/textures/water-warcraft-v1.png"
+const DIRT_PATH_TEXTURE := "res://art/textures/dirt-path-warcraft-v1.png"
+const WOOD_TEXTURE := "res://art/textures/wood-warcraft-v1.png"
+const ROCK_TEXTURE := "res://art/textures/rock-warcraft-v1.png"
+const ROOF_TEXTURE := "res://art/textures/roof-warcraft-v1.png"
+const CRYSTAL_TEXTURE := "res://art/textures/crystal-warcraft-v1.png"
+
 const FACTION_IDS := ["sol", "terra", "luna"]
 const FACTION_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
 const FACTION_COLORS := {
@@ -452,7 +460,10 @@ func _build_triangle_ground() -> void:
 	water_mesh.size = Vector2(760, 760)
 	water.mesh = water_mesh
 	water.position.y = -2.5
-	var water_material := _material(Color("174b68"))
+	var water_material := _material(Color("b9d8e0"))
+	water_material.albedo_texture = load(WATER_TEXTURE)
+	water_material.texture_repeat = true
+	water_material.uv1_scale = Vector3(9.0, 9.0, 9.0)
 	# PlaneMesh and custom terrain need two-sided faces in the compatibility
 	# renderer; otherwise the overview back-face culls the whole island.
 	water_material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -465,6 +476,7 @@ func _build_triangle_ground() -> void:
 	world_root.add_child(water)
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	const GRID := 48
 	const HALF := 245.0
@@ -481,6 +493,7 @@ func _build_triangle_ground() -> void:
 			height -= coast * 4.0
 			vertices.append(Vector3(x, height, z))
 			normals.append(Vector3.UP)
+			uvs.append(Vector2(x / 42.0, z / 42.0))
 	for z_index in range(GRID):
 		for x_index in range(GRID):
 			var a := z_index * (GRID + 1) + x_index
@@ -491,13 +504,16 @@ func _build_triangle_ground() -> void:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var terrain_mesh := ArrayMesh.new()
 	terrain_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var terrain := MeshInstance3D.new()
 	terrain.name = "OpenWorldIslandTerrain"
 	terrain.mesh = terrain_mesh
-	var terrain_material := _material(Color("2f6848"))
+	var terrain_material := _material(Color("d9e6bf"))
+	terrain_material.albedo_texture = load(GRASS_TEXTURE)
+	terrain_material.texture_repeat = true
 	terrain_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	terrain_material.roughness = 0.95
 	terrain.material_override = terrain_material
@@ -533,7 +549,9 @@ func _build_road_segment(start: Vector3, finish: Vector3) -> void:
 	road.mesh = road_mesh
 	road.position = (start + finish) * 0.5 + Vector3(0, 0.36, 0)
 	road.rotation.y = atan2(direction.x, direction.z)
-	road.material_override = _material(Color("6b4a2d"))
+	road.material_override = _material(Color("e2c99b"))
+	(road.material_override as StandardMaterial3D).albedo_texture = load(DIRT_PATH_TEXTURE)
+	(road.material_override as StandardMaterial3D).texture_repeat = true
 	links_root.add_child(road)
 
 
@@ -591,7 +609,8 @@ func _create_mountain_cluster(center: Vector3, size_factor: float, seed: float) 
 		rock.position = Vector3(cos(angle) * distance, rock_size * 0.72, sin(angle) * distance)
 		rock.scale = Vector3(1.0 + fmod(rock_index, 2.0) * 0.22, 1.0, 0.78 + fmod(seed, 0.24))
 		rock.rotation_degrees = Vector3(fmod(seed * 2.0 + rock_index * 13.0, 20.0), fmod(seed * 3.0 + rock_index * 31.0, 360.0), fmod(seed + rock_index * 9.0, 14.0))
-		rock.material_override = _material(Color("59666a").lightened(fmod(seed + rock_index, 0.18)))
+		rock.material_override = _material(Color("d8d2c9").lightened(fmod(seed + rock_index, 0.08)))
+		(rock.material_override as StandardMaterial3D).albedo_texture = load(ROCK_TEXTURE)
 		ridge.add_child(rock)
 	# A dark mine mouth makes the landmark useful, not merely decorative.
 	var mouth := MeshInstance3D.new()
@@ -649,6 +668,7 @@ func _build_core_structure(definition: Dictionary) -> void:
 	roof.position.y = 9.4
 	roof.rotation_degrees.y = 45.0
 	roof.material_override = _material(Color("29333b"))
+	(roof.material_override as StandardMaterial3D).albedo_texture = load(ROOF_TEXTURE)
 	core.add_child(roof)
 	# A trio of huts gives each faction a legible base silhouette instead of a
 	# lone coloured token.
@@ -675,6 +695,7 @@ func _build_core_structure(definition: Dictionary) -> void:
 		var post_angle := float(post_index) * TAU / 10.0
 		post.position = Vector3(cos(post_angle) * 12.6, 1.25, sin(post_angle) * 12.6)
 		post.material_override = _material(Color("765238").lightened(fmod(float(post_index), 0.14)))
+		(post.material_override as StandardMaterial3D).albedo_texture = load(WOOD_TEXTURE)
 		core.add_child(post)
 
 
@@ -752,6 +773,12 @@ func _create_resource_marker(kind: String, at: Vector3, seed := 0.0) -> void:
 	body.position.y = 1.5 if kind == "tree" else 3.4 if kind == "crystal" else 1.7
 	marker.rotation.y = seed * 0.61
 	body.material_override = _material(color, kind == "crystal")
+	if kind == "crystal":
+		(body.material_override as StandardMaterial3D).albedo_texture = load(CRYSTAL_TEXTURE)
+	elif kind in ["stone", "iron"]:
+		(body.material_override as StandardMaterial3D).albedo_texture = load(ROCK_TEXTURE)
+	elif kind in ["deer", "boar", "wolf"]:
+		(body.material_override as StandardMaterial3D).albedo_texture = load(WOOD_TEXTURE)
 	marker.add_child(body)
 	if kind == "tree":
 		# Layered low-poly cones read as pines from the strategy camera and give
