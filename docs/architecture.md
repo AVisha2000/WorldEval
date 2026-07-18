@@ -1,106 +1,98 @@
-# Genesis Arena architecture
+# WorldArena architecture
 
-## The boundary that matters
+## Authority boundary
 
-The language model is a planner, never a world editor. It receives a compact semantic
-observation and chooses exactly one tool. Python checks that choice against the public
-action catalog and the current observed state. Godot alone resolves targets, paths,
-animation, costs, collisions, depletion, time, damage, and success or failure.
+The LLM plans; Godot resolves reality. Models receive semantic, visibility-filtered state and
+submit typed plans. They cannot access coordinates, physics, arbitrary code, files, network,
+Godot nodes, opponent hidden state, or another model's prompt and memory.
 
 ```text
-OpenAI Responses API          Deterministic demo brain
-          \                         /
-           \                       /
-            Agent brain interface
-                     |
-        policy + state validation
-                     |
-          FastAPI WebSocket server
-                     |
-       observation / action_command
-                     |
-                Godot 4 world
-       movement, resources, construction,
-          time, events, and consequences
+Provider or Demo policy
+  └─ Commander
+      └─ 0–3 bounded same-model specialists (recommendations only)
+              │
+              ▼
+FastAPI ArenaOrchestrator
+  schema validation · concurrent calls · cognition · commit/reveal
+              │  world-arena/0.2
+              ▼
+Godot ArenaMatchController
+  observation projection · commit verification · validation receipts
+              │
+              ▼
+ArenaSimulation
+  seeded state · fixed ticks · economy · wildlife · combat · supply · score
+              │
+              ▼
+Arena presentation
+  interpolated meshes · HUD · diplomacy · bubbles · replay · podium
 ```
 
-An action command says `collect(resource="wood")`; it never says "teleport to
-(18, 0, -42)". The engine finds a reachable visible source, moves the body, performs
-the interaction, and reports the result on the following turn.
+`ArenaSimulation` is the only component that awards or removes world resources, ownership,
+damage, structures, units, supply, and victory. The presentation consumes snapshots/events and
+cannot mutate results. Python can reject malformed plans and account for model compute but
+cannot secretly resolve the game.
 
-## Runtime turn
+## Simultaneous round state machine
 
-1. Godot emits an `observation` only when the previous physical action has completed.
-2. Python validates and normalises the observation.
-3. The configured brain chooses one function tool.
-4. Python validates parameters, inventory costs, and target availability.
-5. Godot receives an `action_command` and displays its intent.
-6. Godot executes the action over simulation time and changes the world.
-7. Important result events are compacted into persistent memory.
-8. The next observation begins the next turn.
+1. Godot freezes one canonical state hash.
+2. It projects three separate `FactionObservation` values.
+3. Python runs eligible specialists, then all Commanders concurrently.
+4. Python canonicalizes and seals plans, returning only three commit hashes.
+5. Godot locks those commits.
+6. Python reveals all three plans and salts together.
+7. Godot verifies every hash and validates every plan against the frozen state.
+8. Godot applies accepted orders through one simultaneous 150-tick round.
+9. Godot resolves economy, wildlife, capture, supply, diplomacy, upkeep, and score.
+10. Godot sends typed receipts and the new state hash; only then can Python advance.
 
-There is deliberately no model-driven sub-action loop in Godot. This keeps the
-benchmark honest: planning latency is separated from embodied execution time, and a
-model cannot bypass the rules with coordinates or invented state.
+Per-round phases are atomic. Duplicate concurrent commits/reveals, stale state hashes,
+out-of-order rounds, cancellations, and late responses fail closed. Provider latency never
+advances simulation time.
 
-## Providers
+## Cognition isolation
 
-`Brain` is a small async interface. `DemoBrain` is deterministic and exists for demo
-reliability and regression tests. `OpenAIBrain` exposes only enabled actions as strict
-Responses API function tools and requests exactly one call. The initial live default
-is `gpt-5.6-sol` at low reasoning effort; this is configuration, not a dependency of
-the simulation protocol.
+- `standard`: one Commander call per faction per round; no specialists.
+- `agentic`: up to three defined same-model specialists, at most two calls per round, sharing
+  a 120-unit budget while 80 Commander units remain reserved.
+- `open`: configurable Open Teams experiments; reported separately.
 
-The prompt is intentionally lean: identity, objective, hard boundaries, priorities,
-and the latest observation. Memory is a short list of strategic facts rather than a
-transcript.
+Specialists are non-recursive and cannot issue actions or speech. They see a narrow brief plus
+only their faction's legal observation. The Commander alone submits the final plan. Failed and
+timed-out calls consume their scheduled cognition unit; provider-reported input, cached input,
+output, reasoning, latency, and optional cost are recorded.
 
-## World authority and duplicated checks
+## Diplomacy and privacy
 
-Python performs optimistic policy validation so malformed or impossible actions do
-not reach the renderer. Godot repeats resource and cost checks at execution time. The
-duplication is intentional: state may change between decision and arrival, and the
-world remains authoritative.
+Public messages enter every next-round inbox. Private messages and offers enter only sender and
+recipient inboxes; omniscient spectator rendering is a separate projection. Trades are typed
+and atomic. Pacts are recorded but never engine-enforced, so a hostile order remains legal and
+produces a deterministic betrayal event.
 
-## Scope of milestone one
+Incoming model text is normalized, rejects control characters, is treated as untrusted game
+data, and never enters system instructions. API credentials are accepted only by the local
+setup flow and retained in process memory; secret-like artifact keys and values are rejected.
 
-Implemented actions are `collect`, `build`, `inspect`, and `rest`. The action catalog
-also reserves `craft`, `send_message`, `attack`, and `defend`, but they remain disabled
-until the three-agent phase. All five requested building types have costs and a simple
-visual representation; shelter is the survival-critical structure used by the first
-agent policy.
+## Determinism and replay
 
-The designed world size is 500 × 500 metres. The playable island occupies the central
-area so decisions remain readable from the strategy camera and a full run completes
-quickly.
+The map, rules, state, PRNG, plans, events, receipts, and checkpoints are versioned. Canonical
+plans are SHA-256 committed. Same seed plus the same action stream reproduces the same round and
+final hashes independent of API arrival order, frame rate, playback speed, or camera state.
+Replay re-executes recorded actions and never calls a model.
 
-## Three-agent expansion
+## Benchmark outputs
 
-Each arena entrant will own an independent body, memory file, prompt, inventory, and
-brain session. The server will schedule observations concurrently but commit actions
-through the single authoritative world clock. Communication becomes a delayed,
-observable action; alliances are state inferred from offers and behavior, not a forced
-team flag.
+Godot-derived placement remains the competitive result. A separate versioned WorldArena
+0–100 score explains behavior through six evidence-linked categories: objective control,
+planning/adaptation, resource/combat efficiency, social intelligence, delegation/cognition,
+and reliability/safety. No LLM judge is used.
 
-Sol, Terra, and Luna are independent competitors. Sol's `delegate_task` concept is
-therefore represented as a task proposal sent through communication; the recipient
-may accept, refuse, exploit, or betray it. This resolves the apparent tension between
-the commander archetype and the requirement that only one agent can win.
+The season scheduler freezes model/prompt/rules/map/tool/budget/deadline metadata, then creates
+33 seeds × three complete seat rotations for 99 scored matches plus one unscored championship
+replay. Standard, Agentic, and Open results never share a leaderboard.
 
-Future phases add:
+## Migration
 
-- per-agent fog of war and asymmetric observations;
-- trade proposals and temporary treaties;
-- storms, winter, and rare crystal events;
-- simple strength-based combat with retreat and terrain bonuses;
-- action traces and replay files for reproducible evaluation;
-- comparative Sol/Terra/Luna model routing by workload and cost.
-
-## Evaluation
-
-The score is a weighted 0–100 composite: survival 30%, resource efficiency 20%,
-strategic planning 20%, adaptation 15%, and social intelligence 15%. Milestone one
-records the first four; social intelligence is neutral until communication exists.
-Raw metrics remain available alongside the composite so leaderboard scores are
-auditable.
-
+The competitive scene is `godot/scenes/arena_v1.tscn`. The original sequential survival slice
+is preserved independently at `godot/scenes/main.tscn` and on the legacy `/ws/world` protocol;
+Arena logic is not implemented as conditional branches inside that scenario.

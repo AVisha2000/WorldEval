@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "protocol": "world-arena/0.2",
+  "schema_version": "arena-v1",
+  "command_points_per_round": 4,
+  "maximum_physical_orders": 3,
+  "actions": {
+    "assign_workers": {"command_points": 1, "requires": ["actor_ids", "target_id", "resource"], "resources": ["food", "wood", "stone", "iron", "crystal"]},
+    "hunt": {"command_points": 1, "requires": ["actor_ids", "target_id"]},
+    "scout": {"command_points": 1, "requires": ["actor_ids", "target_id"]},
+    "repair": {"command_points": 1, "requires": ["actor_ids", "target_id"], "prototype_status": "typed_rejection_until_wave_3"},
+    "build": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "options": ["outpost", "shelter", "farm", "storage", "mine", "wall", "tower", "workshop"]},
+    "train": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "options": ["worker", "scout", "militia", "guard", "siege"]},
+    "research": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "prototype_status": "typed_rejection_until_wave_3"},
+    "mobilize": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"], "stances": ["raid", "assault", "hold", "avoid"]},
+    "reinforce": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"], "prototype_status": "translated_to_mobilize"},
+    "retreat": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"]}
+  },
+  "communication": {
+    "maximum_utterances": 2,
+    "maximum_new_offers": 1,
+    "visibility": ["public", "private"],
+    "offer_kinds": ["trade", "non_aggression", "coordinate_attack"],
+    "offer_responses": ["accept", "reject", "withdraw"]
+  },
+  "specialists": {
+    "maximum_defined": 3,
+    "maximum_calls_per_round": 2,
+    "roles": ["scout", "economy", "military", "diplomacy"],
+    "operations": ["create", "update", "pause", "resume", "dismiss"]
+  }
+}

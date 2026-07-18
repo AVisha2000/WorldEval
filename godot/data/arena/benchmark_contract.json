@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "rules": {
+    "id": "arena-v1",
+    "source_path": "godot/scripts/arena/simulation/arena_rules.gd",
+    "hash": "df8426381bb6293f08bddb98ffcfb9831c86e79014653039045d52ef081e0fb8"
+  },
+  "map": {
+    "id": "tri_13_v1",
+    "source_path": "godot/data/arena/tri_13_v1.json",
+    "hash": "23dfb35663499340a5c95cfae63608a1767f17f1f80fb326a35295dd62254a49"
+  },
+  "tools": {
+    "id": "arena-actions-v0.2",
+    "source_path": "game/arena_actions.json",
+    "hash": "b93e8bd87608f73a5c0f6028363cf4be3c0df6d9e173f7cacec0ca44cfdc0388"
+  }
+}

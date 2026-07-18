@@ -1,0 +1,25 @@
+{
+  "name": "worldarena-remotion",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "compositions": "remotion compositions src/index.ts",
+    "render:intro": "remotion render src/index.ts WorldArenaIntro out/worldarena-intro.mp4",
+    "render:frame": "remotion still src/index.ts WorldArenaIntro out/worldarena-intro.png --frame=120",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.491",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.491"
+  },
+  "devDependencies": {
+    "@remotion/eslint-plugin": "4.0.491",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}

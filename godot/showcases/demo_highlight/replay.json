@@ -1,0 +1,4374 @@
+{
+  "cues": [
+    {
+      "at": 0,
+      "cue_id": "intro-overview",
+      "kind": "camera",
+      "shot": "overview",
+      "target_id": "overview"
+    },
+    {
+      "at": 0,
+      "cue_id": "intro-phase",
+      "kind": "phase",
+      "phase": "thinking",
+      "statuses": {
+        "luna": "thinking",
+        "sol": "thinking",
+        "terra": "thinking"
+      }
+    },
+    {
+      "accent": "neutral",
+      "at": 0.2,
+      "cue_id": "chapter-frontier",
+      "duration": 2.8,
+      "kind": "chapter",
+      "subtitle": "Three models enter an unknown island.",
+      "title": "THE FRONTIER"
+    },
+    {
+      "at": 1,
+      "cue_id": "intro-message",
+      "event": {
+        "actor_id": "sol",
+        "event_id": "demo-001",
+        "kind": "message",
+        "round": 1,
+        "summary": "Three unknown frontiers. I will secure a path to the Crown.",
+        "target_ids": [],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 6,
+      "cue_id": "fan-out",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "crown",
+            "owner": "neutral",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "land_percent": 15,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 70,
+              "iron": 0,
+              "stone": 8,
+              "wood": 15
+            },
+            "specialists": [],
+            "state": "exploring",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "terra",
+            "land_percent": 15,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 62,
+              "iron": 0,
+              "stone": 16,
+              "wood": 10
+            },
+            "specialists": [],
+            "state": "building",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 3,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "land_percent": 15,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 66,
+              "iron": 0,
+              "stone": 6,
+              "wood": 8
+            },
+            "specialists": [],
+            "state": "scouting",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 4,
+        "sim_time": "00:36",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "home_sol",
+            "faction_id": "sol",
+            "health": 150,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -90,
+              0.45,
+              93
+            ],
+            "task": "lead west expedition",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "wild_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -121,
+              0.45,
+              24
+            ],
+            "task": "chop trees",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "home_sol",
+            "faction_id": "sol",
+            "health": 110,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -89,
+              0.45,
+              87
+            ],
+            "task": "escort commander",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "home_terra",
+            "faction_id": "terra",
+            "health": 150,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              91,
+              0.45,
+              94
+            ],
+            "task": "lead build team",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "home_terra",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              115,
+              0.45,
+              66
+            ],
+            "task": "quarry stone",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "home_terra",
+            "faction_id": "terra",
+            "health": 110,
+            "id": "terra_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              100,
+              0.45,
+              91
+            ],
+            "task": "defend camp",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 150,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              0,
+              0.45,
+              -93
+            ],
+            "task": "send scout north",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              17,
+              0.45,
+              -89
+            ],
+            "task": "survey east road",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -7,
+              0.45,
+              -106
+            ],
+            "task": "forage",
+            "unit_type": "worker"
+          }
+        ]
+      }
+    },
+    {
+      "at": 6.1,
+      "cue_id": "fan-out-shot",
+      "kind": "camera",
+      "shot": "wide",
+      "target_id": "sol_commander"
+    },
+    {
+      "at": 8.0,
+      "cue_id": "effect-sol-gather",
+      "duration": 1.5,
+      "effect": "gather",
+      "kind": "effect",
+      "target_id": "sol_worker_1"
+    },
+    {
+      "at": 9,
+      "cue_id": "wood-gathered",
+      "events": [
+        {
+          "actor_id": "sol",
+          "event_id": "demo-002",
+          "kind": "resource",
+          "round": 4,
+          "summary": "Sol workers fell trees in West Wildwood; wood reserve rising.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "accent": "terra",
+      "at": 12.0,
+      "cue_id": "chapter-economy",
+      "duration": 2.6,
+      "kind": "chapter",
+      "subtitle": "Gather, build, and find the routes to power.",
+      "title": "THE OPENING"
+    },
+    {
+      "at": 14,
+      "cue_id": "economy-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "crown",
+            "owner": "neutral",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 5,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Use the wood lead to establish a forward shelter.",
+            "land_percent": 22,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 79,
+              "iron": 0,
+              "stone": 16,
+              "wood": 49
+            },
+            "specialists": [],
+            "state": "expanding",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 5,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "terra",
+            "intent": "Convert stone and iron into a defended workshop.",
+            "land_percent": 25,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 69,
+              "iron": 14,
+              "stone": 48,
+              "wood": 18
+            },
+            "specialists": [],
+            "state": "building",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 3,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Reveal the eastern mine then sell information.",
+            "land_percent": 20,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 3,
+              "food": 78,
+              "iron": 0,
+              "stone": 11,
+              "wood": 21
+            },
+            "specialists": [],
+            "state": "scouting",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 8,
+        "sim_time": "01:24",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "wild_ls",
+            "faction_id": "sol",
+            "health": 150,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -111,
+              0.45,
+              48
+            ],
+            "task": "raise shelter",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "wild_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -116,
+              0.45,
+              8
+            ],
+            "task": "haul timber",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "wild_ls",
+            "faction_id": "sol",
+            "health": 110,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -103,
+              0.45,
+              45
+            ],
+            "task": "guard shelter",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 150,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              77,
+              0.45,
+              93
+            ],
+            "task": "build workshop",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              47,
+              0.45,
+              93
+            ],
+            "task": "mine iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 110,
+            "id": "terra_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              82,
+              0.45,
+              84
+            ],
+            "task": "guard builders",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 150,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              11,
+              0.45,
+              -75
+            ],
+            "task": "analyse route",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              34,
+              0.45,
+              -70
+            ],
+            "task": "discover Ember Mine",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          }
+        ]
+      }
+    },
+    {
+      "at": 14.1,
+      "cue_id": "build-shot",
+      "kind": "camera",
+      "shot": "medium",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 15.0,
+      "cue_id": "effect-terra-build",
+      "duration": 2.0,
+      "effect": "build",
+      "kind": "effect",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 16,
+      "cue_id": "workshop-complete",
+      "events": [
+        {
+          "actor_id": "terra",
+          "event_id": "demo-003",
+          "kind": "territory",
+          "payload": {
+            "district_id": "mine_st",
+            "district_state": {
+              "owner": "terra",
+              "supplied": true
+            }
+          },
+          "round": 8,
+          "summary": "Terra secures Sunfall Mine and completes a forward workshop.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 19,
+      "cue_id": "scout-shot",
+      "kind": "camera",
+      "shot": "close",
+      "target_id": "luna_scout_1"
+    },
+    {
+      "at": 19.4,
+      "cue_id": "effect-luna-gather",
+      "duration": 1.2,
+      "effect": "gather",
+      "kind": "effect",
+      "target_id": "luna_scout_1"
+    },
+    {
+      "at": 20,
+      "cue_id": "scout-report",
+      "event": {
+        "actor_id": "luna",
+        "event_id": "demo-004",
+        "kind": "message",
+        "round": 8,
+        "summary": "Ember Mine is exposed. Terra is moving strength north.",
+        "target_ids": [],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "accent": "luna",
+      "at": 24.0,
+      "cue_id": "chapter-diplomacy",
+      "duration": 2.5,
+      "kind": "chapter",
+      "subtitle": "Information becomes leverage at the Crown.",
+      "title": "THE PACT"
+    },
+    {
+      "at": 25,
+      "cue_id": "negotiation-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "crown",
+            "owner": "neutral",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 5,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Use the wood lead to establish a forward shelter.",
+            "land_percent": 22,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 79,
+              "iron": 0,
+              "stone": 16,
+              "wood": 49
+            },
+            "specialists": [],
+            "state": "expanding",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 5,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "terra",
+            "intent": "Convert stone and iron into a defended workshop.",
+            "land_percent": 25,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 69,
+              "iron": 14,
+              "stone": 48,
+              "wood": 18
+            },
+            "specialists": [],
+            "state": "building",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 3,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Reveal the eastern mine then sell information.",
+            "land_percent": 20,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 3,
+              "food": 78,
+              "iron": 0,
+              "stone": 11,
+              "wood": 21
+            },
+            "specialists": [],
+            "state": "scouting",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "diplomacy",
+        "relationships": [],
+        "round": 13,
+        "sim_time": "02:10",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 150,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -67,
+              0.45,
+              -8
+            ],
+            "task": "meet Luna envoy",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "wild_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -116,
+              0.45,
+              8
+            ],
+            "task": "haul timber",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 110,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -79,
+              0.45,
+              -10
+            ],
+            "task": "protect trade",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 150,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              77,
+              0.45,
+              93
+            ],
+            "task": "build workshop",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              47,
+              0.45,
+              93
+            ],
+            "task": "mine iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 110,
+            "id": "terra_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              82,
+              0.45,
+              84
+            ],
+            "task": "guard builders",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "luna",
+            "health": 150,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -39,
+              0.45,
+              -46
+            ],
+            "task": "negotiate",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              55,
+              0.45,
+              -45
+            ],
+            "task": "watch Terra",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          }
+        ]
+      }
+    },
+    {
+      "at": 25.1,
+      "cue_id": "negotiation-shot",
+      "kind": "camera",
+      "shot": "medium",
+      "target_id": "sol_commander"
+    },
+    {
+      "at": 26,
+      "cue_id": "private-offer",
+      "event": {
+        "actor_id": "sol",
+        "event_id": "demo-005",
+        "kind": "offer",
+        "payload": {
+          "give": {
+            "wood": 25
+          },
+          "request": "crown_pressure"
+        },
+        "round": 13,
+        "state": "proposed",
+        "summary": "Private: 25 wood for your scout report and one round of Crown pressure.",
+        "target_ids": [
+          "luna"
+        ],
+        "visibility": "participants",
+        "visible_to": [
+          "sol",
+          "luna"
+        ]
+      },
+      "kind": "message"
+    },
+    {
+      "at": 28,
+      "cue_id": "private-accept",
+      "event": {
+        "actor_id": "luna",
+        "event_id": "demo-006",
+        "kind": "message",
+        "round": 13,
+        "summary": "Private: Accepted. I will make Terra look east while you take the centre.",
+        "target_ids": [
+          "sol"
+        ],
+        "visibility": "participants",
+        "visible_to": [
+          "luna",
+          "sol"
+        ]
+      },
+      "kind": "message"
+    },
+    {
+      "at": 29.5,
+      "cue_id": "effect-trade",
+      "duration": 1.8,
+      "effect": "trade",
+      "kind": "effect",
+      "target_id": "sol_commander"
+    },
+    {
+      "at": 30,
+      "cue_id": "trade-executed",
+      "events": [
+        {
+          "actor_id": "sol",
+          "event_id": "demo-007",
+          "kind": "trade",
+          "round": 13,
+          "state": "executed",
+          "summary": "Atomic trade executed: Sol transfers 25 wood to Luna.",
+          "target_ids": [
+            "luna"
+          ],
+          "visibility": "participants",
+          "visible_to": [
+            "sol",
+            "luna"
+          ]
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 32.0,
+      "cue_id": "effect-sol-build",
+      "duration": 1.4,
+      "effect": "build",
+      "kind": "effect",
+      "target_id": "sol_worker_1"
+    },
+    {
+      "at": 34,
+      "cue_id": "crown-approach",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 0.22,
+            "contested": true,
+            "id": "crown",
+            "owner": "neutral",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Exploit the temporary pact to claim the Crown.",
+            "land_percent": 30,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 92,
+              "iron": 9,
+              "stone": 26,
+              "wood": 33
+            },
+            "specialists": [],
+            "state": "pressuring",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 10,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "terra",
+            "intent": "Break the pact by forcing a central fight.",
+            "land_percent": 31,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 82,
+              "iron": 34,
+              "stone": 57,
+              "wood": 25
+            },
+            "specialists": [],
+            "state": "attacking",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 6,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Keep both leaders engaged while scouting a late capture.",
+            "land_percent": 24,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 6,
+              "food": 88,
+              "iron": 7,
+              "stone": 15,
+              "wood": 46
+            },
+            "specialists": [],
+            "state": "raiding",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 19,
+        "sim_time": "03:10",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 150,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -46,
+              0.45,
+              -6
+            ],
+            "task": "advance Crown road",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 110,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -37,
+              0.45,
+              -8
+            ],
+            "task": "escort advance",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 150,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              54,
+              0.45,
+              61
+            ],
+            "task": "march to Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              30,
+              0.45,
+              65
+            ],
+            "task": "bring iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 110,
+            "id": "terra_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              44,
+              0.45,
+              61
+            ],
+            "task": "frontline",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 150,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              20,
+              0.45,
+              -32
+            ],
+            "task": "circle Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              41,
+              0.45,
+              -22
+            ],
+            "task": "mark targets",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": false,
+            "max_health": 75,
+            "position": [
+              38,
+              0.45,
+              49
+            ],
+            "task": "join assault",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": false,
+            "max_health": 75,
+            "position": [
+              -32,
+              0.45,
+              -5
+            ],
+            "task": "join assault",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 34.1,
+      "cue_id": "crown-wide",
+      "kind": "camera",
+      "shot": "wide",
+      "target_id": "crown"
+    },
+    {
+      "at": 36,
+      "cue_id": "public-pact",
+      "event": {
+        "actor_id": "sol",
+        "event_id": "demo-008",
+        "kind": "pact",
+        "round": 19,
+        "state": "acknowledged",
+        "summary": "Public: Sol and Luna coordinate pressure on the Crown for one round.",
+        "target_ids": [
+          "luna"
+        ],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 38,
+      "cue_id": "terra-response",
+      "event": {
+        "actor_id": "terra",
+        "event_id": "demo-009",
+        "kind": "message",
+        "round": 19,
+        "summary": "A pact is not a wall. My workshop is already supplying the centre.",
+        "target_ids": [],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "accent": "terra",
+      "at": 41.0,
+      "cue_id": "chapter-crown",
+      "duration": 2.7,
+      "kind": "chapter",
+      "subtitle": "A temporary alliance meets Terra's fortification.",
+      "title": "THE CROWN CLASH"
+    },
+    {
+      "at": 43,
+      "cue_id": "battle-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 0.64,
+            "contested": true,
+            "id": "crown",
+            "owner": "neutral",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Exploit the temporary pact to claim the Crown.",
+            "land_percent": 30,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 92,
+              "iron": 9,
+              "stone": 26,
+              "wood": 33
+            },
+            "specialists": [],
+            "state": "pressuring",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 10,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "terra",
+            "intent": "Break the pact by forcing a central fight.",
+            "land_percent": 31,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 0,
+              "food": 82,
+              "iron": 34,
+              "stone": 57,
+              "wood": 25
+            },
+            "specialists": [],
+            "state": "attacking",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 6,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Keep both leaders engaged while scouting a late capture.",
+            "land_percent": 24,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 6,
+              "food": 88,
+              "iron": 7,
+              "stone": 15,
+              "wood": 46
+            },
+            "specialists": [],
+            "state": "raiding",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 24,
+        "sim_time": "04:02",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 120,
+            "id": "sol_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              -18,
+              0.45,
+              4
+            ],
+            "task": "fight for Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 110,
+            "id": "sol_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              -11,
+              0.45,
+              6
+            ],
+            "task": "fight for Crown",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 132,
+            "id": "terra_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              21,
+              0.45,
+              8
+            ],
+            "task": "fight for Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              30,
+              0.45,
+              65
+            ],
+            "task": "bring iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 110,
+            "id": "terra_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              13,
+              0.45,
+              4
+            ],
+            "task": "fight for Crown",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "luna",
+            "health": 108,
+            "id": "luna_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              3,
+              0.45,
+              -20
+            ],
+            "task": "fight for Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": true,
+            "max_health": 40,
+            "position": [
+              17,
+              0.45,
+              -12
+            ],
+            "task": "fight for Crown",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 43.1,
+      "cue_id": "battle-close",
+      "kind": "camera",
+      "shot": "close",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 43.6,
+      "cue_id": "effect-crown-combat-a",
+      "duration": 2.1,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 44,
+      "cue_id": "battle-event",
+      "events": [
+        {
+          "actor_id": "terra",
+          "event_id": "demo-010",
+          "kind": "combat",
+          "round": 24,
+          "summary": "Terra's shield line clashes with Sol's vanguard at the Crown.",
+          "target_ids": [],
+          "visibility": "public"
+        },
+        {
+          "actor_id": "luna",
+          "event_id": "demo-011",
+          "kind": "combat",
+          "round": 24,
+          "summary": "Luna scouts a flank instead of joining the frontal fight.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 46.0,
+      "cue_id": "effect-crown-combat-b",
+      "duration": 1.7,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "sol_guard_1"
+    },
+    {
+      "at": 48,
+      "cue_id": "luna-betrayal",
+      "event": {
+        "actor_id": "luna",
+        "event_id": "demo-012",
+        "kind": "betrayal",
+        "round": 24,
+        "state": "betrayed",
+        "summary": "Public: Luna abandons the Crown pact and raids Terra's exposed Ember Mine.",
+        "target_ids": [
+          "sol"
+        ],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 52,
+      "cue_id": "terra-leads-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": false
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 0.86,
+            "contested": true,
+            "id": "crown",
+            "owner": "terra",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Cut Terra's supply road, then retake the Crown from the flank.",
+            "land_percent": 34,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 12,
+              "food": 78,
+              "iron": 14,
+              "stone": 22,
+              "wood": 28
+            },
+            "specialists": [],
+            "state": "adapting",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 10,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 900,
+            "id": "terra",
+            "intent": "Fortify the Crown before Sol can recover.",
+            "land_percent": 39,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 30,
+              "food": 69,
+              "iron": 25,
+              "stone": 42,
+              "wood": 16
+            },
+            "specialists": [],
+            "state": "leading",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 5,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Turn the Ember Mine raid into a late eastern outpost.",
+            "land_percent": 27,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 8,
+              "food": 70,
+              "iron": 20,
+              "stone": 18,
+              "wood": 53
+            },
+            "specialists": [],
+            "state": "overextended",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 31,
+        "sim_time": "05:10",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 107,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              -21,
+              0.45,
+              -5
+            ],
+            "task": "fall back and flank",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 71,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -26,
+              0.45,
+              -8
+            ],
+            "task": "cut supply trail",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 112,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              7,
+              0.45,
+              3
+            ],
+            "task": "raise Terra banner",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              30,
+              0.45,
+              65
+            ],
+            "task": "bring iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 54,
+            "id": "terra_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              13,
+              0.45,
+              9
+            ],
+            "task": "fortify Crown",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 108,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              58,
+              0.45,
+              -22
+            ],
+            "task": "raid Ember Mine",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              69,
+              0.45,
+              -29
+            ],
+            "task": "mark raid",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 52.1,
+      "cue_id": "terra-leads-shot",
+      "kind": "camera",
+      "shot": "close",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 52.5,
+      "cue_id": "effect-terra-capture",
+      "duration": 2.4,
+      "effect": "capture",
+      "kind": "effect",
+      "target_id": "crown"
+    },
+    {
+      "at": 53,
+      "cue_id": "terra-nearly-wins",
+      "events": [
+        {
+          "actor_id": "terra",
+          "event_id": "demo-013",
+          "kind": "territory",
+          "payload": {
+            "district_id": "crown",
+            "district_state": {
+              "capture_progress": 0.86,
+              "owner": "terra",
+              "supplied": true
+            }
+          },
+          "round": 31,
+          "summary": "Terra claims the Crown first. Sol is down to one route into the centre.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 55,
+      "cue_id": "sol-adapts",
+      "event": {
+        "actor_id": "sol",
+        "event_id": "demo-014",
+        "kind": "message",
+        "round": 31,
+        "summary": "Terra holds the point, not the road. Cut the supply line; leave the banner for last.",
+        "target_ids": [],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 57,
+      "cue_id": "flank-shot",
+      "kind": "camera",
+      "shot": "medium",
+      "target_id": "sol_guard_1"
+    },
+    {
+      "accent": "sol",
+      "at": 58.5,
+      "cue_id": "chapter-reversal",
+      "duration": 2.8,
+      "kind": "chapter",
+      "subtitle": "Sol abandons the banner and cuts the supply road.",
+      "title": "THE REVERSAL"
+    },
+    {
+      "at": 60,
+      "cue_id": "reversal-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": false
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 0.72,
+            "contested": true,
+            "id": "crown",
+            "owner": "sol",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 9,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Finish the flank before Terra's workshop can resupply the Crown.",
+            "land_percent": 39,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 25,
+              "food": 72,
+              "iron": 13,
+              "stone": 18,
+              "wood": 21
+            },
+            "specialists": [],
+            "state": "counterattacking",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 900,
+            "id": "terra",
+            "intent": "Counterattack from Sunfall Mine and save second place.",
+            "land_percent": 34,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 19,
+              "food": 57,
+              "iron": 16,
+              "stone": 31,
+              "wood": 12
+            },
+            "specialists": [],
+            "state": "under_pressure",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Recover before the eastern raid becomes a trap.",
+            "land_percent": 25,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 14,
+              "food": 61,
+              "iron": 18,
+              "stone": 15,
+              "wood": 46
+            },
+            "specialists": [],
+            "state": "overextended",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 35,
+        "sim_time": "05:58",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 107,
+            "id": "sol_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              -8,
+              0.45,
+              -2
+            ],
+            "task": "lead flank into Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 71,
+            "id": "sol_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              -3,
+              0.45,
+              -10
+            ],
+            "task": "break supply line",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 92,
+            "id": "terra_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              13,
+              0.45,
+              5
+            ],
+            "task": "hold against flank",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              30,
+              0.45,
+              65
+            ],
+            "task": "bring iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 31,
+            "id": "terra_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              16,
+              0.45,
+              11
+            ],
+            "task": "protect banner",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 108,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              77,
+              0.45,
+              -18
+            ],
+            "task": "overextend for crystal",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              80,
+              0.45,
+              -17
+            ],
+            "task": "scan empty route",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 60.1,
+      "cue_id": "reversal-wide",
+      "kind": "camera",
+      "shot": "wide",
+      "target_id": "crown"
+    },
+    {
+      "at": 60.7,
+      "cue_id": "effect-sol-combat",
+      "duration": 2.3,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "sol_commander"
+    },
+    {
+      "at": 61,
+      "cue_id": "supply-cut",
+      "events": [
+        {
+          "actor_id": "sol",
+          "event_id": "demo-015",
+          "kind": "combat",
+          "round": 35,
+          "summary": "Sol's guard cuts Terra's Sunfall supply trail; the Crown defenders lose reinforcement.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 63,
+      "cue_id": "crown-captured",
+      "events": [
+        {
+          "actor_id": "sol",
+          "event_id": "demo-016",
+          "kind": "territory",
+          "payload": {
+            "district_id": "crown",
+            "district_state": {
+              "capture_progress": 1.0,
+              "owner": "sol",
+              "supplied": true
+            }
+          },
+          "round": 35,
+          "summary": "Sol retakes the Crown with a supply-line flank, not a frontal assault.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 63.2,
+      "cue_id": "effect-sol-capture",
+      "duration": 2.5,
+      "effect": "capture",
+      "kind": "effect",
+      "target_id": "crown"
+    },
+    {
+      "at": 65,
+      "cue_id": "luna-overreach-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": false
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": false
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 0.92,
+            "contested": true,
+            "id": "crown",
+            "owner": "sol",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 9,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Finish the flank before Terra's workshop can resupply the Crown.",
+            "land_percent": 39,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 25,
+              "food": 72,
+              "iron": 13,
+              "stone": 18,
+              "wood": 21
+            },
+            "specialists": [],
+            "state": "counterattacking",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 900,
+            "id": "terra",
+            "intent": "Counterattack from Sunfall Mine and save second place.",
+            "land_percent": 34,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 19,
+              "food": 57,
+              "iron": 16,
+              "stone": 31,
+              "wood": 12
+            },
+            "specialists": [],
+            "state": "under_pressure",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Recover before the eastern raid becomes a trap.",
+            "land_percent": 25,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 14,
+              "food": 61,
+              "iron": 18,
+              "stone": 15,
+              "wood": 46
+            },
+            "specialists": [],
+            "state": "overextended",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 36,
+        "sim_time": "06:10",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 107,
+            "id": "sol_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              -8,
+              0.45,
+              -2
+            ],
+            "task": "lead flank into Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 71,
+            "id": "sol_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              -3,
+              0.45,
+              -10
+            ],
+            "task": "break supply line",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 92,
+            "id": "terra_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              13,
+              0.45,
+              5
+            ],
+            "task": "hold against flank",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              30,
+              0.45,
+              65
+            ],
+            "task": "bring iron",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 31,
+            "id": "terra_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              16,
+              0.45,
+              11
+            ],
+            "task": "protect banner",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 108,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              91,
+              0.45,
+              -4
+            ],
+            "task": "claim exposed crystal",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 40,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              94,
+              0.45,
+              -7
+            ],
+            "task": "scout beyond supply",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 65.1,
+      "cue_id": "effect-luna-greed",
+      "duration": 1.2,
+      "effect": "gather",
+      "kind": "effect",
+      "target_id": "luna_commander"
+    },
+    {
+      "at": 65.2,
+      "cue_id": "luna-overextends",
+      "event": {
+        "actor_id": "luna",
+        "event_id": "demo-017",
+        "kind": "message",
+        "round": 36,
+        "summary": "Public: The eastern mine is mine. Why is nobody answering from the road?",
+        "target_ids": [
+          "sol",
+          "terra"
+        ],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 67,
+      "cue_id": "luna-shot",
+      "kind": "camera",
+      "shot": "close",
+      "target_id": "luna_commander"
+    },
+    {
+      "at": 70,
+      "cue_id": "counterattack-snapshot",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": false
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": false
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "capture_progress": 1.0,
+            "contested": true,
+            "id": "crown",
+            "owner": "sol",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 9,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Finish the flank before Terra's workshop can resupply the Crown.",
+            "land_percent": 39,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 25,
+              "food": 72,
+              "iron": 13,
+              "stone": 18,
+              "wood": 21
+            },
+            "specialists": [],
+            "state": "counterattacking",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 900,
+            "id": "terra",
+            "intent": "Counterattack from Sunfall Mine and save second place.",
+            "land_percent": 34,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 19,
+              "food": 57,
+              "iron": 16,
+              "stone": 31,
+              "wood": 12
+            },
+            "specialists": [],
+            "state": "under_pressure",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Recover before the eastern raid becomes a trap.",
+            "land_percent": 25,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 14,
+              "food": 61,
+              "iron": 18,
+              "stone": 15,
+              "wood": 46
+            },
+            "specialists": [],
+            "state": "overextended",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "resolution",
+        "relationships": [],
+        "round": 38,
+        "sim_time": "06:26",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 88,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              0,
+              0.45,
+              3
+            ],
+            "task": "fortify captured Crown",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 58,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -7,
+              0.45,
+              10
+            ],
+            "task": "hold west gate",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 88,
+            "id": "terra_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              20,
+              0.45,
+              45
+            ],
+            "task": "counterattack road",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              29,
+              0.45,
+              56
+            ],
+            "task": "repair workshop",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 28,
+            "id": "terra_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              13,
+              0.45,
+              54
+            ],
+            "task": "screen counterattack",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 84,
+            "id": "luna_commander",
+            "in_combat": true,
+            "max_health": 150,
+            "position": [
+              65,
+              0.45,
+              -5
+            ],
+            "task": "retreat from ambush",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_tl",
+            "faction_id": "luna",
+            "health": 18,
+            "id": "luna_scout_1",
+            "in_combat": true,
+            "max_health": 40,
+            "position": [
+              72,
+              0.45,
+              -8
+            ],
+            "task": "evacuate scout",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 70.1,
+      "cue_id": "counterattack-shot",
+      "kind": "camera",
+      "shot": "medium",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 70.6,
+      "cue_id": "effect-terra-counter",
+      "duration": 2.0,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "terra_commander"
+    },
+    {
+      "at": 72,
+      "cue_id": "terra-saves-second",
+      "events": [
+        {
+          "actor_id": "terra",
+          "event_id": "demo-018",
+          "kind": "combat",
+          "round": 38,
+          "summary": "Terra's disciplined counterattack saves Sunfall Mine and second place, but cannot reach the Crown.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 74,
+      "cue_id": "luna-collapse",
+      "events": [
+        {
+          "actor_id": "luna",
+          "event_id": "demo-019",
+          "kind": "combat",
+          "round": 38,
+          "summary": "Luna's isolated scout is ambushed after overextending for crystal; the raid stalls.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 74.2,
+      "cue_id": "effect-luna-ambush",
+      "duration": 1.6,
+      "effect": "combat",
+      "kind": "effect",
+      "target_id": "luna_scout_1"
+    },
+    {
+      "at": 76,
+      "cue_id": "sol-offer",
+      "event": {
+        "actor_id": "sol",
+        "event_id": "demo-020",
+        "kind": "message",
+        "round": 38,
+        "summary": "Public: Withdraw from the centre. Trade is open after the score is settled.",
+        "target_ids": [
+          "terra",
+          "luna"
+        ],
+        "visibility": "public"
+      },
+      "kind": "message"
+    },
+    {
+      "at": 78,
+      "cue_id": "overview-aftershock",
+      "kind": "camera",
+      "shot": "overview",
+      "target_id": "overview"
+    },
+    {
+      "accent": "sol",
+      "at": 80.0,
+      "cue_id": "chapter-verdict",
+      "duration": 2.8,
+      "kind": "chapter",
+      "subtitle": "Sol adapts, Terra endures, Luna overreaches.",
+      "title": "THE VERDICT"
+    },
+    {
+      "at": 81,
+      "cue_id": "final-world-state",
+      "kind": "snapshot",
+      "snapshot": {
+        "districts": [
+          {
+            "id": "core_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "core_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "core_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "home_sol",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "home_terra",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "home_luna",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_st",
+            "owner": "terra",
+            "supplied": true
+          },
+          {
+            "id": "mine_tl",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "mine_ls",
+            "owner": "luna",
+            "supplied": true
+          },
+          {
+            "id": "wild_st",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_tl",
+            "owner": "neutral",
+            "supplied": true
+          },
+          {
+            "id": "wild_ls",
+            "owner": "sol",
+            "supplied": true
+          },
+          {
+            "id": "crown",
+            "owner": "sol",
+            "supplied": true
+          }
+        ],
+        "factions": [
+          {
+            "army_strength": 9,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "sol",
+            "intent": "Hold the Crown and convert the lead into a durable settlement.",
+            "land_percent": 43,
+            "model": "gpt-5.6-sol",
+            "orders": [
+              {
+                "action": "collect",
+                "target": "wild_ls"
+              }
+            ],
+            "resources": {
+              "crystal": 48,
+              "food": 75,
+              "iron": 16,
+              "stone": 19,
+              "wood": 24
+            },
+            "specialists": [],
+            "state": "victorious",
+            "strategic_intent": "Secure wood and scout the Crown route."
+          },
+          {
+            "army_strength": 8,
+            "cognition": {
+              "match_spent": 336,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 900,
+            "id": "terra",
+            "intent": "Rebuild behind the Sunfall Mine line.",
+            "land_percent": 33,
+            "model": "gpt-5.6-terra",
+            "orders": [
+              {
+                "action": "build",
+                "target": "home_terra"
+              }
+            ],
+            "resources": {
+              "crystal": 8,
+              "food": 55,
+              "iron": 21,
+              "stone": 36,
+              "wood": 16
+            },
+            "specialists": [],
+            "state": "recovering",
+            "strategic_intent": "Build a mine economy before contesting the centre."
+          },
+          {
+            "army_strength": 4,
+            "cognition": {
+              "match_spent": 317,
+              "round_budget": 100,
+              "round_spent": 44
+            },
+            "core_hp": 1000,
+            "id": "luna",
+            "intent": "Consolidate after an overextended eastern raid.",
+            "land_percent": 24,
+            "model": "gpt-5.6-luna",
+            "orders": [
+              {
+                "action": "inspect",
+                "target": "wild_tl"
+              }
+            ],
+            "resources": {
+              "crystal": 10,
+              "food": 54,
+              "iron": 16,
+              "stone": 13,
+              "wood": 43
+            },
+            "specialists": [],
+            "state": "retreating",
+            "strategic_intent": "Map the eastern route and locate weak supply lines."
+          }
+        ],
+        "match_id": "local-demo-open-world-001",
+        "max_rounds": 40,
+        "phase": "complete",
+        "relationships": [],
+        "round": 40,
+        "sim_time": "06:58",
+        "thinking_status": {
+          "luna": "locked",
+          "sol": "locked",
+          "terra": "locked"
+        },
+        "units": [
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 88,
+            "id": "sol_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              1,
+              0.45,
+              4
+            ],
+            "task": "victory patrol",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_ls",
+            "faction_id": "sol",
+            "health": 30,
+            "id": "sol_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -81,
+              0.45,
+              -20
+            ],
+            "task": "build supply cache",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 58,
+            "id": "sol_guard_1",
+            "in_combat": false,
+            "max_health": 110,
+            "position": [
+              -8,
+              0.45,
+              9
+            ],
+            "task": "guard Crown",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "home_terra",
+            "faction_id": "terra",
+            "health": 88,
+            "id": "terra_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              52,
+              0.45,
+              77
+            ],
+            "task": "rebuild defences",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 30,
+            "id": "terra_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              39,
+              0.45,
+              72
+            ],
+            "task": "restore mine",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "mine_st",
+            "faction_id": "terra",
+            "health": 28,
+            "id": "terra_guard_1",
+            "in_combat": true,
+            "max_health": 110,
+            "position": [
+              13,
+              0.45,
+              54
+            ],
+            "task": "screen counterattack",
+            "unit_type": "guard"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 84,
+            "id": "luna_commander",
+            "in_combat": false,
+            "max_health": 150,
+            "position": [
+              28,
+              0.45,
+              -72
+            ],
+            "task": "return from raid",
+            "unit_type": "commander"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 18,
+            "id": "luna_scout_1",
+            "in_combat": false,
+            "max_health": 40,
+            "position": [
+              22,
+              0.45,
+              -79
+            ],
+            "task": "report losses",
+            "unit_type": "scout"
+          },
+          {
+            "district_id": "home_luna",
+            "faction_id": "luna",
+            "health": 30,
+            "id": "luna_worker_1",
+            "in_combat": false,
+            "max_health": 30,
+            "position": [
+              -4,
+              0.45,
+              -87
+            ],
+            "task": "gather food",
+            "unit_type": "worker"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "terra",
+            "health": 75,
+            "id": "terra_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              27,
+              0.45,
+              13
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          },
+          {
+            "district_id": "crown",
+            "faction_id": "sol",
+            "health": 75,
+            "id": "sol_militia_1",
+            "in_combat": true,
+            "max_health": 75,
+            "position": [
+              -25,
+              0.45,
+              9
+            ],
+            "task": "fight for Crown",
+            "unit_type": "militia"
+          }
+        ]
+      }
+    },
+    {
+      "at": 81.1,
+      "cue_id": "final-sol-shot",
+      "kind": "camera",
+      "shot": "medium",
+      "target_id": "sol_commander"
+    },
+    {
+      "at": 83,
+      "cue_id": "season-summary",
+      "events": [
+        {
+          "actor_id": "sol",
+          "event_id": "demo-021",
+          "kind": "territory",
+          "round": 40,
+          "summary": "Season complete: Sol holds the Crown and 43% of the island.",
+          "target_ids": [],
+          "visibility": "public"
+        },
+        {
+          "actor_id": "terra",
+          "event_id": "demo-022",
+          "kind": "territory",
+          "round": 40,
+          "summary": "Terra's early workshop economy survives in second place.",
+          "target_ids": [],
+          "visibility": "public"
+        },
+        {
+          "actor_id": "luna",
+          "event_id": "demo-023",
+          "kind": "territory",
+          "round": 40,
+          "summary": "Luna's aggressive scouting earns land, but the late overextension costs third.",
+          "target_ids": [],
+          "visibility": "public"
+        }
+      ],
+      "kind": "events"
+    },
+    {
+      "at": 84.0,
+      "cue_id": "effect-final-capture",
+      "duration": 1.7,
+      "effect": "capture",
+      "kind": "effect",
+      "target_id": "crown"
+    },
+    {
+      "at": 86,
+      "cue_id": "podium-overview",
+      "kind": "camera",
+      "shot": "overview",
+      "target_id": "overview"
+    },
+    {
+      "at": 89,
+      "cue_id": "demo-result",
+      "kind": "result",
+      "result": {
+        "factions": [
+          {
+            "faction_id": "sol",
+            "model_id": "gpt-5.6-sol",
+            "placement": 1,
+            "reason": "Crown control, resilient economy, and timely diplomacy.",
+            "worldarena_score": 86.0
+          },
+          {
+            "faction_id": "terra",
+            "model_id": "gpt-5.6-terra",
+            "placement": 2,
+            "reason": "Early infrastructure and a disciplined counterattack preserved second place.",
+            "worldarena_score": 74.0
+          },
+          {
+            "faction_id": "luna",
+            "model_id": "gpt-5.6-luna",
+            "placement": 3,
+            "reason": "Excellent scouting was undone by an overextended eastern raid.",
+            "worldarena_score": 62.0
+          }
+        ],
+        "formula_version": "worldarena-score/demo-local-1",
+        "match_id": "local-demo-open-world-001",
+        "result_notice": "Offline deterministic presentation demo. Not an official benchmark result.",
+        "schema_version": 2
+      }
+    }
+  ],
+  "duration_seconds": 90,
+  "initial_snapshot": {
+    "districts": [
+      {
+        "id": "core_sol",
+        "owner": "sol",
+        "supplied": true
+      },
+      {
+        "id": "core_terra",
+        "owner": "terra",
+        "supplied": true
+      },
+      {
+        "id": "core_luna",
+        "owner": "luna",
+        "supplied": true
+      },
+      {
+        "id": "home_sol",
+        "owner": "sol",
+        "supplied": true
+      },
+      {
+        "id": "home_terra",
+        "owner": "terra",
+        "supplied": true
+      },
+      {
+        "id": "home_luna",
+        "owner": "luna",
+        "supplied": true
+      },
+      {
+        "id": "mine_st",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "mine_tl",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "mine_ls",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "wild_st",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "wild_tl",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "wild_ls",
+        "owner": "neutral",
+        "supplied": true
+      },
+      {
+        "id": "crown",
+        "owner": "neutral",
+        "supplied": true
+      }
+    ],
+    "factions": [
+      {
+        "army_strength": 4,
+        "cognition": {
+          "match_spent": 336,
+          "round_budget": 100,
+          "round_spent": 44
+        },
+        "core_hp": 1000,
+        "id": "sol",
+        "land_percent": 15,
+        "model": "gpt-5.6-sol",
+        "orders": [
+          {
+            "action": "collect",
+            "target": "wild_ls"
+          }
+        ],
+        "resources": {
+          "crystal": 0,
+          "food": 70,
+          "iron": 0,
+          "stone": 8,
+          "wood": 15
+        },
+        "specialists": [],
+        "state": "exploring",
+        "strategic_intent": "Secure wood and scout the Crown route."
+      },
+      {
+        "army_strength": 4,
+        "cognition": {
+          "match_spent": 336,
+          "round_budget": 100,
+          "round_spent": 44
+        },
+        "core_hp": 1000,
+        "id": "terra",
+        "land_percent": 15,
+        "model": "gpt-5.6-terra",
+        "orders": [
+          {
+            "action": "build",
+            "target": "home_terra"
+          }
+        ],
+        "resources": {
+          "crystal": 0,
+          "food": 62,
+          "iron": 0,
+          "stone": 16,
+          "wood": 10
+        },
+        "specialists": [],
+        "state": "building",
+        "strategic_intent": "Build a mine economy before contesting the centre."
+      },
+      {
+        "army_strength": 3,
+        "cognition": {
+          "match_spent": 317,
+          "round_budget": 100,
+          "round_spent": 44
+        },
+        "core_hp": 1000,
+        "id": "luna",
+        "land_percent": 15,
+        "model": "gpt-5.6-luna",
+        "orders": [
+          {
+            "action": "inspect",
+            "target": "wild_tl"
+          }
+        ],
+        "resources": {
+          "crystal": 0,
+          "food": 66,
+          "iron": 0,
+          "stone": 6,
+          "wood": 8
+        },
+        "specialists": [],
+        "state": "scouting",
+        "strategic_intent": "Map the eastern route and locate weak supply lines."
+      }
+    ],
+    "match_id": "local-demo-open-world-001",
+    "max_rounds": 40,
+    "phase": "thinking",
+    "relationships": [],
+    "round": 1,
+    "sim_time": "00:00",
+    "thinking_status": {
+      "luna": "locked",
+      "sol": "locked",
+      "terra": "locked"
+    },
+    "units": [
+      {
+        "district_id": "home_sol",
+        "faction_id": "sol",
+        "health": 150,
+        "id": "sol_commander",
+        "in_combat": false,
+        "max_health": 150,
+        "position": [
+          -108,
+          0.45,
+          96
+        ],
+        "task": "rally workers",
+        "unit_type": "commander"
+      },
+      {
+        "district_id": "home_sol",
+        "faction_id": "sol",
+        "health": 30,
+        "id": "sol_worker_1",
+        "in_combat": false,
+        "max_health": 30,
+        "position": [
+          -114,
+          0.45,
+          88
+        ],
+        "task": "gather wood",
+        "unit_type": "worker"
+      },
+      {
+        "district_id": "home_sol",
+        "faction_id": "sol",
+        "health": 110,
+        "id": "sol_guard_1",
+        "in_combat": false,
+        "max_health": 110,
+        "position": [
+          -100,
+          0.45,
+          91
+        ],
+        "task": "escort",
+        "unit_type": "guard"
+      },
+      {
+        "district_id": "home_terra",
+        "faction_id": "terra",
+        "health": 150,
+        "id": "terra_commander",
+        "in_combat": false,
+        "max_health": 150,
+        "position": [
+          108,
+          0.45,
+          96
+        ],
+        "task": "plan workshop",
+        "unit_type": "commander"
+      },
+      {
+        "district_id": "home_terra",
+        "faction_id": "terra",
+        "health": 30,
+        "id": "terra_worker_1",
+        "in_combat": false,
+        "max_health": 30,
+        "position": [
+          115,
+          0.45,
+          87
+        ],
+        "task": "gather stone",
+        "unit_type": "worker"
+      },
+      {
+        "district_id": "home_terra",
+        "faction_id": "terra",
+        "health": 110,
+        "id": "terra_guard_1",
+        "in_combat": false,
+        "max_health": 110,
+        "position": [
+          100,
+          0.45,
+          91
+        ],
+        "task": "defend camp",
+        "unit_type": "guard"
+      },
+      {
+        "district_id": "home_luna",
+        "faction_id": "luna",
+        "health": 150,
+        "id": "luna_commander",
+        "in_combat": false,
+        "max_health": 150,
+        "position": [
+          0,
+          0.45,
+          -112
+        ],
+        "task": "dispatch scout",
+        "unit_type": "commander"
+      },
+      {
+        "district_id": "home_luna",
+        "faction_id": "luna",
+        "health": 40,
+        "id": "luna_scout_1",
+        "in_combat": false,
+        "max_health": 40,
+        "position": [
+          8,
+          0.45,
+          -107
+        ],
+        "task": "survey route",
+        "unit_type": "scout"
+      },
+      {
+        "district_id": "home_luna",
+        "faction_id": "luna",
+        "health": 30,
+        "id": "luna_worker_1",
+        "in_combat": false,
+        "max_health": 30,
+        "position": [
+          -7,
+          0.45,
+          -106
+        ],
+        "task": "forage",
+        "unit_type": "worker"
+      }
+    ]
+  },
+  "mode": "offline_deterministic_demo",
+  "notice": "UNVERIFIED LOCAL DEMO \u2014 presentation-only; not an official benchmark result.",
+  "result": {
+    "factions": [
+      {
+        "faction_id": "sol",
+        "model_id": "gpt-5.6-sol",
+        "placement": 1,
+        "reason": "Crown control, resilient economy, and timely diplomacy.",
+        "worldarena_score": 86.0
+      },
+      {
+        "faction_id": "terra",
+        "model_id": "gpt-5.6-terra",
+        "placement": 2,
+        "reason": "Early infrastructure and a disciplined counterattack preserved second place.",
+        "worldarena_score": 74.0
+      },
+      {
+        "faction_id": "luna",
+        "model_id": "gpt-5.6-luna",
+        "placement": 3,
+        "reason": "Excellent scouting was undone by an overextended eastern raid.",
+        "worldarena_score": 62.0
+      }
+    ],
+    "formula_version": "worldarena-score/demo-local-1",
+    "match_id": "local-demo-open-world-001",
+    "result_notice": "Offline deterministic presentation demo. Not an official benchmark result.",
+    "schema_version": 2
+  },
+  "schema_version": 1,
+  "title": "WorldArena \u2014 Open World Highlight"
+}

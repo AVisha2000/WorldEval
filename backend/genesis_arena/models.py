@@ -96,6 +96,22 @@ class DecisionTrace(BaseModel):
     error: str = ""
 
 
+class AgentBrainConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: str = Field(min_length=1, max_length=32, pattern=r"^[a-z][a-z0-9_]*$")
+    model: str = Field(min_length=1, max_length=120)
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
+
+
+class SimulationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["configure"] = "configure"
+    api_key: str = Field(min_length=8, max_length=512)
+    agents: List[AgentBrainConfig] = Field(min_length=3, max_length=3)
+
+
 class RunMetrics(BaseModel):
     agent_id: str = "sol"
     survived: bool = False

@@ -3,6 +3,18 @@ extends Node3D
 const WORLD_SIZE := 500.0
 const MAX_DAYS := 20
 const SERVER_URL := "ws://127.0.0.1:8000/ws/world"
+const AGENT_IDS := ["sol", "terra", "luna"]
+const AGENT_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
+const AGENT_COLORS := {
+	"sol": Color("f4c95d"),
+	"terra": Color("ff7a70"),
+	"luna": Color("70b8ff")
+}
+const AGENT_SPAWNS := {
+	"sol": Vector3(-42, 2.1, 18),
+	"terra": Vector3(45, 2.1, 28),
+	"luna": Vector3(3, 2.1, -52)
+}
 const AgentBodyScript := preload("res://scripts/agent_body.gd")
 const ResourceNodeScript := preload("res://scripts/resource_node.gd")
 
@@ -25,6 +37,11 @@ var structures := {"shelter": 0, "farm": 0, "storage": 0, "wall": 0, "workshop":
 var last_event := "Sol entered an unknown world."
 var collected_total := 0
 var spent_total := 0
+var active_agent_id := "sol"
+var active_agent_index := 0
+var agent_states: Dictionary = {}
+var agents: Dictionary = {}
+var configured_models: Dictionary = {}
 
 var agent: ArenaAgentBody
 var camera: Camera3D
@@ -39,6 +56,7 @@ var wood_label: Label
 var stone_label: Label
 var shelter_label: Label
 var brain_label: Label
+var agent_title: Label
 var intent_label: Label
 var action_label: Label
 var event_label: Label
@@ -46,6 +64,11 @@ var start_button: Button
 var end_panel: PanelContainer
 var end_title: Label
 var end_details: Label
+var setup_overlay: Control
+var setup_status: Label
+var setup_start_button: Button
+var api_key_input: LineEdit
+var model_inputs: Dictionary = {}
 
 
 func _ready() -> void:
@@ -126,14 +149,21 @@ func _handle_server_message(message: Dictionary) -> void:
 		"ready":
 			server_ready = true
 			brain_label.text = str(message.get("brain", "brain"))
-			start_button.disabled = false
-			start_button.text = "START BENCHMARK"
+			setup_start_button.disabled = false
+			setup_status.text = "Backend online — choose the three competitors."
 			intent_label.text = "Brain link ready. The world is waiting for an observer."
 			if command_line_autostart:
 				_on_start_pressed.call_deferred()
+		"configured":
+			configured_models = message.get("agents", {}).duplicate(true)
+			brain_label.text = str(message.get("brain", "3 OpenAI competitors"))
+			setup_status.text = "Configuration accepted. Starting arena…"
+			setup_overlay.visible = false
+			_on_start_pressed.call_deferred()
 		"thinking":
 			action_label.text = "THINKING"
-			intent_label.text = "Sol is evaluating needs, resources, and future risk…"
+			brain_label.text = str(message.get("brain", configured_models.get(active_agent_id, "brain")))
+			intent_label.text = "%s is evaluating needs, resources, and future risk…" % AGENT_NAMES[active_agent_id]
 			agent.set_activity("reasoning")
 		"action_command":
 			_begin_action(message)
@@ -141,11 +171,41 @@ func _handle_server_message(message: Dictionary) -> void:
 			action_in_progress = false
 			action_label.text = "CONTROLLER ERROR"
 			intent_label.text = str(message.get("error", "Unknown controller error"))
+			if setup_overlay.visible:
+				setup_status.text = "Configuration error: " + str(message.get("error", "unknown error"))
+				setup_start_button.disabled = false
 
 
 func _send(message: Dictionary) -> void:
 	if socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
 		socket.send_text(JSON.stringify(message))
+
+
+func _new_agent_state() -> Dictionary:
+	return {
+		"health": 100.0,
+		"food": 50.0,
+		"inventory": {"wood": 0, "stone": 0, "iron": 0, "crystal": 0},
+		"structures": {"shelter": 0, "farm": 0, "storage": 0, "wall": 0, "workshop": 0}
+	}
+
+
+func _save_active_state() -> void:
+	agent_states[active_agent_id] = {
+		"health": health,
+		"food": food,
+		"inventory": inventory.duplicate(true),
+		"structures": structures.duplicate(true)
+	}
+
+
+func _load_active_state() -> void:
+	var state: Dictionary = agent_states[active_agent_id]
+	health = float(state["health"])
+	food = float(state["food"])
+	inventory = state["inventory"].duplicate(true)
+	structures = state["structures"].duplicate(true)
+	agent = agents[active_agent_id]
 
 
 func _build_world() -> void:
@@ -203,10 +263,15 @@ func _build_world() -> void:
 	_add_mountains()
 	_add_resources()
 
-	agent = AgentBodyScript.new()
-	agent.position = Vector3(-13, 2.1, 10)
-	agent.destination_reached.connect(_on_agent_arrived)
-	add_child(agent)
+	for agent_id in AGENT_IDS:
+		var body: ArenaAgentBody = AgentBodyScript.new()
+		body.configure(AGENT_NAMES[agent_id], AGENT_COLORS[agent_id])
+		body.position = AGENT_SPAWNS[agent_id]
+		body.destination_reached.connect(_on_agent_arrived.bind(agent_id))
+		add_child(body)
+		agents[agent_id] = body
+		agent_states[agent_id] = _new_agent_state()
+	agent = agents[active_agent_id]
 
 	camera = Camera3D.new()
 	camera.position = Vector3(168, 174, 168)
@@ -356,7 +421,8 @@ func _build_interface() -> void:
 	var stats_box := VBoxContainer.new()
 	stats_box.add_theme_constant_override("separation", 13)
 	stats_panel.add_child(stats_box)
-	stats_box.add_child(_section_title("SOL  /  SURVIVOR"))
+	agent_title = _section_title("SOL  /  COMPETITOR")
+	stats_box.add_child(agent_title)
 	health_label = _stat_row(stats_box, "HEALTH", "100")
 	food_label = _stat_row(stats_box, "FOOD", "50")
 	wood_label = _stat_row(stats_box, "WOOD", "0")
@@ -446,6 +512,110 @@ func _build_interface() -> void:
 	end_details.add_theme_color_override("font_color", Color("c2d8d2"))
 	end_box.add_child(end_details)
 
+	_build_setup_overlay(root)
+
+
+func _build_setup_overlay(root: Control) -> void:
+	setup_overlay = Control.new()
+	setup_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(setup_overlay)
+
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.015, 0.035, 0.05, 0.97)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	setup_overlay.add_child(shade)
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.offset_left = -390
+	panel.offset_top = -340
+	panel.offset_right = 390
+	panel.offset_bottom = 340
+	panel.add_theme_stylebox_override("panel", _panel_style(Color("071923"), Color("2b6d72"), 24))
+	setup_overlay.add_child(panel)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 13)
+	panel.add_child(content)
+
+	var eyebrow := Label.new()
+	eyebrow.text = "WORLD ARENA  /  MATCH SETUP"
+	eyebrow.add_theme_font_size_override("font_size", 13)
+	eyebrow.add_theme_color_override("font_color", Color("69f0d0"))
+	content.add_child(eyebrow)
+
+	var title := Label.new()
+	title.text = "Choose the minds entering the arena."
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color("fff3c4"))
+	content.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Each competitor gets an independent OpenAI brain. The engine controls movement, resources, construction, and consequences."
+	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle.add_theme_font_size_override("font_size", 15)
+	subtitle.add_theme_color_override("font_color", Color("a9c5c5"))
+	content.add_child(subtitle)
+
+	content.add_child(_setup_caption("OPENAI API KEY  ·  STORED LOCALLY ONLY"))
+	api_key_input = LineEdit.new()
+	api_key_input.placeholder_text = "sk-proj-…"
+	api_key_input.secret = true
+	api_key_input.secret_character = "•"
+	api_key_input.text = OS.get_environment("OPENAI_API_KEY")
+	api_key_input.custom_minimum_size = Vector2(0, 44)
+	api_key_input.add_theme_font_size_override("font_size", 15)
+	content.add_child(api_key_input)
+
+	var defaults := {
+		"sol": "gpt-5.6-sol",
+		"terra": "gpt-5.6-terra",
+		"luna": "gpt-5.6-terra"
+	}
+	for agent_id in AGENT_IDS:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		content.add_child(row)
+		var identity := Label.new()
+		identity.text = AGENT_NAMES[agent_id].to_upper()
+		identity.custom_minimum_size = Vector2(92, 42)
+		identity.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		identity.add_theme_font_size_override("font_size", 15)
+		identity.add_theme_color_override("font_color", AGENT_COLORS[agent_id])
+		row.add_child(identity)
+		var model_input := LineEdit.new()
+		model_input.text = defaults[agent_id]
+		model_input.placeholder_text = "OpenAI model ID"
+		model_input.custom_minimum_size = Vector2(0, 42)
+		model_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		model_input.add_theme_font_size_override("font_size", 15)
+		row.add_child(model_input)
+		model_inputs[agent_id] = model_input
+
+	setup_status = Label.new()
+	setup_status.text = "Connecting to the local arena controller…"
+	setup_status.add_theme_font_size_override("font_size", 13)
+	setup_status.add_theme_color_override("font_color", Color("f4c95d"))
+	content.add_child(setup_status)
+
+	setup_start_button = Button.new()
+	setup_start_button.text = "START 3-AGENT SIMULATION"
+	setup_start_button.disabled = true
+	setup_start_button.custom_minimum_size = Vector2(0, 52)
+	setup_start_button.add_theme_font_size_override("font_size", 16)
+	setup_start_button.pressed.connect(_on_configure_pressed)
+	content.add_child(setup_start_button)
+
+
+func _setup_caption(value: String) -> Label:
+	var caption := Label.new()
+	caption.text = value
+	caption.add_theme_font_size_override("font_size", 11)
+	caption.add_theme_color_override("font_color", Color("6f9aaa"))
+	return caption
+
 
 func _panel_style(fill: Color, border: Color, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -491,6 +661,30 @@ func _set_connection_status(value: String, color: Color) -> void:
 		status_label.add_theme_color_override("font_color", color)
 
 
+func _on_configure_pressed() -> void:
+	if not server_ready:
+		setup_status.text = "The local backend is not connected yet."
+		return
+	var api_key := api_key_input.text.strip_edges()
+	if api_key.length() < 8:
+		setup_status.text = "Enter an OpenAI API key to start the live match."
+		return
+	var competitors: Array[Dictionary] = []
+	for agent_id in AGENT_IDS:
+		var model := str(model_inputs[agent_id].text).strip_edges()
+		if model.is_empty():
+			setup_status.text = "Choose a model for every competitor."
+			return
+		competitors.append({
+			"agent_id": agent_id,
+			"model": model,
+			"reasoning_effort": "medium" if agent_id == "sol" else "low"
+		})
+	setup_start_button.disabled = true
+	setup_status.text = "Creating three independent agent brains…"
+	_send({"type": "configure", "api_key": api_key, "agents": competitors})
+
+
 func _on_start_pressed() -> void:
 	if not server_ready or run_started:
 		return
@@ -498,7 +692,7 @@ func _on_start_pressed() -> void:
 	start_button.disabled = true
 	start_button.text = "BENCHMARK RUNNING"
 	action_label.text = "OBSERVING"
-	intent_label.text = "Sol receives the first world observation."
+	intent_label.text = "%s receives the first world observation." % AGENT_NAMES[active_agent_id]
 	agent.set_activity("observing")
 	_send_observation()
 
@@ -525,7 +719,7 @@ func _send_observation() -> void:
 		"turn": turn,
 		"day": day,
 		"max_days": MAX_DAYS,
-		"agent_id": "sol",
+		"agent_id": active_agent_id,
 		"agent": {
 			"health": health,
 			"food": food,
@@ -538,7 +732,8 @@ func _send_observation() -> void:
 		"visible_world": [
 			{"type": "river", "distance": snappedf(agent.global_position.distance_to(Vector3(24, 2.1, 0)), 0.1)},
 			{"type": "mountains", "direction": "north-west"},
-			{"type": "camp", "sheltered": structures["shelter"] > 0}
+			{"type": "camp", "owner": active_agent_id, "sheltered": structures["shelter"] > 0},
+			{"type": "competitors", "agents": AGENT_IDS, "active_agent": active_agent_id}
 		],
 		"events": [last_event],
 		"available_actions": ["collect", "build", "inspect", "rest"]
@@ -614,10 +809,13 @@ func _inspection_point(area: String) -> Vector3:
 func _next_build_site() -> Vector3:
 	var index := built_nodes.size()
 	var angle := float(index) * 1.35
-	return Vector3(-10 + cos(angle) * (11 + index * 2), 2.1, 8 + sin(angle) * (11 + index * 2))
+	var spawn: Vector3 = AGENT_SPAWNS[active_agent_id]
+	return spawn + Vector3(cos(angle) * (11 + index * 1.2), 0, sin(angle) * (11 + index * 1.2))
 
 
-func _on_agent_arrived() -> void:
+func _on_agent_arrived(agent_id: String) -> void:
+	if agent_id != active_agent_id:
+		return
 	if pending_action.is_empty():
 		return
 	match str(pending_action.get("action", "")):
@@ -631,7 +829,7 @@ func _resolve_collection() -> void:
 	await get_tree().create_timer(0.75).timeout
 	var target: ArenaResourceNode = pending_action.get("target")
 	if target == null or target.quantity <= 0:
-		_complete_action(false, "The resource was depleted before Sol arrived.")
+		_complete_action(false, "The resource was depleted before %s arrived." % AGENT_NAMES[active_agent_id])
 		return
 	var amount := target.harvest_once()
 	if target.kind == "food":
@@ -753,9 +951,8 @@ func _add_structure_mesh(parent: Node3D, mesh: Mesh, material: Material, offset:
 
 
 func _complete_action(success: bool, event: String) -> void:
-	last_event = event
-	event_label.text = ("✓  " if success else "!  ") + event
-	day += 1
+	last_event = "%s: %s" % [AGENT_NAMES[active_agent_id], event]
+	event_label.text = ("✓  " if success else "!  ") + last_event
 	turn += 1
 	food = max(0.0, food - 4.0)
 
@@ -767,12 +964,14 @@ func _complete_action(success: bool, event: String) -> void:
 	else:
 		health = min(100.0, health + 0.5)
 
+	_save_active_state()
 	pending_action.clear()
 	action_in_progress = false
 	agent.set_activity("awaiting observation")
+	_advance_agent()
 	_update_hud()
 
-	if health <= 0:
+	if _all_agents_defeated():
 		_finish_run(false)
 	elif day >= MAX_DAYS:
 		_finish_run(true)
@@ -781,8 +980,28 @@ func _complete_action(success: bool, event: String) -> void:
 		_send_observation()
 
 
+func _advance_agent() -> void:
+	for _attempt in range(AGENT_IDS.size()):
+		active_agent_index = (active_agent_index + 1) % AGENT_IDS.size()
+		if active_agent_index == 0:
+			day += 1
+		active_agent_id = AGENT_IDS[active_agent_index]
+		_load_active_state()
+		if health > 0:
+			return
+
+
+func _all_agents_defeated() -> bool:
+	for agent_id in AGENT_IDS:
+		if float(agent_states[agent_id]["health"]) > 0:
+			return false
+	return true
+
+
 func _update_hud() -> void:
 	day_label.text = "DAY %02d / %02d" % [day, MAX_DAYS]
+	agent_title.text = "%s  /  COMPETITOR" % AGENT_NAMES[active_agent_id].to_upper()
+	agent_title.add_theme_color_override("font_color", AGENT_COLORS[active_agent_id])
 	health_label.text = "%d" % roundi(health)
 	food_label.text = "%d" % roundi(food)
 	wood_label.text = str(inventory["wood"])
@@ -798,13 +1017,32 @@ func _finish_run(survived: bool) -> void:
 	action_label.text = "RUN COMPLETE"
 	end_panel.visible = true
 	if survived:
-		end_title.text = "SOL SURVIVED"
-		end_details.text = "20 days endured\n\n%d resources gathered  •  %d resources invested\n%d shelter%s built\n\nIntelligence measured through consequences." % [collected_total, spent_total, int(structures["shelter"]), "s" if int(structures["shelter"]) != 1 else ""]
+		var winner := _winner_agent()
+		end_title.text = "%s WINS" % AGENT_NAMES[winner].to_upper()
+		end_details.text = "20 days of three-agent competition completed\n\n%s used %s\n%d resources gathered across the arena\n\nIntelligence measured through consequences." % [AGENT_NAMES[winner], configured_models.get(winner, "the configured brain"), collected_total]
 	else:
-		end_title.text = "SOL DID NOT SURVIVE"
-		end_details.text = "The world ended the run on day %d.\n\nEvery failed strategy remains evaluation evidence." % day
+		end_title.text = "NO AGENT SURVIVED"
+		end_details.text = "The world defeated all three competitors by day %d.\n\nEvery failed strategy remains evaluation evidence." % day
 	if not capture_on_finish_path.is_empty():
 		_capture_finished_run()
+
+
+func _winner_agent() -> String:
+	var winner := AGENT_IDS[0]
+	var best_score := -INF
+	for agent_id in AGENT_IDS:
+		var state: Dictionary = agent_states[agent_id]
+		var state_inventory: Dictionary = state["inventory"]
+		var state_structures: Dictionary = state["structures"]
+		var score := float(state["health"]) + float(state["food"])
+		for value in state_inventory.values():
+			score += float(value)
+		for value in state_structures.values():
+			score += float(value) * 20.0
+		if score > best_score:
+			best_score = score
+			winner = agent_id
+	return winner
 
 
 func _capture_finished_run() -> void:

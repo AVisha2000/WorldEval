@@ -13,6 +13,10 @@ Godot resolves the world, while FastAPI validates plans, enforces budgets, and r
 evaluator, replay artifacts, and season scheduler are implemented. No official model leaderboard or
 completed 99-match benchmark season is published yet.
 
+**Rendered showcase:** The included demo recording is a pre-rendered showcase generated through the
+full simulation compute path. It is provided as the fast, uploadable presentation of the system
+rather than a live interactive capture.
+
 > [!NOTE]
 > This repository is independent of the 2026 paper
 > [*WorldArena: A Unified Benchmark for Evaluating Perception and Functional Utility of Embodied
@@ -209,3 +213,4 @@ cannot award territory, resources, damage, or victory.
 
 WorldArena is a controlled test of foundational agent behaviour. Strong performance does not show
 that a model is safe to control a real robot or operate without human oversight.
+

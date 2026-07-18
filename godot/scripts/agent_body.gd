@@ -10,6 +10,13 @@ var _has_target := false
 var _activity := "AWAITING DIRECTIVE"
 var _body_material: StandardMaterial3D
 var _activity_label: Label3D
+var _agent_name := "SOL"
+var _agent_color := Color("f4c95d")
+
+
+func configure(agent_name: String, agent_color: Color) -> void:
+	_agent_name = agent_name.to_upper()
+	_agent_color = agent_color
 
 
 func _ready() -> void:
@@ -18,7 +25,7 @@ func _ready() -> void:
 
 func _build_visual() -> void:
 	_body_material = StandardMaterial3D.new()
-	_body_material.albedo_color = Color("f4c95d")
+	_body_material.albedo_color = _agent_color
 	_body_material.metallic = 0.15
 	_body_material.roughness = 0.32
 
@@ -61,18 +68,18 @@ func _build_visual() -> void:
 	ring.mesh = ring_mesh
 	ring.position.y = 0.18
 	var ring_material := StandardMaterial3D.new()
-	ring_material.albedo_color = Color("69f0d0")
+	ring_material.albedo_color = _agent_color.lightened(0.18)
 	ring_material.emission_enabled = true
-	ring_material.emission = Color("36bfa8")
+	ring_material.emission = _agent_color
 	ring_material.emission_energy_multiplier = 1.8
 	ring.material_override = ring_material
 	add_child(ring)
 
 	var name_label := Label3D.new()
-	name_label.text = "SOL"
+	name_label.text = _agent_name
 	name_label.font_size = 42
 	name_label.outline_size = 10
-	name_label.modulate = Color("fff3c4")
+	name_label.modulate = _agent_color.lightened(0.35)
 	name_label.position.y = 5.25
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	add_child(name_label)
@@ -118,4 +125,3 @@ func _physics_process(_delta: float) -> void:
 	velocity = direction * move_speed
 	look_at(Vector3(_target.x, global_position.y, _target.z), Vector3.UP)
 	move_and_slide()
-

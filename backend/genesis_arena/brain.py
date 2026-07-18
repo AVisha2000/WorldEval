@@ -112,13 +112,29 @@ class DemoBrain(Brain):
 class OpenAIBrain(Brain):
     """GPT-5.6 planner using strict Responses API function tools."""
 
-    def __init__(self, settings: Settings, catalog: ActionCatalog):
-        if not os.getenv("OPENAI_API_KEY"):
+    def __init__(
+        self,
+        settings: Settings,
+        catalog: ActionCatalog,
+        *,
+        api_key: str | None = None,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
+        identity_path: Path | None = None,
+    ):
+        resolved_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not resolved_key:
             raise BrainError("GENESIS_BRAIN_MODE=openai requires OPENAI_API_KEY")
         self.settings = settings
         self.catalog = catalog
-        self.client = AsyncOpenAI()
-        self.identity = self._load_identity(settings.agents_dir / "sol.md")
+        self.model = model or settings.openai_model
+        self.reasoning_effort = reasoning_effort or settings.reasoning_effort
+        self.client = AsyncOpenAI(api_key=resolved_key)
+        self.identity = self._load_identity(identity_path or settings.agents_dir / "sol.md")
+
+    @property
+    def provider_name(self) -> str:
+        return f"openai:{self.model}"
 
     @staticmethod
     def _load_identity(path: Path) -> str:
@@ -145,8 +161,8 @@ class OpenAIBrain(Brain):
         )
         try:
             response = await self.client.responses.create(
-                model=self.settings.openai_model,
-                reasoning={"effort": self.settings.reasoning_effort},
+                model=self.model,
+                reasoning={"effort": self.reasoning_effort},
                 instructions=instructions,
                 input=self._observation_payload(observation, memory),
                 tools=tools,
@@ -171,7 +187,7 @@ class OpenAIBrain(Brain):
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             raise BrainError(f"invalid function call returned by model: {exc}") from exc
 
-        resolved_model = getattr(response, "model", self.settings.openai_model)
+        resolved_model = getattr(response, "model", self.model)
         return ActionCommand(
             turn=observation.turn,
             agent_id=observation.agent_id,

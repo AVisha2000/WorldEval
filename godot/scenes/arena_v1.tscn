@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/arena/arena_match_controller.gd" id="1_controller"]
+[ext_resource type="Script" path="res://scripts/arena/presentation/arena_v1_presentation.gd" id="2_presentation"]
+
+[node name="WorldArenaV1" type="Node3D"]
+script = ExtResource("1_controller")
+
+[node name="Presentation" type="Node3D" parent="."]
+script = ExtResource("2_presentation")
+mock_mode = true
+start_in_live_preview = false
+run_embedded_mock_on_submit = false
