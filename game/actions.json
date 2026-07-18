@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "0.1.0",
+  "actions": {
+    "collect": {
+      "enabled": true,
+      "description": "Gather once from the nearest visible source of a resource. The world chooses the source and path.",
+      "parameters": {
+        "resource": {
+          "type": "string",
+          "enum": ["wood", "stone", "food"]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        }
+      },
+      "required": ["resource", "intent"],
+      "additionalProperties": false
+    },
+    "build": {
+      "enabled": true,
+      "description": "Construct one structure at a valid nearby site after the world verifies its resource cost.",
+      "parameters": {
+        "structure": {
+          "type": "string",
+          "enum": ["shelter", "farm", "storage", "wall", "workshop"]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        }
+      },
+      "required": ["structure", "intent"],
+      "additionalProperties": false,
+      "costs": {
+        "shelter": {"wood": 12, "stone": 4},
+        "farm": {"wood": 8, "stone": 2},
+        "storage": {"wood": 10, "stone": 4},
+        "wall": {"wood": 6, "stone": 6},
+        "workshop": {"wood": 15, "stone": 10}
+      }
+    },
+    "inspect": {
+      "enabled": true,
+      "description": "Travel toward and inspect a broad map area. The world determines the exact destination.",
+      "parameters": {
+        "area": {
+          "type": "string",
+          "enum": ["north", "east", "south", "west", "camp"]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        }
+      },
+      "required": ["area", "intent"],
+      "additionalProperties": false
+    },
+    "rest": {
+      "enabled": true,
+      "description": "Spend a turn recovering health. Existing shelter improves recovery.",
+      "parameters": {
+        "intent": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        }
+      },
+      "required": ["intent"],
+      "additionalProperties": false
+    },
+    "craft": {
+      "enabled": false,
+      "description": "Reserved for the economy phase.",
+      "parameters": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "send_message": {
+      "enabled": false,
+      "description": "Reserved for the multi-agent phase.",
+      "parameters": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "attack": {
+      "enabled": false,
+      "description": "Reserved for the competition phase.",
+      "parameters": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "defend": {
+      "enabled": false,
+      "description": "Reserved for the competition phase.",
+      "parameters": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+}
+
