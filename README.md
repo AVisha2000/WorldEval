@@ -154,6 +154,13 @@ encoder into the ignored `.video-tools/` folder; it never uploads footage or rea
 
 See [`docs/HIGHLIGHT_EXPORT.md`](docs/HIGHLIGHT_EXPORT.md) for the command-line options.
 
+### GitHub action preview
+
+This 20-second cut is taken from the same deterministic showcase and keeps the
+negotiation, Crown clash, and reversal beats visible without requiring a local render:
+
+![WorldArena open-world action highlight](docs/assets/worldarena-highlight.gif)
+
 ## Verify
 
 Run the Python contract, concurrency, privacy, scoring, and scheduling tests:
@@ -213,4 +220,3 @@ cannot award territory, resources, damage, or victory.
 
 WorldArena is a controlled test of foundational agent behaviour. Strong performance does not show
 that a model is safe to control a real robot or operate without human oversight.
-

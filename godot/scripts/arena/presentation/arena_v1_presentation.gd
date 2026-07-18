@@ -375,6 +375,7 @@ func _build_world() -> void:
 	_build_environment()
 	_build_triangle_ground()
 	_build_ambient_landscape()
+	_build_landmarks()
 	for definition in DISTRICT_DEFINITIONS:
 		var district = DistrictViewScript.new()
 		district.name = str(definition.id)
@@ -556,6 +557,56 @@ func _build_ambient_landscape() -> void:
 			_create_resource_marker("stone", center + Vector3(11, 0, -7), float(grove_index) * 17.0)
 
 
+func _build_landmarks() -> void:
+	# Distant rocky ridges and mine mouths give the island a readable horizon and
+	# make the map feel authored rather than a flat graph of districts.
+	var landmark_data := [
+		[Vector3(-176, 0, 126), 1.15, 11.0],
+		[Vector3(-28, 0, 174), 1.35, 29.0],
+		[Vector3(158, 0, 112), 1.05, 47.0],
+		[Vector3(176, 0, -72), 1.22, 61.0],
+		[Vector3(-154, 0, -116), 0.92, 83.0],
+		[Vector3(28, 0, -156), 1.08, 101.0]
+	]
+	for data in landmark_data:
+		_create_mountain_cluster(data[0], float(data[1]), float(data[2]))
+
+
+func _create_mountain_cluster(center: Vector3, size_factor: float, seed: float) -> void:
+	var ridge := Node3D.new()
+	ridge.name = "MountainRidge"
+	ridge.position = center
+	resources_root.add_child(ridge)
+	for rock_index in range(7):
+		var rock := MeshInstance3D.new()
+		var mesh := SphereMesh.new()
+		var rock_size := (2.6 + fmod(seed + rock_index * 1.7, 2.8)) * size_factor
+		mesh.radius = rock_size
+		mesh.height = rock_size * (1.25 + fmod(seed * 0.07 + rock_index, 0.45))
+		mesh.radial_segments = 7
+		mesh.rings = 3
+		rock.mesh = mesh
+		var angle := seed * 0.11 + float(rock_index) * 0.88
+		var distance := float(rock_index % 3) * 4.0 + fmod(seed + rock_index, 3.0)
+		rock.position = Vector3(cos(angle) * distance, rock_size * 0.72, sin(angle) * distance)
+		rock.scale = Vector3(1.0 + fmod(rock_index, 2.0) * 0.22, 1.0, 0.78 + fmod(seed, 0.24))
+		rock.rotation_degrees = Vector3(fmod(seed * 2.0 + rock_index * 13.0, 20.0), fmod(seed * 3.0 + rock_index * 31.0, 360.0), fmod(seed + rock_index * 9.0, 14.0))
+		rock.material_override = _material(Color("59666a").lightened(fmod(seed + rock_index, 0.18)))
+		ridge.add_child(rock)
+	# A dark mine mouth makes the landmark useful, not merely decorative.
+	var mouth := MeshInstance3D.new()
+	var mouth_mesh := CylinderMesh.new()
+	mouth_mesh.top_radius = 1.8 * size_factor
+	mouth_mesh.bottom_radius = 2.8 * size_factor
+	mouth_mesh.height = 4.0 * size_factor
+	mouth_mesh.radial_segments = 10
+	mouth.mesh = mouth_mesh
+	mouth.scale = Vector3(1.0, 1.0, 0.45)
+	mouth.position = Vector3(0, 2.1 * size_factor, 3.3 * size_factor)
+	mouth.material_override = _material(Color("101a20"), true)
+	ridge.add_child(mouth)
+
+
 func _update_strategy_camera() -> void:
 	if camera == null:
 		return
@@ -611,6 +662,20 @@ func _build_core_structure(definition: Dictionary) -> void:
 		hut.rotation.y = -angle
 		hut.material_override = _material(FACTION_COLORS[faction_id].darkened(0.42))
 		core.add_child(hut)
+	# Small palisade posts and corner towers make each core read as a lived-in
+	# settlement when the camera cuts in, echoing the reference's fortified camps.
+	for post_index in range(10):
+		var post := MeshInstance3D.new()
+		var post_mesh := CylinderMesh.new()
+		post_mesh.top_radius = 0.16
+		post_mesh.bottom_radius = 0.25
+		post_mesh.height = 2.5
+		post_mesh.radial_segments = 6
+		post.mesh = post_mesh
+		var post_angle := float(post_index) * TAU / 10.0
+		post.position = Vector3(cos(post_angle) * 12.6, 1.25, sin(post_angle) * 12.6)
+		post.material_override = _material(Color("765238").lightened(fmod(float(post_index), 0.14)))
+		core.add_child(post)
 
 
 func _build_district_resources(definition: Dictionary) -> void:
@@ -689,14 +754,28 @@ func _create_resource_marker(kind: String, at: Vector3, seed := 0.0) -> void:
 	body.material_override = _material(color, kind == "crystal")
 	marker.add_child(body)
 	if kind == "tree":
-		var canopy := MeshInstance3D.new()
-		var canopy_mesh := SphereMesh.new()
-		canopy_mesh.radius = 2.3 + fmod(seed, 0.8)
-		canopy_mesh.height = 4.6
-		canopy.mesh = canopy_mesh
-		canopy.position.y = 4.0
-		canopy.material_override = _material(Color("1f4f32").lightened(fmod(seed, 0.22)))
-		marker.add_child(canopy)
+		# Layered low-poly cones read as pines from the strategy camera and give
+		# forests the silhouette of the reference showcase instead of round blobs.
+		var lower_canopy := MeshInstance3D.new()
+		var lower_mesh := CylinderMesh.new()
+		lower_mesh.top_radius = 0.45
+		lower_mesh.bottom_radius = 2.45 + fmod(seed, 0.7)
+		lower_mesh.height = 3.35
+		lower_mesh.radial_segments = 8
+		lower_canopy.mesh = lower_mesh
+		lower_canopy.position.y = 3.55
+		lower_canopy.material_override = _material(Color("1b5134").lightened(fmod(seed, 0.2)))
+		marker.add_child(lower_canopy)
+		var upper_canopy := MeshInstance3D.new()
+		var upper_mesh := CylinderMesh.new()
+		upper_mesh.top_radius = 0.12
+		upper_mesh.bottom_radius = 1.75 + fmod(seed * 0.7, 0.45)
+		upper_mesh.height = 2.8
+		upper_mesh.radial_segments = 8
+		upper_canopy.mesh = upper_mesh
+		upper_canopy.position.y = 5.55
+		upper_canopy.material_override = _material(Color("2b6a3c").lightened(fmod(seed * 0.3, 0.18)))
+		marker.add_child(upper_canopy)
 	# Resource silhouettes communicate their type without a persistent wall of text.
 	# Crystal remains labelled because it is the rare contested objective.
 	if kind == "crystal":
