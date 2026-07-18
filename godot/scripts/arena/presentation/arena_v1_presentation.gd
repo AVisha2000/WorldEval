@@ -915,16 +915,21 @@ func show_effect(effect_name: String, target_id := "", duration := 1.1, target_p
 	if world_root == null:
 		return
 	var point := _camera_target(str(target_id), target_position)
-	var color := _effect_color(effect_name)
+	var normalized_effect := effect_name.to_lower()
+	var color := _effect_color(normalized_effect)
+	var burst := Node3D.new()
+	burst.name = "ReplayBurst_%s" % normalized_effect
+	burst.position = point + Vector3(0, 0.22, 0)
+	world_root.add_child(burst)
 	var pulse := MeshInstance3D.new()
-	pulse.name = "ReplayEffect_%s" % effect_name
+	pulse.name = "ReplayEffect_%s" % normalized_effect
 	var disc := CylinderMesh.new()
 	disc.top_radius = 1.0
 	disc.bottom_radius = 1.0
 	disc.height = 0.10
 	disc.radial_segments = 24
 	pulse.mesh = disc
-	pulse.position = point + Vector3(0, 0.16, 0)
+	pulse.position = Vector3.ZERO
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color(color.r, color.g, color.b, 0.72)
 	material.emission_enabled = true
@@ -934,13 +939,87 @@ func show_effect(effect_name: String, target_id := "", duration := 1.1, target_p
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	pulse.material_override = material
-	world_root.add_child(pulse)
+	burst.add_child(pulse)
 	var safe_duration := clampf(float(duration), 0.4, 4.0)
-	var final_scale := 5.2 if effect_name == "combat" else 4.2
+	var final_scale := 5.2 if normalized_effect == "combat" else 4.2
 	var tween := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(pulse, "scale", Vector3(final_scale, 1.0, final_scale), safe_duration)
 	tween.parallel().tween_property(material, "albedo_color:a", 0.0, safe_duration)
-	tween.tween_callback(pulse.queue_free)
+	_build_effect_motif(burst, normalized_effect, color, safe_duration)
+	tween.tween_callback(burst.queue_free)
+
+
+func _build_effect_motif(parent: Node3D, effect_name: String, color: Color, duration: float) -> void:
+	## These motifs are deliberately presentation-only: they make the authored
+	## replay legible at a glance while all outcomes still come from snapshots.
+	var pieces: Array[MeshInstance3D] = []
+	match effect_name:
+		"build":
+			for offset in [Vector3(-1.4, 0.0, -0.7), Vector3(1.4, 0.0, -0.7), Vector3(0.0, 1.2, -0.7)]:
+				var post := MeshInstance3D.new()
+				var post_mesh := BoxMesh.new()
+				post_mesh.size = Vector3(0.16, 2.4 if offset.y > 0.0 else 1.4, 0.16)
+				post.mesh = post_mesh
+				post.position = offset
+				post.material_override = _material(Color(color.r, color.g, color.b, 0.9), true)
+				parent.add_child(post)
+				pieces.append(post)
+		"trade":
+			for side in [-1.0, 1.0]:
+				var crate := MeshInstance3D.new()
+				var crate_mesh := BoxMesh.new()
+				crate_mesh.size = Vector3(0.65, 0.65, 0.65)
+				crate.mesh = crate_mesh
+				crate.position = Vector3(side * 1.25, 0.45, 0.0)
+				crate.material_override = _material(Color(color.r, color.g, color.b, 0.92), true)
+				parent.add_child(crate)
+				pieces.append(crate)
+		"combat":
+			for index in 3:
+				var spark := MeshInstance3D.new()
+				var spark_mesh := BoxMesh.new()
+				spark_mesh.size = Vector3(0.18, 1.1, 0.18)
+				spark.mesh = spark_mesh
+				spark.rotation.z = -0.75 + float(index) * 0.75
+				spark.position = Vector3(-0.8 + float(index) * 0.8, 1.0, 0.0)
+				spark.material_override = _material(Color(color.r, color.g, color.b, 0.95), true)
+				parent.add_child(spark)
+				pieces.append(spark)
+		"capture":
+			var beacon := MeshInstance3D.new()
+			var beacon_mesh := CylinderMesh.new()
+			beacon_mesh.top_radius = 0.18
+			beacon_mesh.bottom_radius = 0.42
+			beacon_mesh.height = 2.8
+			beacon.mesh = beacon_mesh
+			beacon.position.y = 1.35
+			beacon.material_override = _material(Color(color.r, color.g, color.b, 0.82), true)
+			parent.add_child(beacon)
+			pieces.append(beacon)
+		"gather":
+			for index in 3:
+				var chip := MeshInstance3D.new()
+				var chip_mesh := BoxMesh.new()
+				chip_mesh.size = Vector3(0.34, 0.34, 0.34)
+				chip.mesh = chip_mesh
+				chip.position = Vector3(-0.6 + float(index) * 0.6, 0.35, 0.0)
+				chip.material_override = _material(Color(color.r, color.g, color.b, 0.9), true)
+				parent.add_child(chip)
+				pieces.append(chip)
+	var rise := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	for piece in pieces:
+		var start := piece.position
+		piece.scale = Vector3.ZERO
+		rise.parallel().tween_property(piece, "scale", Vector3.ONE, minf(0.38, duration * 0.35))
+		if effect_name == "trade":
+			rise.parallel().tween_property(piece, "position", Vector3(-start.x, start.y + 0.4, start.z), duration * 0.7)
+		else:
+			rise.parallel().tween_property(piece, "position", start + Vector3(0, 0.45, 0), duration * 0.7)
+	var fade := create_tween()
+	fade.tween_interval(maxf(0.1, duration * 0.55))
+	for piece in pieces:
+		if is_instance_valid(piece) and piece.material_override is StandardMaterial3D:
+			fade.parallel().tween_property(piece.material_override, "albedo_color:a", 0.0, duration * 0.45)
 
 
 func _effect_color(effect_name: String) -> Color:
