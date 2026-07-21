@@ -122,26 +122,29 @@ func _terra(observation: Dictionary, orders: Array) -> void:
 		_gather(orders, "home_terra", "forest", _units_at(observation, "worker", "home_terra"))
 	elif _capture_ready(observation, "crossroads", "terra") and not _has_structure(observation, "crossroads", "outpost"):
 		_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 2))
+		_move(orders, _units_at(observation, "worker", "home_terra"), "mine_tl")
 	elif str(center.get("owner", "")) == "terra" and not _has_structure(observation, "crossroads", "mine"):
 		_build(observation, orders, "mine", "crossroads", center_workers.slice(0, 2))
+		_gather(orders, "mine_tl", "forest", _units_at(observation, "worker", "mine_tl"))
+		_train(observation, orders, "militia")
 	elif round_number == 12:
 		_gather(orders, "crossroads", "iron", center_workers.slice(0, 1))
 		_gather(orders, "crossroads", "stone", center_workers.slice(1, 2))
 		_train(observation, orders, "militia")
 	elif round_number == 13:
-		_build(observation, orders, "workshop", "home_terra", _units_at(observation, "worker", "home_terra").slice(0, 2))
+		_move(orders, _units_at(observation, "worker", "mine_tl"), "home_terra")
 		_move(orders, _units_at(observation, "militia", "core_terra").slice(0, 1), "crossroads")
-		_train(observation, orders, "militia")
 	elif round_number == 14:
-		_build(observation, orders, "wall", "home_terra", _units_at(observation, "worker", "home_terra").slice(0, 2))
-		_train(observation, orders, "militia")
+		_train(observation, orders, "scout")
+		_gather(orders, "home_terra", "forest", _units_at(observation, "worker", "home_terra"))
 	elif round_number == 15:
-		_train(observation, orders, "militia")
+		_build(observation, orders, "wall", "home_terra", _units_at(observation, "worker", "home_terra").slice(0, 2))
 	elif round_number <= 16 and str(center.get("owner", "")) == "terra":
 		_train(observation, orders, "militia")
 	elif round_number == 17:
 		var raiders := _units_at(observation, "commander", "core_terra")
 		raiders.append_array(_units_at(observation, "militia", "core_terra").slice(0, 2))
+		raiders.append_array(_units_at(observation, "scout", "core_terra").slice(0, 1))
 		_move(orders, raiders, "wild_st")
 	elif round_number >= 18:
 		var raid_force := _combat_units_in(observation, ["wild_st", "home_sol", "core_sol"])
