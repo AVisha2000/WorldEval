@@ -1,4 +1,4 @@
-"""Typed helpers for World Arena's seven public conquest verbs.
+"""Typed helpers for WorldArena's seven public conquest verbs.
 
 Agents may construct :class:`PhysicalOrder` directly.  These helpers keep common
 field combinations terse and document the only supported v0.4 vocabulary.  The

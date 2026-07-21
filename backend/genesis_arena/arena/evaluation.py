@@ -486,7 +486,7 @@ class FactionEvaluation(ArenaModel):
                 raise ValueError("category evidence differs from the raw evidence record")
         total = sum(item.weighted_contribution for item in self.categories)
         if abs(total - self.worldarena_score) > 0.001:
-            raise ValueError("WorldArena score differs from weighted category contributions")
+            raise ValueError("WorldEval score differs from weighted category contributions")
         raw = self.raw_metrics
         if (
             self.competitor_id != raw.competitor_id

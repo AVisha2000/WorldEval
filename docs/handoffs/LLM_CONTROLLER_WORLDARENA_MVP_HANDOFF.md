@@ -5,7 +5,7 @@ Copy the prompt below into a new Codex chat.
 ---
 
 You are taking over implementation of the **LLM Controller × WorldArena scripted gameplay
-expansion** in the WorldArena repository.
+expansion** in the WorldEval repository.
 
 This is intended for a cloud agent. Work from the repository root returned by `pwd`; do not assume
 the prior local path `/Users/arlind/Documents/WorldEval`, a pre-running backend, an open portal, an
@@ -148,7 +148,7 @@ rather than combining unfinished phases. Do not jump to trio before the solo and
    and scripted Sol/Luna/Terra free-for-all videos with Godot Movie Maker + FFmpeg. Update README
    capabilities/instructions and the GitHub Pages YouTube facade, including
    `VITE_YOUTUBE_TRIO_ID`/`YOUTUBE_TRIO_ID`, a deliberate latest-demo featured card, and the correct
-   `/WorldArena/` Pages base path. Do not invent IDs, upload externally, or change repository
+   `/WorldEval/` Pages base path. Do not invent IDs, upload externally, or change repository
    variables without user authorization.
 
 Sol, Luna, and Terra are the requested WorldArena entrant identities and mock-policy labels for the

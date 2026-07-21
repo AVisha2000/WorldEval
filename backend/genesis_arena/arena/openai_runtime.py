@@ -58,7 +58,7 @@ ORDER_SCHEMA: Dict[str, Any] = {
                 "Negotiate",
                 "Think",
             ],
-            "description": "One canonical World Arena v0.4 SDK verb.",
+            "description": "One canonical WorldArena v0.4 SDK verb.",
         },
         "actor_ids": {
             "type": "array",

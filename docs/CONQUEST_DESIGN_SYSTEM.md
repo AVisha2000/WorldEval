@@ -1,4 +1,4 @@
-# World Arena Conquest design system
+# WorldArena Conquest design system
 
 Reference: `docs/concepts/worldarena-conquest-gameplay-v1.png`
 
@@ -146,4 +146,3 @@ Use `stronghold`, `keep`, `territory`, `supply`, `tech`, `scout`, `defend`, `sie
 and the canonical action names. Remove all visible and machine-facing occurrences of
 `World Seed`, `Crown`, `hold the center`, `crown surge`, and `sudden-death crown` from
 the conquest rules, evaluation, demo policy, HUD, fixtures, and generated artifacts.
-

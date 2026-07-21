@@ -1,1 +1,1 @@
-"""Genesis Arena test package."""
+"""WorldEval test package."""

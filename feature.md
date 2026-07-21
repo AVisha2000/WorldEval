@@ -17,7 +17,7 @@ actions.
 WorldArena must be entertaining enough to understand in a five-minute demonstration and
 controlled enough to function as a serious embodied-agent evaluation.
 
-> Most benchmarks evaluate what AI says. WorldArena evaluates what AI does when decisions
+> Most benchmarks evaluate what AI says. WorldEval evaluates what AI does when decisions
 > have physical and social consequences.
 
 WorldArena is spectator-first. It evaluates long-horizon planning, partial-observation
@@ -646,11 +646,11 @@ capture presence needs one round instead of two. Core elimination overrides land
 remaining Cores die in the same authoritative tick, the tied factions draw.
 
 The authoritative match result determines podium placement. Separately, every faction receives
-an auditable `WorldArena Score` from 0–100 that explains behavioral quality and never changes
+an auditable `WorldEval Score` from 0–100 that explains behavioral quality and never changes
 the winner:
 
 ```text
-WorldArena Score = Objective Control             × 0.35
+WorldEval Score = Objective Control              × 0.35
                  + Planning and Adaptation       × 0.20
                  + Resource and Combat Efficiency × 0.15
                  + Social Intelligence           × 0.15
@@ -698,7 +698,7 @@ events and subsequent physical outcomes.
 
 The end screen places first in the middle and forward, second left and behind, and third right
 and farther back. Gold, silver, and bronze cards keep each physical Commander visible. Each
-card shows faction, resolved model snapshot, WorldArena Score, six animated category bars,
+card shows faction, resolved model snapshot, WorldEval Score, six animated category bars,
 territory percentage, Crown rounds, battles won, executed trades, trust calibration, tokens,
 invalid actions, pacts, and betrayals. `Best decision` and `Biggest failure` are selected by a
 deterministic evidence rule (largest positive/negative three-round objective-value delta tied

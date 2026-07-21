@@ -1,4 +1,7 @@
-# Genesis Arena Controller
+# WorldArena legacy controller
+
+This contract predates the WorldEval naming hierarchy. Its `genesis-arena/0.1` protocol identifier
+remains unchanged for compatibility.
 
 The controller is the only interface between an agent brain and the physical world.
 The machine-readable source of truth is `actions.json`.
@@ -38,4 +41,3 @@ Allowed structures: `shelter`, `farm`, `storage`, `wall`, `workshop`.
 
 `craft`, `send_message`, `attack`, and `defend` are present in the catalog but disabled
 for milestone one.
-

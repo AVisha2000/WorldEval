@@ -422,7 +422,7 @@ checklist.
 - Update the README with the actual finished capabilities, Demo-provider instructions, evaluation
   method, replay/video commands, and linked poster/GIF previews for the latest solo, 1v1, and trio
   videos. Split the older semantic-only Arena description from the hybrid-pixel embodiment path,
-  and correct the stale Pages base-path documentation (`WorldArena`, not `WorldEval`). Do not claim
+  and keep the Pages base-path documentation aligned with the repository (`WorldEval`). Do not claim
   unfinished workflows or unverified live-model identities.
 
 **Final gate:** a fresh checkout with documented Godot/FFmpeg prerequisites installed and no

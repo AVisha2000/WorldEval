@@ -1,4 +1,6 @@
-# WorldArena architecture
+# WorldArena platform architecture
+
+WorldArena is the interactive arena platform within the wider WorldEval evaluation framework.
 
 ## Authority boundary
 
@@ -82,7 +84,7 @@ Replay re-executes recorded actions and never calls a model.
 
 ## Benchmark outputs
 
-Godot-derived placement remains the competitive result. A separate versioned WorldArena
+Godot-derived placement remains the competitive result. A separate versioned WorldEval
 0–100 score explains behavior through six evidence-linked categories: objective control,
 planning/adaptation, resource/combat efficiency, social intelligence, delegation/cognition,
 and reliability/safety. No LLM judge is used.

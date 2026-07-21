@@ -2,13 +2,14 @@
 
 *WorldArena agents can gather, build, and explore—not just describe what they would do.*
 
-# WorldArena
+# WorldEval
 
 > Evaluate what an LLM does, not only what it says.
 
-WorldArena is a deterministic 3D research benchmark for **LLM agents**. Three independently
-configured models receive partial observations, submit high-level plans simultaneously, and live
-with the economic, physical, and social consequences inside an authoritative Godot simulation.
+WorldEval is an evaluation framework for **intelligent agents in interactive, deterministic
+worlds**. Its first environment is **WorldArena**, a 3D agent-arena platform where independently
+configured models receive partial observations, submit high-level plans, and live with the
+economic, physical, and social consequences inside an authoritative Godot simulation.
 
 The LLM is the strategist; it never controls coordinates, physics, damage, resources, or scoring.
 Godot resolves the world, while FastAPI validates plans, enforces budgets, and records evidence.
@@ -34,15 +35,16 @@ interactive-download steps; import contracts are included, but no gated asset wa
 > World Models*](https://arxiv.org/abs/2602.08971). That work evaluates embodied world models;
 > this project evaluates the behaviour of competing LLM agents.
 
-## Why this benchmark exists
+## Why this framework exists
 
 Static question-answer evaluations can measure knowledge and reasoning in a single response. They
 cannot show whether a model can maintain a plan, recover after failure, manage scarce resources,
 coordinate with unfamiliar agents, detect deception, or turn language into useful action over time.
 
-WorldArena tests those capabilities together in one controlled environment. A model must act under
-partial observability and fixed budgets while two other models change the world at the same time.
-Every claim can be checked against typed actions and simulator events rather than an LLM judge.
+WorldEval tests those capabilities through environments such as WorldArena. In the competitive
+arena, a model must act under partial observability and fixed budgets while two other models change
+the world at the same time. Every claim can be checked against typed actions and simulator events
+rather than an LLM judge.
 
 This makes the benchmark useful for studying:
 
@@ -54,9 +56,10 @@ This makes the benchmark useful for studying:
 | Delegation | Specialist use, accepted advice, contradictions, token cost, and progress per budget |
 | Reliability | Valid actions, timeouts, fallbacks, impossible orders, and protocol compliance |
 
-WorldArena evaluates **strategic agent behaviour**, not visual perception or robot safety. Models
-currently receive structured semantic observations rather than pixels; “embodied” means their
-decisions are grounded in a persistent simulated world with irreversible consequences.
+WorldEval currently measures **strategic agent behaviour** through WorldArena, not visual
+perception or robot safety. Models receive structured semantic observations rather than pixels;
+“embodied” means their decisions are grounded in a persistent simulated world with irreversible
+consequences.
 
 ### Embodied controller pilot
 
@@ -86,7 +89,7 @@ diagnostic standings without declaring a winner.
 
 ## Evaluation methodology
 
-The competitive result is the Godot-derived placement. A separate, versioned **WorldArena Score**
+The competitive result is the Godot-derived placement. A separate, versioned **WorldEval Score**
 explains behaviour and never changes the winner:
 
 | Category | Weight |
@@ -118,9 +121,9 @@ is not yet included.
 
 ## Research foundations and differences
 
-WorldArena combines lessons from prior work rather than treating any one final score as sufficient:
+WorldEval combines lessons from prior work rather than treating any one final score as sufficient:
 
-| Research | Lesson adopted here | WorldArena's focus |
+| Research | Lesson adopted here | WorldEval's focus |
 |---|---|---|
 | [ALEM](https://arxiv.org/abs/2606.08340) | Separate coordination from base task skill | Mixed cooperation and competition between independently scored Commanders |
 | [Melting Pot 2.0](https://arxiv.org/abs/2211.13746) | Test generalization to unfamiliar social partners | Natural-language negotiation whose value is tied to later physical outcomes |
@@ -158,6 +161,9 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 genesis-arena
 ```
+
+The installed Python commands temporarily retain their legacy `genesis-*` names for compatibility;
+see [`docs/NAMING.md`](docs/NAMING.md).
 
 Then, in another terminal:
 
@@ -227,9 +233,9 @@ genesis-season-schedule docs/season-spec.example.json runs/season-schedule.json
 ```text
 LLM Commanders / deterministic demo policy
                  ↓
-FastAPI: isolation · validation · budgets · commit/reveal · artifacts
+WorldEval / FastAPI: isolation · validation · budgets · commit/reveal · artifacts
                  ↓  world-arena/0.4
-Godot controller: semantic/vision tracks · task receipts · verification
+WorldArena / Godot: semantic/vision tracks · task receipts · verification
                  ↓
 Deterministic simulation: tick work · fog · research · fortification · siege · conquest
                  ↓
@@ -249,7 +255,8 @@ cannot award territory, resources, damage, or victory.
 | [`game/arena_actions.json`](game/arena_actions.json) | Typed action and cognition contract |
 | [`tests/`](tests/) | Unit, adversarial, privacy, concurrency, protocol, and scoring tests |
 | [`docs/architecture.md`](docs/architecture.md) | Authority boundaries and round protocol |
+| [`docs/NAMING.md`](docs/NAMING.md) | WorldEval and WorldArena naming conventions |
 | [`feature.md`](feature.md) | Full product, rules, evaluation, and implementation specification |
 
-WorldArena is a controlled test of foundational agent behaviour. Strong performance does not show
-that a model is safe to control a real robot or operate without human oversight.
+WorldEval uses WorldArena as a controlled test of foundational agent behaviour. Strong performance
+does not show that a model is safe to control a real robot or operate without human oversight.

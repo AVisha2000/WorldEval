@@ -87,5 +87,5 @@ export function getControllerLabUrl(
   }
 }
 
-export const REPOSITORY_URL = "https://github.com/AVisha2000/WorldArena"
+export const REPOSITORY_URL = "https://github.com/AVisha2000/WorldEval"
 export const DOCUMENTATION_URL = `${REPOSITORY_URL}#readme`
