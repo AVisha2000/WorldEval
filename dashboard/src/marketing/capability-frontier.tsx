@@ -40,8 +40,8 @@ type GoblinFlybyProps = {
   variant: "female" | "male"
 }
 
-const GOBLIN_FLIGHT_DURATION = 4
-const GOBLIN_LOOP_SAMPLES = 24
+const GOBLIN_FLIGHT_DURATION = 10
+const GOBLIN_LOOP_SAMPLES = 36
 const GOBLIN_FLIGHT_POINTS = [
   { rotate: -4, time: 0, x: -28, y: 5 },
   { rotate: -2, time: 0.08, x: 4, y: 2 },
@@ -77,14 +77,6 @@ const GOBLIN_FLIGHT_OPACITY = GOBLIN_FLIGHT_POINTS.map(({ time }) => {
 const GOBLIN_FLIGHT_SCALE = GOBLIN_FLIGHT_POINTS.map(
   ({ time }) => 0.76 + Math.sin(Math.PI * time) * 0.12
 )
-const GOBLIN_SMOKE_OPACITY = GOBLIN_FLIGHT_POINTS.map(({ time }) =>
-  Math.min(0.52, Math.sin(Math.PI * time) * 0.58)
-)
-const GOBLIN_SMOKE_SCALE = GOBLIN_FLIGHT_POINTS.map(
-  ({ time }) => 0.4 + time * 1.4
-)
-const SMOKE_PARTICLES = [0, 1, 2, 3, 4] as const
-
 const PLATES: ZoomPlate[] = [
   {
     end: 0.12,
@@ -261,65 +253,40 @@ function GoblinFlightRun({
   variant,
 }: Pick<GoblinFlybyProps, "delay" | "src" | "variant">) {
   return (
-    <>
-      {SMOKE_PARTICLES.map((particle) => (
-        <motion.span
-          aria-hidden="true"
-          animate={{
-            opacity: GOBLIN_SMOKE_OPACITY,
-            scale: GOBLIN_SMOKE_SCALE,
-            x: GOBLIN_FLIGHT_X,
-            y: GOBLIN_FLIGHT_Y,
-          }}
-          className={`goblin-smoke goblin-smoke--${variant}`}
-          initial={{
-            opacity: 0,
-            scale: 0.35,
-            x: GOBLIN_FLIGHT_X[0],
-            y: GOBLIN_FLIGHT_Y[0],
-          }}
-          key={particle}
-          style={{
-            height: 12 + particle * 3,
-            width: 12 + particle * 3,
-          }}
-          transition={{
-            delay: delay + particle * 0.09,
-            duration: GOBLIN_FLIGHT_DURATION - 0.08,
-            ease: "linear",
-            times: GOBLIN_FLIGHT_TIMES,
-          }}
-        />
-      ))}
-      <motion.img
+    <motion.div
+      aria-hidden="true"
+      animate={{
+        opacity: GOBLIN_FLIGHT_OPACITY,
+        rotate: GOBLIN_FLIGHT_ROTATE,
+        scale: GOBLIN_FLIGHT_SCALE,
+        x: GOBLIN_FLIGHT_X,
+        y: GOBLIN_FLIGHT_Y,
+      }}
+      className={`goblin-flight goblin-flight--${variant}`}
+      initial={{
+        opacity: 0,
+        rotate: GOBLIN_FLIGHT_ROTATE[0],
+        scale: 0.78,
+        x: GOBLIN_FLIGHT_X[0],
+        y: GOBLIN_FLIGHT_Y[0],
+      }}
+      transition={{
+        delay,
+        duration: GOBLIN_FLIGHT_DURATION,
+        ease: "linear",
+        times: GOBLIN_FLIGHT_TIMES,
+      }}
+    >
+      <span className="goblin-vapor-trail goblin-vapor-trail--wake" />
+      <span className="goblin-vapor-trail goblin-vapor-trail--core" />
+      <img
         alt=""
-        aria-hidden="true"
-        animate={{
-          opacity: GOBLIN_FLIGHT_OPACITY,
-          rotate: GOBLIN_FLIGHT_ROTATE,
-          scale: GOBLIN_FLIGHT_SCALE,
-          x: GOBLIN_FLIGHT_X,
-          y: GOBLIN_FLIGHT_Y,
-        }}
-        className={`goblin-flyby goblin-flyby--${variant}`}
+        className="goblin-flyby"
         decoding="async"
-        initial={{
-          opacity: 0,
-          rotate: GOBLIN_FLIGHT_ROTATE[0],
-          scale: 0.78,
-          x: GOBLIN_FLIGHT_X[0],
-          y: GOBLIN_FLIGHT_Y[0],
-        }}
         loading="lazy"
         src={src}
-        transition={{
-          delay,
-          duration: GOBLIN_FLIGHT_DURATION,
-          ease: "linear",
-          times: GOBLIN_FLIGHT_TIMES,
-        }}
       />
-    </>
+    </motion.div>
   )
 }
 
@@ -435,7 +402,7 @@ export function CapabilityFrontier() {
             variant="male"
           />
           <GoblinFlyby
-            delay={0.55}
+            delay={1.25}
             progress={smoothScrollProgress}
             reducedMotion={reducedMotion}
             src={femaleAstronautGoblin}
