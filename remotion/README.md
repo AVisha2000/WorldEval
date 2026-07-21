@@ -33,6 +33,13 @@ pnpm render:intro
 
 Outputs are written to `remotion/out/` and are ignored by Git.
 
+## Demo media library
+
+The three full videos used by the Controller Lab's pre-run demonstrations, plus selected game
+and portal screenshots, are collected in [`public/demo-media`](public/demo-media/README.md).
+Because this directory is under `public/`, compositions can reference every asset with
+Remotion's `staticFile()` helper.
+
 ## First composition
 
 `WorldArenaIntro` is an eight-second, 1920×1080, 30fps parameterized starter. Its title,
