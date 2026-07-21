@@ -32,35 +32,46 @@ browser session, or pre-running local portal.
 
 ## Current implementation baseline
 
-The repository already contains more than the original MVP handoff described:
+The credential-free product path is implemented across the planned gameplay layers:
 
-- deterministic Godot authority for `orientation-v0`, `interaction-v0`, `construction-v0`, and
-  `neutral-encounter-v0`;
-- participant-visible hybrid observations, a third-person Y Bot presentation, live preview frames,
-  typed receipts/events, checkpoints, and offline replay verification;
-- credential-free task-specific scripted controllers for all four solo stages;
-- a long Construction script that walks, turns, gathers, carries, deposits, builds, celebrates,
-  and can be archived as a native participant-view replay;
-- a managed two-participant authority, fixed 10-tick joint windows, central-relay/knockout rules,
-  paired two-leg scheduling, baselines, replay verification, evidence, and evaluation;
-- a React/Vite controller dashboard, saved solo replay library, and GitHub Pages marketing site;
-- authority-derived solo and paired-duel evaluation artifacts.
+- a reusable strict-JSON Demo provider with immutable policy locks, deterministic failure fixtures,
+  bounded decisions, neutral fallback, audit/evidence binding, and non-certifying classification;
+- managed solo Stages A–D, the separate `multi-action-demo-v0` showcase, Movement Maze, and
+  Operator Action Course;
+- participant-only hybrid observations and authenticated 30 FPS newest-frame-only presentation;
+- authority-derived, allow-listed evaluation plus sealed, version-aware replay and native playback;
+- credential-free two-agent Central Relay, Checkpoint Race, Relay Control, Sparring, and Resource
+  Relay with fixed 10-tick windows and paired seat swaps;
+- exactly-three-participant Relay and Free-for-All with Sol/Luna/Terra Demo policies, three cyclic
+  legs, per-seat fallback, participant cameras, safe evaluation, and replay;
+- immutable additive `llm-controller/0.2.0` and `0.3.0` packages beside frozen `0.1.0`;
+- a React/Vite Controller Lab and a static Pages gallery for solo, 1v1, and trio evidence.
 
-The main gaps are product integration and expansion:
+Remaining publication work is external-media-bound: produce and visually approve final native
+showcase exports, then configure real user-authorized video IDs. Missing IDs intentionally retain
+local poster fallbacks and make no third-party request.
 
-- scripted controllers are task-specific rather than one reusable fixture-driven mock LLM core;
-- the long Construction sequence is not a separately named multi-action showcase;
-- there is no solo maze or control-calibration game;
-- participant preview currently targets authority-rate updates rather than a smooth interpolated
-  30 FPS presentation stream;
-- evaluation is sealed in public evidence but is not available through a dedicated safe API or
-  dashboard page;
-- production series code permits at most one `scripted` entrant, so two no-key agents cannot yet
-  launch from the dashboard;
-- duel browser streaming, series timelines, and durable native series replays are incomplete;
-- the embodiment protocol has no third participant, three-way scheduler, evaluator, or UI;
-- the Pages gallery has MVP, solo, and duel slots, but no three-agent slot or checked-in video IDs;
-  deployment IDs are external repository variables and may or may not be configured.
+## Implementation status — 2026-07-21
+
+This table is an implementation checkpoint, not a relaxation of any exit gate below. A phase is
+only marked complete when its production path and required automated evidence exist; native visual
+acceptance remains pending wherever the required renderer or FFmpeg is unavailable.
+
+| Phase | Status | Current evidence and remaining gate |
+| --- | --- | --- |
+| M0 — Demo provider | Complete | Credential-free deterministic strict-JSON policies, immutable policy locks, bounded decisions, failure fixtures, audit/evidence binding, neutral fallback, and non-certifying run classification are implemented and tested. |
+| S1 — solo A–D | Complete in the managed product path | All four stages launch through managed Godot with Demo provider, participant-only hybrid frames, evaluation, replay, and dashboard lifecycle coverage. The shared preview uses authenticated JPEG ingress, newest-frame-only backpressure, and a stable canvas. |
+| S2 — multi-action showcase | Complete in the managed product path | `multi-action-demo-v0` is a separate scenario over Construction, enforces the ordered gather/deposit/build/success sequence and 900–1,200 tick acceptance window, and records deterministic evidence. |
+| E1 — evaluation product | Complete for solo and saved solo replays | Strict allow-listed projections, sealed-run readiness, durable evaluation sidecars, API routes, and the Evaluation dashboard view are implemented. Multiplayer durability expands with D1/T2. |
+| S3 — solo control games | Complete in the managed product path | The `llm-controller/0.2.0` package, registry, versioned transport/verifier, Movement Maze, Operator Action Course, trusted map evaluation, Demo policy loops, participant presentation, and managed API-to-replay tests are integrated. |
+| D1 — credential-free duo | Complete in the managed product path | Independent Alpha/Bravo Demo entrants, two-leg scheduling, safe timeline/evaluation, durable restart-readable archives, per-seat 30 FPS newest-only previews, participant PNGs, and verified native per-leg render dispatch are implemented. |
+| D2 — simple duo ladder | Complete in the managed product path | Checkpoint race, relay control, and sparring are selectable keyless two-leg games with locked `0.2.0` schemas, participant viewports, safe evaluation, durable replay, dashboard support, and full API-to-managed-Godot restart acceptance. |
+| D3 — richer duo mechanics | Complete in the managed product path | `duo-resource-relay-v0` adds independently tested gather/carry/deposit/build/defend/combat behavior while the simpler regression games remain available. |
+| T1/T2 — trio | Complete in the managed product path | Immutable `0.3.0`, exactly-three authority, Demo policies, cyclic series, evaluation, replay, participant presentation, dashboard, Relay, and Free-for-All are integrated. |
+| P1 — product/media | Export-ready; external publication pending | README and Pages describe actual no-key capabilities and provide solo/1v1/trio slots with local fallbacks. The verified, visually inspected 1920×1080/30 FPS participant-view solo multi-action, 1v1 spar, and Sol/Luna/Terra Free-for-All exports are locally ready. Uploading them and setting real user-authorized video IDs remains intentionally external. |
+
+The frozen `llm-controller/0.1.0` and `worldeval-rts/1.0.0` artifacts remain unchanged. No phase
+uses a live provider credential as an implementation or release dependency.
 
 ## Non-negotiable boundaries
 

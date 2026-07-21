@@ -1,0 +1,119 @@
+{
+  "casualties": [
+    {
+      "at_tick": 850,
+      "team": "Blue",
+      "unit_id": "blue_0"
+    },
+    {
+      "at_tick": 880,
+      "team": "Red",
+      "unit_id": "red_0"
+    },
+    {
+      "at_tick": 900,
+      "team": "Red",
+      "unit_id": "red_1"
+    },
+    {
+      "at_tick": 1020,
+      "team": "Red",
+      "unit_id": "red_2"
+    }
+  ],
+  "completion": {
+    "outcome": "win",
+    "reason": "town_hall_destroyed",
+    "tick": 1200
+  },
+  "evaluation": {
+    "metrics": [
+      {
+        "id": "blue_economy",
+        "label": "Blue economy",
+        "value": "6 deposits \u00b7 3 militia armed"
+      },
+      {
+        "id": "red_economy",
+        "label": "Red economy",
+        "value": "6 deposits \u00b7 3 militia armed"
+      },
+      {
+        "id": "unit_survival",
+        "label": "Unit survival",
+        "value": "Blue 2 \u00b7 Red 0"
+      },
+      {
+        "id": "combat",
+        "label": "Combat",
+        "value": "4 casualties \u00b7 town hall destroyed"
+      },
+      {
+        "id": "determinism",
+        "label": "Determinism",
+        "value": "1,200 authority ticks \u00b7 replay verified"
+      }
+    ],
+    "path": "evaluation.json",
+    "sha256": "dfb47a9868223f6b2ad1b93b2dd042299415d84a712cc6347f89c031987838f9"
+  },
+  "highlights": [
+    {
+      "at_seconds": 0,
+      "label": "Blue and Red workers deploy"
+    },
+    {
+      "at_seconds": 15,
+      "label": "First workers walk to separate resource nodes"
+    },
+    {
+      "at_seconds": 40,
+      "label": "Three workers harvest and return materials"
+    },
+    {
+      "at_seconds": 65,
+      "label": "Barracks build and militia arming complete"
+    },
+    {
+      "at_seconds": 80,
+      "label": "Three-versus-three bridge battle begins"
+    },
+    {
+      "at_seconds": 100,
+      "label": "Red retreats as Blue pursues"
+    },
+    {
+      "at_seconds": 116,
+      "label": "Blue destroys the Red tower"
+    },
+    {
+      "at_seconds": 132,
+      "label": "Blue attacks the Red Town Hall"
+    },
+    {
+      "at_seconds": 145,
+      "label": "Blue victory celebration"
+    }
+  ],
+  "label": "WorldArena: Mini RTS \u2014 Blue vs Red",
+  "replay": {
+    "final_state_sha256": "2578b9135e7bcd31607da7861a75a781ef41ad49c0df99cfbee4c80e31ebe887",
+    "path": "rts-skirmish-demo.replay.json",
+    "sha256": "7f9ba35007c5bd4d94051d25d6e4b347a2649bb38d6d37c5a501c3b2ff917a23"
+  },
+  "schema_version": "worldarena/rts-skirmish-showcase-manifest/2",
+  "showcase_id": "rts-skirmish-v0",
+  "task_id": "rts-skirmish-v0",
+  "video": {
+    "duration_seconds": 150,
+    "fps": 30,
+    "height": 1080,
+    "mime_type": "video/mp4",
+    "path": "rts-skirmish-broadcast.mp4",
+    "sha256": "8f05ad902141797ddf7e2f590644dc62e3b9073153673965775703bc16a3d967",
+    "width": 1920
+  },
+  "winner": {
+    "team": "Blue Command"
+  }
+}

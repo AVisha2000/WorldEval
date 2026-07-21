@@ -6,11 +6,13 @@ import asyncio
 import base64
 import hashlib
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Iterable, Mapping
 
+from .demo_scenarios import demo_scenario
 from .evaluation import evaluate_solo_replay
 from .protocol import (
     EmbodimentProtocolPackage,
@@ -18,6 +20,7 @@ from .protocol import (
     canonical_sha256,
     strict_json_loads,
 )
+from .protocol_registry import EmbodimentProtocolRegistry
 from .replay import verify_replay_bytes
 
 BUNDLE_SCHEMA_VERSION = "llm-controller/episode-artifacts/1.0.0"
@@ -240,6 +243,7 @@ class EpisodeArtifactRecorder:
         self.scratchpad: list[Mapping[str, Any]] = []
         self.telemetry: list[Mapping[str, Any]] = []
         self._run_configuration_hashes: Mapping[str, str] | None = None
+        self._evaluation_identity: tuple[str, str] | None = None
 
     def freeze_run_configuration(
         self,
@@ -269,6 +273,16 @@ class EpisodeArtifactRecorder:
                 "settings_sha256": canonical_sha256(selected_settings),
             }
         )
+        policy_lock = selected_settings.get("demo_policy_lock")
+        if isinstance(policy_lock, Mapping):
+            scenario_id = policy_lock.get("scenario_id")
+            if not isinstance(scenario_id, str):
+                raise EpisodeArtifactError("demo scenario identity is invalid")
+            try:
+                scenario = demo_scenario(scenario_id)
+            except (TypeError, ValueError) as error:
+                raise EpisodeArtifactError("demo scenario identity is invalid") from error
+            self._evaluation_identity = (scenario.scenario_id, scenario.evaluation_profile_id)
 
     def record_boundary(
         self,
@@ -382,7 +396,14 @@ class EpisodeArtifactRecorder:
             raise EpisodeArtifactError("authority replay episode differs")
         self._verify_against_replay(replay)
         terminal = replay["final_terminal"]
-        derived_evaluation = evaluate_solo_replay(replay, self.telemetry, replay_verified=True)
+        evaluation_identity = self._evaluation_identity or (None, None)
+        derived_evaluation = evaluate_solo_replay(
+            replay,
+            self.telemetry,
+            replay_verified=True,
+            scenario_id=evaluation_identity[0],
+            evaluation_profile_id=evaluation_identity[1],
+        )
         public = EpisodeArtifactBundle.create(
             PUBLIC_LAYER,
             (
@@ -464,13 +485,16 @@ def verify_offline_replay(
     protected_bundle: bytes,
     *,
     package: EmbodimentProtocolPackage | None = None,
+    registry: EmbodimentProtocolRegistry | None = None,
 ) -> Mapping[str, Any]:
     """Verify a protected bundle and replay its authority ledger from its genesis boundary."""
 
     bundle = EpisodeArtifactBundle.verify(protected_bundle)
     if bundle.layer != PROTECTED_LAYER:
         raise EpisodeArtifactError("offline replay requires a protected bundle")
-    return verify_replay_bytes(bundle.read("authority_replay"), package=package)
+    return verify_replay_bytes(
+        bundle.read("authority_replay"), package=package, registry=registry
+    )
 
 
 async def verify_offline_replay_with_godot(
@@ -486,7 +510,8 @@ async def verify_offline_replay_with_godot(
     verified = verify_offline_replay(protected_bundle, package=package)
     bundle = EpisodeArtifactBundle.verify(protected_bundle)
     replay = bundle.read("authority_replay")
-    process = await asyncio.create_subprocess_exec(
+    replay_path: Path | None = None
+    command = [
         str(godot_executable),
         "--no-header",
         "--headless",
@@ -495,22 +520,61 @@ async def verify_offline_replay_with_godot(
         "--path",
         str(project_path),
         "--script",
-        "res://scripts/embodiment/replay/embodiment_replay_cli.gd",
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-    )
+    ]
+    if package.PROTOCOL_VERSION == EmbodimentProtocolPackage.PROTOCOL_VERSION:
+        command.append("res://scripts/embodiment/replay/embodiment_replay_cli.gd")
+        stdin = asyncio.subprocess.PIPE
+    elif package.PROTOCOL_VERSION in ("llm-controller/0.2.0", "llm-controller/0.3.0"):
+        temporary = tempfile.NamedTemporaryFile(
+            mode="wb", prefix="worldarena-versioned-replay-", suffix=".json", delete=False
+        )
+        try:
+            temporary.write(replay)
+            temporary.flush()
+        finally:
+            temporary.close()
+        replay_path = Path(temporary.name)
+        command.extend(
+            (
+                "res://scripts/embodiment/v2/replay/embodiment_versioned_replay_cli.gd",
+                "--",
+                str(replay_path),
+            )
+        )
+        stdin = None
+    else:
+        raise EpisodeArtifactError("Godot replay verifier does not support this protocol version")
     try:
-        output, _ = await asyncio.wait_for(process.communicate(replay), timeout_s)
-    except asyncio.TimeoutError:
-        process.kill()
-        await process.wait()
-        raise EpisodeArtifactError("Godot genesis replay timed out") from None
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdin=stdin,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        try:
+            output, _ = await asyncio.wait_for(
+                process.communicate(replay if stdin is not None else None), timeout_s
+            )
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            raise EpisodeArtifactError("Godot genesis replay timed out") from None
+    finally:
+        if replay_path is not None:
+            replay_path.unlink(missing_ok=True)
     if process.returncode != 0:
         raise EpisodeArtifactError("Godot genesis replay rejected the bundle")
     lines = output.decode("utf-8", errors="strict").strip().splitlines()
     if not lines:
         raise EpisodeArtifactError("Godot genesis replay emitted no seal")
+    if package.PROTOCOL_VERSION in ("llm-controller/0.2.0", "llm-controller/0.3.0"):
+        expected = (
+            "EMBODIMENT_REPLAY_VERIFIED "
+            f"{package.PROTOCOL_VERSION} {verified['final_state_hash']}"
+        )
+        if lines[-1] != expected:
+            raise EpisodeArtifactError("Godot genesis replay seal differs")
+        return verified
     seal = strict_json_loads(lines[-1].encode("utf-8"))
     if (
         not isinstance(seal, dict)

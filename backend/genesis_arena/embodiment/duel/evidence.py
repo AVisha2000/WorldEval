@@ -16,6 +16,7 @@ from ..artifacts import (
     EpisodeArtifactError,
     verify_offline_replay,
 )
+from ..duo_games.catalog import CENTRAL_RELAY_TASK_ID, duo_game
 from ..evaluation import evaluate_paired_duel_replays
 from ..protocol import (
     EmbodimentProtocolPackage,
@@ -222,16 +223,25 @@ def build_paired_duel_evidence(
         }
         for index in (0, 1)
     )
-    evaluations = evaluate_paired_duel_replays(
-        replays=(replays[0], replays[1]),
-        provider_audits=(materials[0].provider_audits, materials[1].provider_audits),
-        participant_to_entrant=(participant_to_entrant[0], participant_to_entrant[1]),
-        entrant_ids=(plan.entrants[0].entrant_id, plan.entrants[1].entrant_id),
-        entrant_wins=result.entrant_wins,
-        draws=result.draws,
-        winner_entrant_id=result.winner_entrant_id,
-        replay_verified=(True, True),
-    )
+    task_ids = tuple(replay["config"].get("task_id") for replay in replays)
+    if task_ids[0] != task_ids[1]:
+        raise EpisodeArtifactError("paired replay tasks differ")
+    if task_ids[0] == CENTRAL_RELAY_TASK_ID:
+        evaluations = evaluate_paired_duel_replays(
+            replays=(replays[0], replays[1]),
+            provider_audits=(materials[0].provider_audits, materials[1].provider_audits),
+            participant_to_entrant=(participant_to_entrant[0], participant_to_entrant[1]),
+            entrant_ids=(plan.entrants[0].entrant_id, plan.entrants[1].entrant_id),
+            entrant_wins=result.entrant_wins,
+            draws=result.draws,
+            winner_entrant_id=result.winner_entrant_id,
+            replay_verified=(True, True),
+        )
+    else:
+        evaluations = (
+            _evaluate_duo_game_replay(replays[0]),
+            _evaluate_duo_game_replay(replays[1]),
+        )
 
     public_legs = []
     protected_legs = []
@@ -418,8 +428,13 @@ def _public_replay_projection(replay):
 
 def _leg_summary(plan, result, index, replay, evaluation):
     leg = result.legs[index]
+    demo = all(entrant.provider == "demo" for entrant in plan.entrants)
     return {
         "call_settings": plan.settings.as_dict(),
+        "certification": {
+            "eligible": not demo,
+            "reason": "demo_provider" if demo else None,
+        },
         "episode_id": leg.plan.episode_id,
         "evaluation": evaluation,
         "fairness_lock": plan.fairness_lock.as_dict(),
@@ -438,6 +453,122 @@ def _leg_summary(plan, result, index, replay, evaluation):
         "terminal": replay["final_terminal"],
         "verification": _verification_dict(leg.verification),
     }
+
+
+def _evaluate_duo_game_replay(replay: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Derive a strict browser-safe game evaluation from terminal typed public events."""
+
+    config = replay.get("config")
+    if not isinstance(config, Mapping) or not isinstance(config.get("task_id"), str):
+        raise EpisodeArtifactError("duo replay task identity is invalid")
+    task_id = config["task_id"]
+    game = duo_game(task_id)
+    if not game.is_additive_game or game.evaluator is None:
+        raise EpisodeArtifactError("duo replay task is not an additive game")
+    events = [
+        event
+        for step in replay.get("steps", [])
+        for event in step.get("result", {}).get("public_events", [])
+        if isinstance(event, Mapping)
+    ]
+    completed_kind = (
+        "rts_skirmish_completed" if task_id == "rts-skirmish-v0" else "duo_game_completed"
+    )
+    completed = [event for event in events if event.get("kind") == completed_kind]
+    expected_summary_kind = {
+        "duo-resource-relay-v0": "duo_resource_relay_participant_summary",
+        "rts-skirmish-v0": "rts_skirmish_participant_summary",
+    }.get(task_id, "duo_participant_summary")
+    summaries = [event for event in events if event.get("kind") == expected_summary_kind]
+    if len(completed) != 1 or len(summaries) != 2:
+        raise EpisodeArtifactError("duo replay terminal summaries are missing or duplicated")
+    completion = completed[0].get("data")
+    if not isinstance(completion, Mapping) or completion.get("task_id") != task_id:
+        raise EpisodeArtifactError("duo replay completion summary differs")
+    participants: dict[str, Mapping[str, Any]] = {}
+    for event in summaries:
+        data = event.get("data")
+        ids = event.get("participant_ids")
+        if (
+            not isinstance(data, Mapping)
+            or data.get("task_id") != task_id
+            or not isinstance(ids, list)
+            or len(ids) != 1
+            or data.get("participant_id") != ids[0]
+            or ids[0] in participants
+        ):
+            raise EpisodeArtifactError("duo replay participant summary differs")
+        common = {
+            "outcome": data.get("outcome"),
+            "decision_windows": data.get("decision_windows"),
+            "fallback_windows": data.get("fallback_windows"),
+        }
+        if task_id == "duo-checkpoint-race-v0":
+            common["checkpoints_reached"] = data.get("checkpoints_reached")
+        elif task_id == "duo-relay-control-v0":
+            common["control_ticks"] = data.get("control_ticks")
+        elif task_id == "duo-spar-v0":
+            common.update(
+                {
+                    "hits_landed": data.get("hits_landed"),
+                    "hits_received": data.get("hits_received"),
+                    "knockouts": data.get("knockouts"),
+                }
+            )
+        elif task_id == "duo-resource-relay-v0":
+            common.update(
+                {
+                    field: data.get(field)
+                    for field in (
+                        "resources_gathered",
+                        "deposits",
+                        "objective_score",
+                        "builds_completed",
+                        "defend_ticks",
+                        "hits_landed",
+                        "hits_received",
+                        "knockouts",
+                        "resources_dropped",
+                        "dash_uses",
+                        "guard_ticks",
+                    )
+                }
+            )
+        elif task_id == "rts-skirmish-v0":
+            common.update(
+                {
+                    field: data.get(field)
+                    for field in (
+                        "materials_gathered",
+                        "deposits",
+                        "barracks_built",
+                        "towers_built",
+                        "units_trained",
+                        "central_hold_ticks",
+                        "town_hall_damage_dealt",
+                        "town_hall_damage_received",
+                        "hits_landed",
+                        "hits_received",
+                        "knockouts",
+                    )
+                }
+            )
+        participants[str(ids[0])] = common
+    aggregates: dict[str, Any] = {
+        "completion_tick": completion.get("completion_tick"),
+        "terminal_outcome": completion.get("terminal_outcome"),
+        "terminal_reason": completion.get("terminal_reason"),
+        "participants": participants,
+    }
+    if task_id == "duo-checkpoint-race-v0":
+        # Four ordered markers are frozen by the v2 checkpoint-race authority artifact.
+        aggregates["checkpoint_total"] = 4
+    elif task_id == "duo-resource-relay-v0":
+        aggregates["objective_target"] = 300
+    try:
+        return game.evaluator(aggregates)
+    except (TypeError, ValueError) as error:
+        raise EpisodeArtifactError("duo replay authority aggregates are invalid") from error
 
 
 def _verification_dict(verification):

@@ -26,16 +26,30 @@ from .artifacts import (
     verify_offline_replay,
     verify_offline_replay_with_godot,
 )
-from .protocol import EmbodimentProtocolPackage, canonical_json_bytes, strict_json_loads
+from .demo_scenarios import demo_scenario
+from .evaluation import validate_multi_action_showcase_replay
+from .evaluation_projection import EvaluationProjection
+from .protocol import (
+    EmbodimentProtocolPackage,
+    canonical_json_bytes,
+    canonical_sha256,
+    strict_json_loads,
+)
+from .protocol_registry import EmbodimentProtocolRegistry
 from .scripted_solo_demo import SCRIPTED_SOLO_TASKS, is_scripted_solo_demo
 
 if TYPE_CHECKING:
     from .episode_service import EpisodeRunSpec
 
-ARCHIVE_FORMAT = "llm-controller/embodiment-saved-replay/1.0.0"
+ARCHIVE_FORMAT = "llm-controller/embodiment-saved-replay/1.2.0"
+_PREVIOUS_ARCHIVE_FORMAT = "llm-controller/embodiment-saved-replay/1.1.0"
+_LEGACY_ARCHIVE_FORMAT = "llm-controller/embodiment-saved-replay/1.0.0"
 _ARCHIVE_DIR = "embodiment-replays"
 _REPLAY_ID = re.compile(r"^ep_[A-Za-z0-9._-]{1,120}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_ARCHIVABLE_TASKS = frozenset(
+    (*SCRIPTED_SOLO_TASKS, "movement-maze-v0", "operator-action-course-v0")
+)
 _MANIFEST_FIELDS = frozenset(
     {
         "archive_format",
@@ -48,19 +62,14 @@ _MANIFEST_FIELDS = frozenset(
         "public_bundle_sha256",
         "reason",
         "replay_id",
+        "scenario_id",
+        "evaluation_profile_id",
+        "evaluation_sha256",
         "task_id",
         "video",
     }
 )
 _VIDEO_FIELDS = frozenset({"fps", "height", "mime_type", "sha256", "width"})
-_SCRIPTED_DEMO_LABELS = {
-    "orientation-v0": "Orientation v0 scripted demo",
-    "interaction-v0": "Interaction v0 scripted demo",
-    "construction-v0": "Construction v0 scripted demo",
-    "neutral-encounter-v0": "Neutral Encounter v0 scripted demo",
-}
-
-
 class SavedReplayError(RuntimeError):
     """A replay cannot be safely archived or presented."""
 
@@ -83,11 +92,17 @@ class SavedReplay:
     video_width: int
     video_height: int
     video_fps: int
+    scenario_id: str = ""
+    evaluation_profile_id: str = ""
+    evaluation_sha256: str = ""
 
     def public_dict(self) -> Mapping[str, Any]:
-        return {
+        value: dict[str, Any] = {
             "replay_id": self.replay_id,
             "episode_id": self.episode_id,
+            "scenario_id": self.scenario_id or self.task_id,
+            "evaluation_profile_id": self.evaluation_profile_id
+            or demo_scenario(self.scenario_id or self.task_id).evaluation_profile_id,
             "task_id": self.task_id,
             "label": self.label,
             "outcome": self.outcome,
@@ -103,6 +118,9 @@ class SavedReplay:
                 "fps": self.video_fps,
             },
         }
+        if self.evaluation_sha256:
+            value["evaluation"] = {"available": True, "sha256": self.evaluation_sha256}
+        return value
 
 
 class SavedReplayArchive:
@@ -117,18 +135,28 @@ class SavedReplayArchive:
         self,
         *,
         runs_dir: Path,
-        protocol_package: EmbodimentProtocolPackage,
+        protocol_package: EmbodimentProtocolPackage | None = None,
+        protocol_registry: EmbodimentProtocolRegistry | None = None,
         godot_executable: Path,
         godot_project_path: Path,
         ffmpeg_executable: Path,
     ) -> None:
         self._root = Path(runs_dir).resolve() / _ARCHIVE_DIR
+        if (protocol_package is None) == (protocol_registry is None):
+            raise ValueError("provide exactly one protocol package source")
         self._package = protocol_package
+        self._registry = protocol_registry
         self._godot_executable = Path(godot_executable).resolve()
         self._godot_project_path = Path(godot_project_path).resolve()
         self._ffmpeg_executable = Path(ffmpeg_executable).resolve()
 
-    async def save(self, spec: EpisodeRunSpec, bundles: EpisodeBundles) -> SavedReplay:
+    async def save(
+        self,
+        spec: EpisodeRunSpec,
+        bundles: EpisodeBundles,
+        *,
+        evaluation: EvaluationProjection | None = None,
+    ) -> SavedReplay:
         """Archive a successful scripted solo episode without exposing its replay."""
 
         _validate_scripted_solo_spec(spec)
@@ -136,8 +164,18 @@ class SavedReplayArchive:
         protected = EpisodeArtifactBundle.verify(bundles.protected.bundle_bytes)
         if public.layer != PUBLIC_LAYER or protected.layer != PROTECTED_LAYER:
             raise SavedReplayError("replay archive bundle layers differ")
-        replay = verify_offline_replay(protected.bundle_bytes, package=self._package)
+        replay = verify_offline_replay(
+            protected.bundle_bytes,
+            package=self._package,
+            registry=self._registry,
+        )
+        package = (
+            self._package
+            if self._package is not None
+            else self._registry.package_for_replay(replay)  # type: ignore[union-attr]
+        )
         _validate_replay_identity(spec, replay)
+        _validate_demo_evaluation_identity(spec, public, replay)
         terminal = replay["final_terminal"]
         if terminal.get("outcome") != "success":
             raise SavedReplayError("only successful scripted solo runs are archived")
@@ -147,7 +185,7 @@ class SavedReplayArchive:
         try:
             await verify_offline_replay_with_godot(
                 protected.bundle_bytes,
-                package=self._package,
+                package=package,
                 godot_executable=self._godot_executable,
                 project_path=self._godot_project_path,
             )
@@ -160,6 +198,8 @@ class SavedReplayArchive:
             public,
             protected.read("authority_replay"),
             replay,
+            evaluation,
+            package.PROTOCOL_VERSION,
         )
 
     def list(self, *, limit: int = 50) -> tuple[SavedReplay, ...]:
@@ -216,12 +256,38 @@ class SavedReplayArchive:
             return None
         return target
 
+    def evaluation(self, replay_id: str) -> Mapping[str, Any] | None:
+        replay = self.get(replay_id)
+        if replay is None or not replay.evaluation_sha256:
+            return None
+        target = self._directory_for(replay_id) / "evaluation.json"
+        try:
+            payload = target.read_bytes()
+            value = strict_json_loads(payload)
+        except (OSError, ValueError):
+            return None
+        if (
+            not isinstance(value, dict)
+            or canonical_json_bytes(value) != payload
+            or hashlib.sha256(payload).hexdigest() != replay.evaluation_sha256
+        ):
+            return None
+        projection_sha256 = value.get("projection_sha256")
+        if not isinstance(projection_sha256, str):
+            return None
+        body = {key: child for key, child in value.items() if key != "projection_sha256"}
+        if canonical_sha256(body) != projection_sha256:
+            return None
+        return value
+
     def _render_and_persist(
         self,
         spec: EpisodeRunSpec,
         public_bundle: EpisodeArtifactBundle,
         authority_replay: bytes,
         replay: Mapping[str, Any],
+        evaluation: EvaluationProjection | None,
+        protocol_version: str,
     ) -> SavedReplay:
         self._root.mkdir(mode=0o700, parents=True, exist_ok=True)
         try:
@@ -241,14 +307,27 @@ class SavedReplayArchive:
             video_path = stage / "participant-replay.mp4"
             _write_private(authority_path, authority_replay)
             _write_private(public_path, public_bundle.bundle_bytes)
+            evaluation_sha256: str | None = None
+            if evaluation is not None:
+                evaluation_bytes = evaluation.canonical_bytes
+                evaluation_sha256 = hashlib.sha256(evaluation_bytes).hexdigest()
+                _write_private(stage / "evaluation.json", evaluation_bytes)
             _render_participant_mp4(
                 replay_path=authority_path,
                 output_path=video_path,
                 godot_executable=self._godot_executable,
                 godot_project_path=self._godot_project_path,
                 ffmpeg_executable=self._ffmpeg_executable,
+                protocol_version=protocol_version,
             )
-            manifest = _manifest_for(spec, replay, authority_replay, public_bundle, video_path)
+            manifest = _manifest_for(
+                spec,
+                replay,
+                authority_replay,
+                public_bundle,
+                video_path,
+                evaluation_sha256=evaluation_sha256,
+            )
             _write_private(stage / "manifest.json", canonical_json_bytes(manifest))
             loaded = _saved_replay_from_manifest(manifest)
             _validate_persisted_stage(stage, loaded)
@@ -290,17 +369,29 @@ class SavedReplayArchive:
 
 
 def _validate_scripted_solo_spec(spec: EpisodeRunSpec) -> None:
+    if spec.provider == "demo":
+        try:
+            scenario = demo_scenario(spec.scenario_id or "")
+        except (TypeError, ValueError) as error:
+            raise SavedReplayError("replay archive demo scenario is unsupported") from error
+        if (
+            scenario.authority_task_id != spec.task_id
+            or scenario.provider_model != spec.model
+            or _REPLAY_ID.fullmatch(spec.episode_id) is None
+        ):
+            raise SavedReplayError("replay archive demo identity differs")
+        return
     if not is_scripted_solo_demo(
         provider=spec.provider, model=spec.model, task_id=spec.task_id
     ) or _REPLAY_ID.fullmatch(spec.episode_id) is None:
         raise SavedReplayError("replay archive is reserved for scripted solo demos")
 
 
-def _label_for_task(task_id: str) -> str:
+def _label_for_scenario(scenario_id: str) -> str:
     try:
-        return _SCRIPTED_DEMO_LABELS[task_id]
-    except KeyError as error:
-        raise SavedReplayError("replay archive task is unsupported") from error
+        return demo_scenario(scenario_id).replay_label
+    except (TypeError, ValueError) as error:
+        raise SavedReplayError("replay archive scenario is unsupported") from error
 
 
 def _validate_replay_identity(spec: EpisodeRunSpec, replay: Mapping[str, Any]) -> None:
@@ -314,6 +405,30 @@ def _validate_replay_identity(spec: EpisodeRunSpec, replay: Mapping[str, Any]) -
         raise SavedReplayError("replay archive identity differs")
 
 
+def _validate_demo_evaluation_identity(
+    spec: EpisodeRunSpec,
+    public_bundle: EpisodeArtifactBundle,
+    replay: Mapping[str, Any],
+) -> None:
+    if spec.provider != "demo":
+        return
+    scenario = demo_scenario(spec.scenario_id or "")
+    try:
+        evaluation = strict_json_loads(public_bundle.read("evaluation"))
+    except Exception as error:
+        raise SavedReplayError("replay archive evaluation is invalid") from error
+    if not isinstance(evaluation, Mapping) or (
+        evaluation.get("scenario_id") != scenario.scenario_id
+        or evaluation.get("evaluation_profile_id") != scenario.evaluation_profile_id
+    ):
+        raise SavedReplayError("replay archive evaluation identity differs")
+    if scenario.scenario_id == "multi-action-demo-v0":
+        try:
+            validate_multi_action_showcase_replay(replay)
+        except (KeyError, TypeError, ValueError) as error:
+            raise SavedReplayError("replay archive showcase evidence is invalid") from error
+
+
 def _render_participant_mp4(
     *,
     replay_path: Path,
@@ -321,6 +436,8 @@ def _render_participant_mp4(
     godot_executable: Path,
     godot_project_path: Path,
     ffmpeg_executable: Path,
+    protocol_version: str = "llm-controller/0.1.0",
+    participant_id: str = "participant_0",
 ) -> None:
     _require_executable(godot_executable, "pinned Godot executable")
     _require_executable(ffmpeg_executable, "local FFmpeg executable")
@@ -329,6 +446,25 @@ def _render_participant_mp4(
     if not godot_project_path.is_dir() or not (godot_project_path / "project.godot").is_file():
         raise SavedReplayError("Godot project is unavailable")
     movie_path = output_path.with_suffix(".avi")
+    if protocol_version == "llm-controller/0.1.0":
+        movie_script = "res://scripts/embodiment/replay/embodiment_movie_maker_cli.gd"
+    elif protocol_version == "llm-controller/0.2.0":
+        movie_script = (
+            "res://scripts/embodiment/v2/replay/embodiment_movie_maker_cli_v2.gd"
+        )
+    elif protocol_version == "llm-controller/0.3.0":
+        movie_script = (
+            "res://scripts/embodiment/v3/replay/embodiment_movie_maker_cli_v3.gd"
+        )
+    else:
+        raise SavedReplayError("replay archive protocol version is unsupported")
+    allowed_participants = (
+        ("participant_0", "participant_1", "participant_2")
+        if protocol_version == "llm-controller/0.3.0"
+        else ("participant_0", "participant_1")
+    )
+    if participant_id not in allowed_participants:
+        raise SavedReplayError("replay archive participant is invalid")
     _run(
         (
             str(godot_executable),
@@ -347,9 +483,10 @@ def _render_participant_mp4(
             "--write-movie",
             str(movie_path),
             "--script",
-            "res://scripts/embodiment/replay/embodiment_movie_maker_cli.gd",
+            movie_script,
             "--",
             f"--embodiment-replay={replay_path}",
+            f"--embodiment-participant={participant_id}",
         ),
         cwd=godot_project_path,
         description="Godot Movie Maker render failed",
@@ -411,7 +548,13 @@ def _manifest_for(
     authority_replay: bytes,
     public_bundle: EpisodeArtifactBundle,
     video_path: Path,
+    evaluation_sha256: str | None = None,
 ) -> Mapping[str, Any]:
+    if spec.scenario_id == "multi-action-demo-v0":
+        try:
+            validate_multi_action_showcase_replay(replay)
+        except (KeyError, TypeError, ValueError) as error:
+            raise SavedReplayError("replay archive showcase evidence is invalid") from error
     terminal = replay["final_terminal"]
     steps = replay["steps"]
     final_observation = steps[-1]["result"]["observations"]["participant_0"]
@@ -423,17 +566,23 @@ def _manifest_for(
     ):
         raise SavedReplayError("replay archive tick count is invalid")
     video = video_path.read_bytes()
-    return {
-        "archive_format": ARCHIVE_FORMAT,
+    value: dict[str, Any] = {
+        "archive_format": (
+            ARCHIVE_FORMAT if evaluation_sha256 is not None else _PREVIOUS_ARCHIVE_FORMAT
+        ),
         "authority_replay_sha256": hashlib.sha256(authority_replay).hexdigest(),
         "authority_ticks": authority_ticks,
         "duration_milliseconds": authority_ticks * 100,
         "episode_id": spec.episode_id,
-        "label": _label_for_task(spec.task_id),
+        "evaluation_profile_id": demo_scenario(
+            spec.scenario_id or spec.task_id
+        ).evaluation_profile_id,
+        "label": _label_for_scenario(spec.scenario_id or spec.task_id),
         "outcome": terminal["outcome"],
         "public_bundle_sha256": hashlib.sha256(public_bundle.bundle_bytes).hexdigest(),
         "reason": terminal["reason"],
         "replay_id": spec.episode_id,
+        "scenario_id": spec.scenario_id or spec.task_id,
         "task_id": spec.task_id,
         "video": {
             "fps": 30,
@@ -443,10 +592,25 @@ def _manifest_for(
             "width": 1280,
         },
     }
+    if evaluation_sha256 is not None:
+        if _SHA256.fullmatch(evaluation_sha256) is None:
+            raise SavedReplayError("replay archive evaluation hash is invalid")
+        value["evaluation_sha256"] = evaluation_sha256
+    return value
 
 
 def _saved_replay_from_manifest(value: Mapping[str, Any]) -> SavedReplay:
-    if set(value) != _MANIFEST_FIELDS or value.get("archive_format") != ARCHIVE_FORMAT:
+    archive_format = value.get("archive_format")
+    previous_fields = _MANIFEST_FIELDS - {"evaluation_sha256"}
+    legacy_fields = previous_fields - {"scenario_id", "evaluation_profile_id"}
+    if not (
+        archive_format == ARCHIVE_FORMAT
+        and set(value) == _MANIFEST_FIELDS
+        or archive_format == _PREVIOUS_ARCHIVE_FORMAT
+        and set(value) == previous_fields
+        or archive_format == _LEGACY_ARCHIVE_FORMAT
+        and set(value) == legacy_fields
+    ):
         raise SavedReplayError("replay archive manifest fields differ")
     video = value.get("video")
     if not isinstance(video, Mapping) or set(video) != _VIDEO_FIELDS:
@@ -463,14 +627,28 @@ def _saved_replay_from_manifest(value: Mapping[str, Any]) -> SavedReplay:
     ):
         if not isinstance(value.get(name), str) or not value[name]:
             raise SavedReplayError("replay archive manifest value is invalid")
+    scenario_id = value.get("scenario_id", value.get("task_id"))
+    evaluation_profile_id = value.get("evaluation_profile_id")
+    try:
+        scenario = demo_scenario(str(scenario_id))
+    except (TypeError, ValueError) as error:
+        raise SavedReplayError("replay archive scenario differs") from error
+    if evaluation_profile_id is None:
+        evaluation_profile_id = scenario.evaluation_profile_id
     if (
         _REPLAY_ID.fullmatch(str(value["replay_id"])) is None
         or value["replay_id"] != value["episode_id"]
-        or value["task_id"] not in SCRIPTED_SOLO_TASKS
-        or value["label"] != _label_for_task(value["task_id"])
+        or value["task_id"] not in _ARCHIVABLE_TASKS
+        or scenario.authority_task_id != value["task_id"]
+        or value["label"] != _label_for_scenario(str(scenario_id))
+        or evaluation_profile_id != scenario.evaluation_profile_id
         or value["outcome"] != "success"
         or _SHA256.fullmatch(str(value["authority_replay_sha256"])) is None
         or _SHA256.fullmatch(str(value["public_bundle_sha256"])) is None
+        or (
+            archive_format == ARCHIVE_FORMAT
+            and _SHA256.fullmatch(str(value.get("evaluation_sha256"))) is None
+        )
         or _SHA256.fullmatch(str(video.get("sha256"))) is None
         or video.get("mime_type") != "video/mp4"
         or video.get("width") != 1280
@@ -504,6 +682,9 @@ def _saved_replay_from_manifest(value: Mapping[str, Any]) -> SavedReplay:
         video_width=video["width"],
         video_height=video["height"],
         video_fps=video["fps"],
+        scenario_id=str(scenario_id),
+        evaluation_profile_id=str(evaluation_profile_id),
+        evaluation_sha256=str(value.get("evaluation_sha256", "")),
     )
 
 
@@ -511,6 +692,7 @@ def _validate_persisted_stage(directory: Path, replay: SavedReplay) -> None:
     authority = directory / "authority.replay.json"
     public = directory / "public.bundle.json"
     video = directory / "participant-replay.mp4"
+    evaluation = directory / "evaluation.json"
     if (
         not authority.is_file()
         or not public.is_file()
@@ -518,6 +700,14 @@ def _validate_persisted_stage(directory: Path, replay: SavedReplay) -> None:
         or hashlib.sha256(authority.read_bytes()).hexdigest() != replay.authority_replay_sha256
         or hashlib.sha256(public.read_bytes()).hexdigest() != replay.public_bundle_sha256
         or hashlib.sha256(video.read_bytes()).hexdigest() != replay.video_sha256
+        or (
+            bool(replay.evaluation_sha256)
+            and (
+                not evaluation.is_file()
+                or hashlib.sha256(evaluation.read_bytes()).hexdigest()
+                != replay.evaluation_sha256
+            )
+        )
     ):
         raise SavedReplayError("replay archive files differ from manifest")
     # Re-check the public evidence before its optional download route is ever enabled.

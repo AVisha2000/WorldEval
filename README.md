@@ -10,18 +10,22 @@ WorldEval is an evaluation framework for **intelligent agents in interactive, de
 worlds**. Its first environment is **WorldArena**, a 3D agent-arena platform where independently
 configured models receive partial observations, submit high-level plans, and live with the
 economic, physical, and social consequences inside an authoritative Godot simulation.
+Its credential-free Controller Lab spans solo curricula and control games, symmetric two-agent
+games, and three-agent Relay/Free-for-All games. Versioned Demo policies receive
+participant-visible observations and emit strict JSON through the provider-shaped path.
 
 The LLM is the strategist; it never controls coordinates, physics, damage, resources, or scoring.
 Godot resolves the world, while FastAPI validates plans, enforces budgets, and records evidence.
 
-**Status:** working research prototype. The local demo, live model loop, deterministic simulation,
-evaluator, replay artifacts, and season scheduler are implemented. No official model leaderboard or
-completed 99-match benchmark season is published yet.
+**Status:** working research prototype. Deterministic no-key Demo runs, participant-view browser
+presentation, authority-derived evaluation, sealed replay, and versioned solo/duo/trio managed
+runtimes are implemented. Demo runs are evidence-backed but explicitly non-certifying. No official
+live-model leaderboard, provider comparison, or completed benchmark season is published.
 
-**Rendered showcase:** The local 90-second recording is an authored, deterministic gameplay cut
-that exercises the same presentation adapters as saved matches. It is explicitly labelled as an
-unverified local demo. A separate authoritative headless runner writes real tick-by-tick replay
-bundles, terminal results, and state hashes under the ignored `runs/` directory.
+**Playback and publication:** native gameplay video is reconstructed from a verified replay by
+Godot Movie Maker, then encoded locally by FFmpeg. The Pages gallery has solo, seat-swapped 1v1,
+and Sol/Luna/Terra trio slots with local coming-soon posters; no external video ID is invented or
+published by this repository.
 
 The visual stack now uses a reviewed Quaternius Medieval Village CC0 building subset, Kenney's CC0
 Adventure UI vectors, FastNoiseLite terrain variation, WorldEnvironment lighting, and
@@ -56,10 +60,11 @@ This makes the benchmark useful for studying:
 | Delegation | Specialist use, accepted advice, contradictions, token cost, and progress per budget |
 | Reliability | Valid actions, timeouts, fallbacks, impossible orders, and protocol compliance |
 
-WorldEval currently measures **strategic agent behaviour** through WorldArena, not visual
-perception or robot safety. Models receive structured semantic observations rather than pixels;
-“embodied” means their decisions are grounded in a persistent simulated world with irreversible
-consequences.
+WorldEval currently measures **strategic agent behaviour** through two WorldArena research
+surfaces. The older Arena evaluates long-horizon strategy from visibility-filtered semantic
+observations. The LLM Controller embodiment path uses hybrid participant observations: filtered
+semantics plus the participant's own camera pixels. Neither surface evaluates robot safety, and
+neither gives an agent spectator vision or hidden authority coordinates.
 
 ### Embodied controller pilot
 
@@ -68,7 +73,89 @@ then the Godot operator must actually turn, walk, gather, carry, and build befor
 again. A useful illustrative dependency check is refuelling a car: “the station is five minutes
 away” is not enough to choose walking when the objective is to drive the car there. WorldArena
 records these prerequisite chains so they can be evaluated as physical-world understanding rather
-than accepted as plausible language alone.
+than accepted as plausible language alone. This is an illustrative test design, not a claim about
+the failure of any particular model.
+
+## Run the Mini RTS Demo
+
+**WorldArena: Mini RTS** is the golden demo path: a compact, deterministic `rts-skirmish-v0`
+where Blue and Red begin with one worker, harvest persistent wood and ore nodes, return loads,
+unlock and arm the same three workers as militia, then fight at the bridge. The locked cinematic
+story ends with Blue pursuing the final Red fighter, destroying Red's tower and Town Hall, and
+celebrating a deterministic victory. The agents are credential-free Demo policies that use the
+same structured action boundary planned for future models; Godot remains the movement, combat,
+scoring, and replay authority.
+
+Start the local Controller Lab and choose **Run RTS Skirmish**. No API key or network connection is
+used. The public tactical broadcast is for the audience only; it is explicitly separate from each
+agent’s participant-visible observation.
+
+```bash
+# terminal 1, from the repository root
+.venv/bin/uvicorn genesis_arena.main:app --host 127.0.0.1 --port 8000
+
+# terminal 2
+cd dashboard && pnpm dev
+```
+
+Open the displayed local URL and click **Run RTS Skirmish**. The dashboard plays the sealed,
+authority-verified 150-second broadcast directly: it does not launch Godot, start a provider, or
+need an API key. Use the Timeline, Result, Evaluation, and Replay tabs to inspect the safe public
+story and verification metadata.
+
+## Run the Labyrinth Run Highlight
+
+Choose **Run Trio Maze Race** for the second cached highlight. Sol, Luna, and Terra receive three
+physically separate copies of the same 15×15 maze, move at the same speed, and decide only from
+their own relative passages, visible landmarks, recent events, and bounded private scratchpad.
+The fixed `maze-task-plan-v1` policies finish Sol → Terra → Luna at 44.8, 53.6, and 58.4 seconds.
+
+The 72-second native Godot broadcast labels the model-colour mapping throughout: Sol is gold
+(`demo-sol-v1`), Luna is purple (`demo-luna-v1`), and Terra is green (`demo-terra-v1`). Its final
+calling card explains why Sol won, while the dashboard Result and Evaluation tabs receive the
+same sealed finish time, distance, efficiency, visited/repeated-cell, dead-end, backtrack,
+collision, invalid-decision, and thinking-time metrics. Loading the highlight makes no provider
+or Godot call; the replay remains server-side and the browser receives only allow-listed public
+projections.
+
+### Labyrinth Run screenshots
+
+The repository keeps permanent captures in the
+[WorldArena screenshot collection](docs/screenshots/README.md).
+
+![Sol, Luna, and Terra racing identical labyrinths](docs/screenshots/worldarena-labyrinth-run-race.png)
+
+*The native broadcast shows all three private maze lanes, the persistent model-colour key, and
+live progress metrics.*
+
+![Sol's verified Labyrinth Run winner calling card](docs/screenshots/worldarena-labyrinth-run-winner.png)
+
+*The closing calling card records the podium and the authority-derived reason Sol won.*
+
+![Labyrinth Run winner card in the mobile Controller Lab](docs/screenshots/worldarena-labyrinth-run-dashboard-mobile.jpg)
+
+*The same key, rationale, and result remain available in the responsive Controller Lab.*
+
+### Credential-free embodied gameplay
+
+The **Demo provider (no API key)** is a deterministic mock LLM core, not a shortcut around the
+runtime. It receives the same participant-visible request shape as a future live adapter, returns
+raw strict JSON, and passes through the normal parser, schema validation, neutral fallback, Godot
+authority, evidence, evaluation, and replay paths. It makes no provider network call.
+
+| Family | Implemented gameplay |
+|---|---|
+| Solo curriculum | Orientation, Interaction, Construction, and Neutral Encounter |
+| Solo demonstrations | A continuous multi-action gather/carry/deposit/build showcase |
+| Solo control games | Movement Maze and Operator Action Course |
+| Two participant | Checkpoint Race, Relay Control, Sparring, Resource Relay, and Central Relay |
+| Three participant | Relay and Free-for-All with three cyclic Sol/Luna/Terra seat rotations |
+
+Godot advances authority at deterministic fixed ticks. Evaluated multiplayer accepts one joint
+10-tick window; missing, invalid, stale, or timed-out input becomes recorded neutral progress and
+cannot stall the game. Public evaluation is derived from sealed authority evidence rather than an
+LLM judge. Browser routes expose participant pixels and allow-listed aggregates only—never prompts,
+raw mock/model output, credentials, hidden state, private checkpoints, or spectator data.
 
 ## How a match works
 
@@ -141,6 +228,7 @@ Requirements:
 
 - Python 3.9+
 - Godot 4.5 stable or a compatible Godot 4 build
+- FFmpeg for saved native replay and export (`brew install ffmpeg` on macOS)
 - macOS for the included double-click launcher; the Python backend and Godot project are portable
 
 From the repository root:
@@ -149,9 +237,10 @@ From the repository root:
 ./run_worldarena.command
 ```
 
-Leave the API-key field blank for the deterministic, no-cost demo policy. For live runs, enter an
-API key in the setup screen and configure each Commander independently. The key remains in process
-memory and is not written to source, logs, replays, or `.env`.
+Choose **Demo (no API key)** in Setup and select a solo, duo, or trio task. Demo policies are local,
+deterministic, and non-certifying. Live adapters remain available for later opt-in experiments;
+their keys stay in backend process memory and are never written to source, logs, replays, `.env`,
+or Godot.
 
 To start the processes manually:
 
@@ -165,20 +254,38 @@ genesis-arena
 The installed Python commands temporarily retain their legacy `genesis-*` names for compatibility;
 see [`docs/NAMING.md`](docs/NAMING.md).
 
-Then, in another terminal:
+Open <http://127.0.0.1:8000/>. The managed episode/series service starts the appropriate versioned
+Godot authority. To inspect the Godot project separately:
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot --path godot
 ```
 
-The Arena uses `ws://127.0.0.1:8000/ws/arena`. The preserved survival prototype uses `/ws/world`.
+The browser preview is presentation-only: a newest-frame-only participant JPEG stream is separated
+from decisions and replay, while verified PNG snapshots remain the reliability fallback.
 
-## Export the 90-second demo
+## Native replay and video
 
-Double-click `render_highlight_replay.command` in Finder. It renders the deterministic showcase,
-directs the camera toward exploration, negotiation, and battle moments, then writes an
-upload-ready 1920×1080 H.264 MP4 to `exports/`. The first export may download a project-local
-encoder into the ignored `.video-tools/` folder; it never uploads footage or reads API keys.
+Completed Controller Lab runs are sealed before native playback is produced. The replay archive
+selects the Movie Maker verifier for `llm-controller/0.1.0`, `0.2.0`, or `0.3.0`, reconstructs only
+the selected participant view at 30 FPS, and invokes local FFmpeg for H.264/yuv420p output with
+`+faststart`. Install FFmpeg first; native replay is reported unavailable when it is not configured,
+while evidence and deterministic verification remain usable.
+
+The existing MVP renderer can also render verified embodiment replay inputs directly:
+
+```bash
+.venv/bin/python scripts/render_embodiment_mvp_demo.py --help
+```
+
+Local run bundles and exported video remain ignored. Upload and Pages video IDs require explicit
+user authorization. Native embodiment video uses Godot Movie Maker plus FFmpeg—never Remotion.
+
+The older Arena highlight command remains a separate presentation path:
+
+```bash
+./render_highlight_replay.command
+```
 
 See [`docs/HIGHLIGHT_EXPORT.md`](docs/HIGHLIGHT_EXPORT.md) for the command-line options.
 
@@ -191,9 +298,7 @@ negotiation, Crown clash, and reversal beats visible without requiring a local r
 
 ## Verify
 
-For the fast default pass, use the fixed scripted policy. It makes no model calls and exercises the
-Python contracts, persistent task timings, conquest rules, offline controller, and a short real
-replay bundle:
+For the older Arena fast pass, use its fixed scripted policy:
 
 ```bash
 ./run_fast_deterministic_tests.command
@@ -207,6 +312,25 @@ Run the Python contract, concurrency, privacy, scoring, and scheduling tests:
 ```bash
 .venv/bin/pytest -q
 ```
+
+Run the focused embodiment and frozen Duel suites, then validate both dashboard builds:
+
+```bash
+.venv/bin/pytest -q tests/embodiment
+.venv/bin/pytest -q tests/duel
+
+cd dashboard
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm test
+pnpm typecheck
+pnpm build
+pnpm build:pages
+```
+
+The Pages build uses the `/WorldArena/` base. Optional repository variables
+`YOUTUBE_SOLO_ID`, `YOUTUBE_DUEL_ID`, and `YOUTUBE_TRIO_ID` enable privacy-enhanced YouTube
+facades only after a visitor presses play. Without them, all three local poster fallbacks remain.
 
 Run the deterministic simulation and the credential-free controller loop:
 
@@ -231,15 +355,15 @@ genesis-season-schedule docs/season-spec.example.json runs/season-schedule.json
 ## Architecture
 
 ```text
-LLM Commanders / deterministic demo policy
+Live adapters (optional) / deterministic Demo provider (no key)
                  ↓
-WorldEval / FastAPI: isolation · validation · budgets · commit/reveal · artifacts
-                 ↓  world-arena/0.4
-WorldArena / Godot: semantic/vision tracks · task receipts · verification
+WorldEval / FastAPI: isolation · strict JSON · budgets · neutral fallback · safe projections
+                 ↓  llm-controller/0.1.0 · 0.2.0 · 0.3.0
+WorldArena / Godot: sole authority · participant observations · receipts · checkpoints
                  ↓
-Deterministic simulation: tick work · fog · research · fortification · siege · conquest
+Solo / fixed-window duo / fixed-window trio simulation
                  ↓
-Presentation-only 3D world · HUD · replay · evidence podium
+Participant-only preview · authority evaluation · verified native replay
 ```
 
 Only the deterministic simulation changes world state. Python may reject malformed output but
@@ -249,6 +373,10 @@ cannot award territory, resources, damage, or victory.
 
 | Path | Purpose |
 |---|---|
+| [`backend/genesis_arena/embodiment/`](backend/genesis_arena/embodiment/) | Demo/live provider boundary, managed runtimes, safe evaluation, and replay archives |
+| [`godot/scripts/embodiment/`](godot/scripts/embodiment/) | Solo, duo, and trio authority plus participant presentation and versioned replay |
+| [`game/embodiment_protocol_packages/`](game/embodiment_protocol_packages/) | Immutable additive `llm-controller` protocol packages and registry |
+| [`dashboard/`](dashboard/) | Local Controller Lab and `/WorldArena/` GitHub Pages site |
 | [`backend/genesis_arena/arena/`](backend/genesis_arena/arena/) | Protocol, runtime, artifacts, evaluator, and season scheduler |
 | [`godot/scripts/arena/`](godot/scripts/arena/) | Authoritative simulation, controller, and presentation |
 | [`godot/data/arena/`](godot/data/arena/) | Versioned map and benchmark contract |

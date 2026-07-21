@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/multi-participant-step-result.v1.schema.json",
+  "title": "LLM Controller multi-participant step result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observations", "receipts", "public_events", "state_hash", "terminal"],
+  "properties": {
+    "observations": {"$ref": "https://worldeval.local/llm-controller/0.2.0/multi-participant-step-result.v1.schema.json#/$defs/observations"},
+    "receipts": {"$ref": "https://worldeval.local/llm-controller/0.2.0/multi-participant-step-result.v1.schema.json#/$defs/receipts"},
+    "public_events": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "https://worldeval.local/llm-controller/0.2.0/authority-event.v1.schema.json"}
+    },
+    "state_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal": {"$ref": "https://worldeval.local/llm-controller/0.2.0/multi-participant-step-result.v1.schema.json#/$defs/terminal"}
+  },
+  "$defs": {
+    "observations": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2,
+      "propertyNames": {"pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "additionalProperties": {"$ref": "https://worldeval.local/llm-controller/0.2.0/observation.v1.schema.json"}
+    },
+    "receipts": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2,
+      "propertyNames": {"pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "additionalProperties": {"$ref": "https://worldeval.local/llm-controller/0.2.0/action-receipt.v1.schema.json"}
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ended", "outcome", "reason"],
+      "properties": {
+        "ended": {"type": "boolean"},
+        "outcome": {"enum": ["running", "success", "failure", "win", "loss", "draw", "void"]},
+        "reason": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
+      }
+    }
+  }
+}

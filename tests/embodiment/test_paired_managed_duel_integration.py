@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import json
 import secrets
 import socket
@@ -24,6 +26,7 @@ from genesis_arena.embodiment.duel import (
     VerifiedManagedDuelSession,
     run_paired_duel_with_reruns,
 )
+from genesis_arena.embodiment.duel.demo_provider import build_demo_duel_provider
 from genesis_arena.embodiment.duel.evidence import (
     DuelSeriesEvidenceBundle,
     verify_offline_paired_duel,
@@ -161,7 +164,7 @@ class _VoidFirstLegSession:
 
 @pytest.mark.skipif(not GODOT.is_file(), reason="pinned local Godot build is unavailable")
 @pytest.mark.asyncio
-@pytest.mark.parametrize("second_provider", ["scripted", "anthropic"])
+@pytest.mark.parametrize("second_provider", ["scripted", "anthropic", "demo"])
 async def test_verified_managed_two_leg_series(second_provider: str) -> None:
     endpoint = ManagedWebSocketEndpoint()
     app = FastAPI()
@@ -248,16 +251,35 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
     async def provider_factory(entrant, _plan):
         if entrant.provider == "scripted":
             return ScriptedBaselineAdapter(entrant.model)
+        if entrant.provider == "demo":
+            assignment = next(
+                value for value in _plan.assignments if value.entrant_id == entrant.entrant_id
+            )
+            return build_demo_duel_provider(
+                model=entrant.model,
+                participant_id=assignment.participant_id,
+                seed=_plan.seed,
+                decision_budget=180,
+            )
         if second_provider == "scripted":
             return _NeutralProvider(entrant.provider)
         return _SeatLocalProvider(entrant.provider, permuted=permuted)
 
+    first_provider = "demo" if second_provider == "demo" else "openai"
+    first_model = "duelist-alpha-v1" if second_provider == "demo" else "model-a"
+    second_model = (
+        "duelist-bravo-v1"
+        if second_provider == "demo"
+        else "balanced-v1"
+        if second_provider == "scripted"
+        else "model-b"
+    )
     entrants = (
-        DuelEntrant("entrant_a", "openai", "model-a"),
+        DuelEntrant("entrant_a", first_provider, first_model),
         DuelEntrant(
             "entrant_b",
             second_provider,
-            "balanced-v1" if second_provider == "scripted" else "model-b",
+            second_model,
         ),
     )
     fairness_lock = SeriesLock(
@@ -270,13 +292,19 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
         projector_sha256="5" * 64,
         evaluator_sha256="6" * 64,
         entrants=(
-            ModelLock("entrant_a", "openai", "7" * 64, "model-a", "medium"),
+            ModelLock(
+                "entrant_a",
+                first_provider,
+                "7" * 64,
+                first_model,
+                "deterministic" if first_provider == "demo" else "medium",
+            ),
             ModelLock(
                 "entrant_b",
                 second_provider,
                 "8" * 64,
-                "balanced-v1" if second_provider == "scripted" else "model-b",
-                "deterministic" if second_provider == "scripted" else "none",
+                second_model,
+                "deterministic" if second_provider in ("scripted", "demo") else "none",
             ),
         ),
         max_input_bytes=8_388_608,
@@ -307,6 +335,10 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
     )
     try:
         attempt_plans = []
+        participant_frames = []
+
+        async def participant_frame_sink(leg_index, participant_id, observation_seq, png):
+            participant_frames.append((leg_index, participant_id, observation_seq, png))
 
         def scheduler_factory(attempt_plan):
             attempt_plans.append(attempt_plan)
@@ -316,6 +348,7 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
                 provider_factory=provider_factory,
                 protocol_package=package,
                 require_verified_evidence=True,
+                participant_frame_sink=participant_frame_sink,
             )
 
         execution = await run_paired_duel_with_reruns(
@@ -329,20 +362,30 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
             assert result.entrant_wins == (0, 2)
             assert result.draws == 0
             assert result.winner_entrant_id == "entrant_b"
-        else:
+        elif second_provider == "anthropic":
             assert result.entrant_wins == (1, 1)
             assert result.draws == 0
             assert result.winner_entrant_id is None
+        else:
+            assert sum(result.entrant_wins) + result.draws == 2
         assert all(leg.verification.complete for leg in result.legs)
         assert all(leg.verification.verified for leg in result.legs)
+        assert {value[1] for value in participant_frames} == {
+            "participant_0", "participant_1"
+        }
+        assert {value[0] for value in participant_frames} >= {0, 1}
+        assert all(value[3].startswith(b"\x89PNG\r\n\x1a\n") for value in participant_frames)
         expected_windows = 14 if second_provider == "scripted" else 13
-        assert all(leg.windows == expected_windows for leg in result.legs)
+        if second_provider != "demo":
+            assert all(leg.windows == expected_windows for leg in result.legs)
         assert execution.evidence is not None
         public = DuelSeriesEvidenceBundle.verify(execution.evidence.public.bundle_bytes)
         protected = DuelSeriesEvidenceBundle.verify(execution.evidence.protected.bundle_bytes)
         assert public.fairness_lock_sha256 == protected.fairness_lock_sha256
         assert public.plan_sha256 == protected.plan_sha256 == result.plan_sha256
         assert len(public.legs) == len(protected.legs) == 2
+        assert b"frame_png_base64" not in public.bundle_bytes
+        assert b"observation_json_base64" not in public.bundle_bytes
         for leg in public.legs:
             evaluation = strict_json_loads(leg.read("evaluation"))
             assert evaluation["scope"] == "paired_duel_leg"
@@ -353,7 +396,8 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
         for leg in protected.legs:
             metadata = strict_json_loads(leg.read("telemetry"))
             audits = metadata["provider_audits"]
-            assert len(audits) == expected_windows * 2
+            leg_index = protected.legs.index(leg)
+            assert len(audits) == result.legs[leg_index].windows * 2
             assert {audit["request"]["participant_id"] for audit in audits} == {
                 "participant_0",
                 "participant_1",
@@ -370,6 +414,18 @@ async def test_verified_managed_two_leg_series(second_provider: str) -> None:
                 }
                 for audit in audits
             )
+            for audit in audits:
+                request = audit["request"]
+                observation = json.loads(
+                    base64.b64decode(request["observation_json_base64"])
+                )
+                frame = base64.b64decode(request["frame_png_base64"])
+                participant_id = request["participant_id"]
+                assert observation["frame"]["transport_ref"].startswith(
+                    f"frame:{participant_id}."
+                )
+                assert observation["frame"]["sha256"] == hashlib.sha256(frame).hexdigest()
+                assert frame.startswith(b"\x89PNG\r\n\x1a\n")
             lowered = leg.read("telemetry").lower()
             assert b"api_key" not in lowered
             assert b"authorization" not in lowered

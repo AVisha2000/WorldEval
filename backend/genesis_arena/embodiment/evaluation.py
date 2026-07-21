@@ -46,8 +46,17 @@ def evaluate_solo_replay(
     telemetry_records: Sequence[Mapping[str, Any]] = (),
     *,
     replay_verified: bool,
+    scenario_id: str | None = None,
+    evaluation_profile_id: str | None = None,
 ) -> Mapping[str, Any]:
     """Evaluate one verified solo replay without consulting prompts, prose, or UI state."""
+
+    if (scenario_id is None) != (evaluation_profile_id is None):
+        raise ValueError("solo evaluation identity is incomplete")
+    if scenario_id == "multi-action-demo-v0":
+        if evaluation_profile_id != "solo-multi-action-showcase-v1":
+            raise ValueError("multi-action evaluation profile differs")
+        validate_multi_action_showcase_replay(replay)
 
     receipts = _participant_receipts(replay)
     events = _events(replay)
@@ -67,7 +76,7 @@ def evaluate_solo_replay(
     repeated_windows, longest_run = _repeated_true_runs(ineffective)
     latency, tokens = _provider_efficiency(telemetry_records)
     terminal = replay["final_terminal"]
-    return {
+    value: dict[str, Any] = {
         "schema_version": EVALUATION_SCHEMA_VERSION,
         "scope": "solo",
         "metrics": {
@@ -112,6 +121,88 @@ def evaluate_solo_replay(
             "deterministic_replay_verification": _supported(replay_verified),
         },
     }
+    if scenario_id is not None and evaluation_profile_id is not None:
+        value["scenario_id"] = scenario_id
+        value["evaluation_profile_id"] = evaluation_profile_id
+    return value
+
+
+def validate_multi_action_showcase_replay(replay: Mapping[str, Any]) -> None:
+    """Reject a showcase claim unless sealed authority proves its full visible sequence."""
+
+    completion_tick = _completion_tick(replay)
+    terminal = replay.get("final_terminal")
+    if not 900 <= completion_tick <= 1_200:
+        raise ValueError("multi-action completion tick is outside the profile")
+    if not isinstance(terminal, Mapping) or terminal.get("outcome") != "success":
+        raise ValueError("multi-action terminal outcome is not success")
+
+    turn_step: int | None = None
+    walk_step: int | None = None
+    milestones: dict[str, int] = {}
+    required = (
+        "resource_gathered",
+        "material_deposited",
+        "barricade_completed",
+        "episode_succeeded",
+    )
+    participant_id = str(replay["config"]["participant_ids"][0])
+    for step_index, step in enumerate(replay["steps"]):
+        receipt = step["result"]["receipts"][participant_id]
+        decision = step["decision_window"]["decisions"][participant_id]
+        if receipt.get("accepted") is True:
+            effects = receipt.get("effects")
+            if isinstance(effects, list):
+                if turn_step is None and any(
+                    effect.get("kind") == "heading_steps"
+                    and _integer(effect.get("value"))
+                    and int(effect["value"]) > 0
+                    for effect in effects
+                    if isinstance(effect, Mapping)
+                ):
+                    turn_step = step_index
+                if walk_step is None and any(
+                    effect.get("kind") == "distance_moved_mt"
+                    and _integer(effect.get("value"))
+                    and int(effect["value"]) > 0
+                    for effect in effects
+                    if isinstance(effect, Mapping)
+                ):
+                    walk_step = step_index
+            control = _decision_control(decision)
+            if (
+                turn_step is None
+                and control is not None
+                and _integer(control.get("look_x"))
+                and int(control["look_x"]) != 0
+            ):
+                turn_step = step_index
+            if walk_step is None and control is not None and any(
+                _integer(control.get(axis)) and int(control[axis]) != 0
+                for axis in ("move_x", "move_y")
+            ):
+                walk_step = step_index
+        for event in step["result"]["public_events"]:
+            kind = event.get("kind") if isinstance(event, Mapping) else None
+            if isinstance(kind, str) and kind in required and kind not in milestones:
+                milestones[kind] = step_index
+
+    if turn_step is None or walk_step is None:
+        raise ValueError("multi-action turn/walk evidence is missing")
+    if any(kind not in milestones for kind in required):
+        raise ValueError("multi-action milestone evidence is incomplete")
+    ordered = [milestones[kind] for kind in required]
+    # Construction authority emits `barricade_completed` and terminal `episode_succeeded` from
+    # the same final authoritative step. Gather and deposit must still precede completion, while
+    # success may be co-ticked with (or follow) the completed barricade. The fixed map begins with
+    # the resource already ahead, so its first required turn occurs while carrying the gathered
+    # load toward the relay; walking must nevertheless begin before that first gather.
+    if not (
+        ordered[0] < ordered[1] < ordered[2] <= ordered[3]
+        and turn_step <= ordered[1]
+        and walk_step <= ordered[0]
+    ):
+        raise ValueError("multi-action milestone evidence is out of order")
 
 
 def evaluate_paired_duel_replays(
@@ -361,10 +452,18 @@ def _codes(receipt: Mapping[str, Any]) -> set[str]:
 
 
 def _control_fingerprint(decision: Mapping[str, Any]) -> bytes:
-    action = decision.get("action")
-    if not isinstance(action, Mapping) or not isinstance(action.get("control"), Mapping):
+    control = _decision_control(decision)
+    if control is None:
         return b"no_input"
-    return canonical_json_bytes(action["control"])
+    return canonical_json_bytes(control)
+
+
+def _decision_control(decision: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    action = decision.get("action")
+    if not isinstance(action, Mapping):
+        return None
+    control = action.get("control")
+    return control if isinstance(control, Mapping) else None
 
 
 def _idle_decision(decision: Mapping[str, Any]) -> bool:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+import genesis_arena.embodiment.duel.archive as archive_module
 import genesis_arena.embodiment.duel.service as service_module
 import pytest
 from genesis_arena.embodiment.artifacts import (
@@ -19,6 +20,7 @@ from genesis_arena.embodiment.duel import (
     PairedDuelPlan,
     aggregate_verified_pair,
 )
+from genesis_arena.embodiment.duel.archive import DuelSeriesArchive
 from genesis_arena.embodiment.duel.evidence import (
     DuelSeriesEvidenceBundle,
     DuelSeriesExecution,
@@ -29,10 +31,13 @@ from genesis_arena.embodiment.duel.service import (
     DuelSeriesEvidenceNotReadyError,
     DuelSeriesService,
 )
+from genesis_arena.embodiment.evaluation import EVALUATION_SCHEMA_VERSION
 from genesis_arena.embodiment.series import ModelLock, SeriesLock
 
 
-def _execution(series_id: str, *, valid: bool = True) -> DuelSeriesExecution:
+def _execution(
+    series_id: str, *, valid: bool = True, certification_eligible: bool = True
+) -> DuelSeriesExecution:
     entrants = (
         DuelEntrant("entrant_0", "openai", "model-a"),
         DuelEntrant("entrant_1", "anthropic", "model-b"),
@@ -88,12 +93,63 @@ def _execution(series_id: str, *, valid: bool = True) -> DuelSeriesExecution:
     result = aggregate_verified_pair(plan, (leg_results[0], leg_results[1]))
     if not valid:
         return DuelSeriesExecution(result, None)
-    public_legs = tuple(
-        EpisodeArtifactBundle.create(
-            PUBLIC_LAYER, (EpisodeArtifact.json("evaluation", {"leg_index": index}),)
+    public_legs = []
+    for index in (0, 1):
+        leg = plan.legs[index]
+        terminal = {"ended": True, "outcome": "draw", "reason": "time_limit"}
+        receipt = {
+            "accepted": True,
+            "action_id": f"action_{index}",
+            "applied_ticks": 10,
+            "disposition": "accepted",
+            "fallback": "none",
+            "no_input_reason": None,
+        }
+        public_legs.append(
+            EpisodeArtifactBundle.create(
+                PUBLIC_LAYER,
+                (
+                    EpisodeArtifact.json(
+                        "evaluation", _paired_evaluation(index, leg.assignments)
+                    ),
+                    EpisodeArtifact.json("public_events", []),
+                    EpisodeArtifact.json(
+                        "receipts",
+                        [
+                            {
+                                "observation_seq": 0,
+                                "participants": {
+                                    "participant_0": receipt,
+                                    "participant_1": {
+                                        **receipt,
+                                        "action_id": f"peer_action_{index}",
+                                    },
+                                },
+                            }
+                        ],
+                    ),
+                    EpisodeArtifact.json(
+                        "replay_summary",
+                        {
+                            "call_settings": plan.settings.as_dict(),
+                            "certification": {
+                                "eligible": certification_eligible,
+                                "reason": None
+                                if certification_eligible
+                                else "demo_provider",
+                            },
+                            "episode_id": leg.episode_id,
+                            "fairness_lock": plan.fairness_lock.as_dict(),
+                            "final_state_hash": (
+                                leg_results[index].verification.terminal_state_sha256
+                            ),
+                            "leg_plan": leg.as_dict(),
+                            "terminal": terminal,
+                        },
+                    ),
+                ),
+            )
         )
-        for index in (0, 1)
-    )
     protected_legs = tuple(
         EpisodeArtifactBundle.create(PROTECTED_LAYER, (EpisodeArtifact.json("observations", []),))
         for _ in (0, 1)
@@ -113,6 +169,72 @@ def _execution(series_id: str, *, valid: bool = True) -> DuelSeriesExecution:
         legs=(protected_legs[0], protected_legs[1]),
     )
     return DuelSeriesExecution(result, PairedDuelEvidence(public, protected))
+
+
+def _paired_evaluation(index, assignments):
+    unavailable = {"reason": "provider_telemetry_not_recorded", "status": "unsupported"}
+    ratio = {"basis_points": 10_000, "denominator": 1, "numerator": 1}
+    entrant = {
+        "action_validity": ratio,
+        "damage_dealt": 0,
+        "damage_taken": 0,
+        "guard_efficiency": {"basis_points": 0, "denominator": 0, "numerator": 0},
+        "idle_ticks": 0,
+        "objective_control_ticks": 0,
+        "oscillation": 0,
+        "provider_latency_efficiency": unavailable,
+        "provider_token_efficiency": unavailable,
+        "total_actions": 1,
+        "valid_actions": 1,
+    }
+    participant_by_entrant = {
+        assignment.entrant_id: assignment.participant_id for assignment in assignments
+    }
+    aggregate = {
+        "damage_dealt": 0,
+        "damage_taken": 0,
+        "draws": 2,
+        "idle_ticks": 0,
+        "losses": 0,
+        "objective_control_ticks": 0,
+        "valid_action_rate": ratio,
+        "wins": 0,
+    }
+    def supported(value):
+        return {"status": "supported", "value": value}
+
+    def unsupported(reason):
+        return {"reason": reason, "status": "unsupported"}
+    return {
+        "entrants": {
+            entrant_id: {**entrant, "participant_id": participant_by_entrant[entrant_id]}
+            for entrant_id in ("entrant_0", "entrant_1")
+        },
+        "leg_index": index,
+        "metrics": {
+            "adaptation_after_losing_exchange": unsupported(
+                "exchange_loss_boundary_not_typed"
+            ),
+            "deterministic_replay_verification": supported(True),
+            "disengagement_success": unsupported("disengagement_outcome_not_typed"),
+            "positional_advantage": unsupported("exact_positions_not_in_public_replay"),
+        },
+        "pair_metrics": {
+            "deterministic_replay_verification": supported(True),
+            "series_result": supported(
+                {
+                    "draws": 2,
+                    "entrant_wins": {"entrant_0": 0, "entrant_1": 0},
+                    "winner_entrant_id": None,
+                }
+            ),
+            "side_normalized_performance": supported(
+                {"entrant_0": aggregate, "entrant_1": aggregate}
+            ),
+        },
+        "schema_version": EVALUATION_SCHEMA_VERSION,
+        "scope": "paired_duel_leg",
+    }
 
 
 @pytest.mark.asyncio
@@ -201,6 +323,106 @@ async def test_scripted_entrant_shape_and_cardinality_fail_closed() -> None:
             seed=1,
         )
     assert not service._records
+    await service.aclose()
+
+
+@pytest.mark.asyncio
+async def test_demo_series_requires_exactly_two_keyless_policies_and_is_non_certifying() -> None:
+    captured = {}
+
+    async def execute(spec, credentials, cancel_event):
+        del cancel_event
+        captured["spec"] = spec
+        captured["credentials"] = credentials
+        raise RuntimeError("stop after demo boundary inspection")
+
+    service = DuelSeriesService(execute)
+    created = await service.create(
+        entrants=(
+            {"provider": "demo", "model": "duelist-alpha-v1"},
+            {"provider": "demo", "model": "duelist-bravo-v1"},
+        ),
+        seed=19,
+        max_live_provider_calls=12,
+    )
+    while (await service.status(created["series_id"]))["state"] != "failed":
+        await asyncio.sleep(0)
+
+    assert captured["credentials"] == {}
+    assert captured["spec"].is_demo is True
+    assert captured["spec"].mode == "model-duel-v0"
+    assert created["config"]["certification"] == {
+        "eligible": False,
+        "reason": "demo_provider",
+    }
+    assert "api_key" not in repr(created)
+
+    live = {"provider": "openai", "model": "model-a", "api_key": "key"}
+    for invalid in (
+        (
+            {"provider": "demo", "model": "duelist-alpha-v1"},
+            live,
+        ),
+        (
+            {"provider": "demo", "model": "duelist-alpha-v1", "api_key": "forbidden"},
+            {"provider": "demo", "model": "duelist-bravo-v1"},
+        ),
+        (
+            {"provider": "demo", "model": "unknown-v1"},
+            {"provider": "demo", "model": "duelist-bravo-v1"},
+        ),
+    ):
+        with pytest.raises(ValueError):
+            await service.create(entrants=invalid, seed=19)
+    await service.aclose()
+
+
+@pytest.mark.asyncio
+async def test_demo_series_exposes_only_safe_non_certifying_timeline_and_evaluation() -> None:
+    async def execute(spec, credentials, cancel_event):
+        assert credentials == {}
+        del cancel_event
+        return _execution(spec.series_id, certification_eligible=False)
+
+    service = DuelSeriesService(execute)
+    created = await service.create(
+        entrants=(
+            {"provider": "demo", "model": "duelist-alpha-v1"},
+            {"provider": "demo", "model": "duelist-bravo-v1"},
+        ),
+        seed=19,
+    )
+    while (await service.status(created["series_id"]))["state"] != "completed":
+        await asyncio.sleep(0)
+
+    evaluation = await service.evaluation(created["series_id"])
+    timeline = await service.timeline(created["series_id"])
+    assert evaluation["certification"] == {
+        "eligible": False,
+        "reason": "demo_provider",
+    }
+    assert len(evaluation["legs"]) == len(timeline["legs"]) == 2
+    assert all(leg["run"]["certification_eligible"] is False for leg in evaluation["legs"])
+    assert all(leg["scope"] == "paired_duel_leg" for leg in evaluation["legs"])
+    assert set(timeline["legs"][0]["receipts"][0]["participants"]["participant_0"]) == {
+        "accepted",
+        "action_id",
+        "applied_ticks",
+        "disposition",
+        "fallback",
+        "no_input_reason",
+    }
+    public_text = repr((evaluation, timeline)).lower()
+    for forbidden in (
+        "observation_json",
+        "frame_png",
+        "system_prompt",
+        "raw_output",
+        "api_key",
+        "credential",
+        "spectator",
+    ):
+        assert forbidden not in public_text
     await service.aclose()
 
 
@@ -379,3 +601,161 @@ async def test_cancellation_during_a_rerun_closes_credentials_and_stays_cancelle
     with pytest.raises(DuelSeriesEvidenceNotReadyError):
         await service.replay(created["series_id"])
     await service.aclose()
+
+
+@pytest.mark.asyncio
+async def test_completed_demo_pair_is_durable_and_public_routes_survive_service_restart(
+    tmp_path,
+) -> None:
+    archive = DuelSeriesArchive(tmp_path)
+
+    async def execute(spec, credentials, cancel_event):
+        assert credentials == {}
+        del cancel_event
+        return _execution(spec.series_id, certification_eligible=False)
+
+    service = DuelSeriesService(execute, archive=archive)
+    created = await service.create(
+        entrants=(
+            {"provider": "demo", "model": "duelist-alpha-v1"},
+            {"provider": "demo", "model": "duelist-bravo-v1"},
+        ),
+        seed=7,
+    )
+    series_id = created["series_id"]
+    while (await service.status(series_id))["state"] != "completed":
+        await asyncio.sleep(0)
+    status = await service.status(series_id)
+    while status["archive"]["evidence"]["state"] == "saving":
+        await asyncio.sleep(0)
+        status = await service.status(series_id)
+    assert status["archive"]["evidence"]["state"] == "ready"
+    assert status["archive"]["native_replay"] == {
+        "state": "unavailable",
+        "reason": "participant_video_not_configured",
+    }
+    await service.aclose()
+
+    async def must_not_execute(*args):
+        raise AssertionError(args)
+
+    restarted = DuelSeriesService(must_not_execute, archive=archive)
+    replay = await restarted.replay(series_id)
+    evaluation = await restarted.evaluation(series_id)
+    timeline = await restarted.timeline(series_id)
+    archived = await restarted.archive_status(series_id)
+    assert replay.series_id == evaluation["series_id"] == timeline["series_id"] == series_id
+    assert archived["evidence"]["state"] == "ready"
+    assert not any(
+        forbidden in repr((evaluation, timeline, archived)).lower()
+        for forbidden in (
+            "api_key", "credential", "observation_json", "frame_png",
+            "system_prompt", "raw_output", "spectator",
+        )
+    )
+    assert not (tmp_path / "embodiment-duel-series" / series_id / "protected.bundle.json").exists()
+    await restarted.aclose()
+
+
+def test_paired_archive_renders_four_verified_participant_videos_without_retaining_authority(
+    tmp_path, monkeypatch
+) -> None:
+    execution = _execution("series_native", certification_eligible=False)
+    assert execution.evidence is not None
+    calls = []
+
+    def fake_render(**kwargs):
+        calls.append((kwargs["participant_id"], kwargs["replay_path"].name))
+        kwargs["output_path"].write_bytes(b"native-participant-mp4" * 128)
+
+    monkeypatch.setattr(archive_module, "_render_participant_mp4", fake_render)
+    archive = DuelSeriesArchive(
+        tmp_path,
+        godot_executable=tmp_path / "godot",
+        godot_project_path=tmp_path / "project",
+        ffmpeg_executable=tmp_path / "ffmpeg",
+    )
+    protected = DuelSeriesEvidenceBundle.create(
+        layer=PROTECTED_LAYER,
+        series_id="series_native",
+        plan_sha256=execution.evidence.public.plan_sha256,
+        fairness_lock_sha256=execution.evidence.public.fairness_lock_sha256,
+        legs=(
+            EpisodeArtifactBundle.create(
+                PROTECTED_LAYER,
+                (EpisodeArtifact("authority_replay", "application/json", b"{}"),),
+            ),
+            EpisodeArtifactBundle.create(
+                PROTECTED_LAYER,
+                (EpisodeArtifact("authority_replay", "application/json", b"{}"),),
+            ),
+        ),
+    )
+    saved = archive.save(
+        execution.evidence.public,
+        evaluation={"series_id": "series_native", "legs": []},
+        timeline={"series_id": "series_native", "legs": []},
+        protected_bundle=protected,
+    )
+
+    assert len(saved.videos) == 4
+    assert {(video.leg_index, video.participant_id) for video in saved.videos} == {
+        (0, "participant_0"), (0, "participant_1"),
+        (1, "participant_0"), (1, "participant_1"),
+    }
+    assert len(calls) == 4
+    assert archive.video_path("series_native", 1, "participant_1").is_file()
+    directory = tmp_path / "embodiment-duel-series" / "series_native"
+    assert not tuple(directory.glob("*.replay.json"))
+    assert not (directory / "protected.bundle.json").exists()
+    public = saved.public_dict()
+    assert public["native_replay"]["state"] == "ready"
+    assert len(public["native_replay"]["artifacts"]) == 4
+
+
+def test_paired_archive_dispatches_v2_native_rendering_for_every_leg_and_seat(
+    tmp_path, monkeypatch
+) -> None:
+    execution = _execution("series_native_v2", certification_eligible=False)
+    assert execution.evidence is not None
+    calls = []
+
+    def fake_render(**kwargs):
+        calls.append((kwargs["protocol_version"], kwargs["participant_id"]))
+        kwargs["output_path"].write_bytes(b"native-v2-participant-mp4" * 128)
+
+    monkeypatch.setattr(archive_module, "_render_participant_mp4", fake_render)
+    archive = DuelSeriesArchive(
+        tmp_path,
+        godot_executable=tmp_path / "godot",
+        godot_project_path=tmp_path / "project",
+        ffmpeg_executable=tmp_path / "ffmpeg",
+    )
+    replay = b'{"protocol_version":"llm-controller/0.2.0"}'
+    protected = DuelSeriesEvidenceBundle.create(
+        layer=PROTECTED_LAYER,
+        series_id="series_native_v2",
+        plan_sha256=execution.evidence.public.plan_sha256,
+        fairness_lock_sha256=execution.evidence.public.fairness_lock_sha256,
+        legs=tuple(
+            EpisodeArtifactBundle.create(
+                PROTECTED_LAYER,
+                (EpisodeArtifact("authority_replay", "application/json", replay),),
+            )
+            for _ in (0, 1)
+        ),
+    )
+    saved = archive.save(
+        execution.evidence.public,
+        evaluation={"series_id": "series_native_v2", "legs": []},
+        timeline={"series_id": "series_native_v2", "legs": []},
+        protected_bundle=protected,
+    )
+
+    assert len(saved.videos) == 4
+    assert calls == [
+        ("llm-controller/0.2.0", "participant_0"),
+        ("llm-controller/0.2.0", "participant_1"),
+        ("llm-controller/0.2.0", "participant_0"),
+        ("llm-controller/0.2.0", "participant_1"),
+    ]

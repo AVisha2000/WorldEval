@@ -1,5 +1,11 @@
 """Symmetric paired-series orchestration for embodiment model duels."""
 
+from .archive import (
+    ArchivedDuelSeries,
+    ArchivedDuelVideo,
+    DuelSeriesArchive,
+    DuelSeriesArchiveError,
+)
 from .contracts import (
     DuelCallSettings,
     DuelEntrant,
@@ -11,6 +17,7 @@ from .contracts import (
     SeatAssignment,
     aggregate_verified_pair,
 )
+from .demo_provider import DEMO_DUEL_POLICIES, build_demo_duel_provider
 from .evidence import (
     DuelSeriesEvidenceBundle,
     DuelSeriesExecution,
@@ -19,6 +26,7 @@ from .evidence import (
     verify_offline_paired_duel,
 )
 from .managed import VerifiedManagedDuelSession
+from .participant_frames import DuelParticipantFrameSnapshot, DuelParticipantFrameStore
 from .scheduler import (
     MAX_PAIR_ATTEMPTS,
     AsyncDuelSession,
@@ -33,14 +41,21 @@ from .scheduler import (
 )
 
 __all__ = [
+    "ArchivedDuelSeries",
+    "ArchivedDuelVideo",
+    "DuelSeriesArchive",
+    "DuelSeriesArchiveError",
     "AsyncDuelSession",
     "DuelCallSettings",
+    "DEMO_DUEL_POLICIES",
     "DuelEntrant",
     "DuelLegPlan",
     "DuelLegResult",
     "DuelLegVerification",
     "DuelSeriesEvidenceBundle",
     "DuelSeriesExecution",
+    "DuelParticipantFrameSnapshot",
+    "DuelParticipantFrameStore",
     "LiveProviderCallBudget",
     "LiveProviderCallBudgetExceeded",
     "MAX_PAIR_ATTEMPTS",
@@ -55,6 +70,7 @@ __all__ = [
     "VerifiedManagedDuelSession",
     "VerifiedLegMaterial",
     "aggregate_verified_pair",
+    "build_demo_duel_provider",
     "derive_paired_duel_rerun_plan",
     "run_paired_duel_with_reruns",
     "verify_offline_paired_duel",

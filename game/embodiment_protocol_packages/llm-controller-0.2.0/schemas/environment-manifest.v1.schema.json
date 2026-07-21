@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/environment-manifest.v1.schema.json",
+  "title": "LLM Controller environment manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "protocol_version",
+    "environment_id",
+    "name",
+    "description",
+    "authority",
+    "modes",
+    "observations",
+    "controller",
+    "timing",
+    "curriculum",
+    "constraints",
+    "fairness",
+    "contracts",
+    "capabilities",
+    "integrity"
+  ],
+  "properties": {
+    "$schema": {"type": "string", "const": "./schemas/environment-manifest.v1.schema.json"},
+    "protocol_version": {"type": "string", "const": "llm-controller/0.2.0"},
+    "environment_id": {"type": "string", "const": "worldarena-embodiment-v0"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 120},
+    "description": {"type": "string", "minLength": 1, "maxLength": 500},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "engine_version", "simulation_hz", "numeric_model", "integer_division"],
+      "properties": {
+        "engine": {"type": "string", "const": "godot"},
+        "engine_version": {"type": "string", "const": "4.5"},
+        "simulation_hz": {"type": "integer", "const": 10},
+        "numeric_model": {"type": "string", "const": "integer-authority"},
+        "integer_division": {"const": "truncate-toward-zero"}
+      }
+    },
+    "modes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "participants", "scored", "description"],
+        "properties": {
+          "id": {"enum": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+          "participants": {"type": "integer", "minimum": 1, "maximum": 2},
+          "scored": {"type": "boolean"},
+          "description": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profiles", "default_profile", "schema", "participant_camera", "spectator_camera_is_sensor"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "text-visible-v1"},
+            {"const": "rgb-v1"},
+            {"const": "hybrid-visible-v1"}
+          ],
+          "items": false
+        },
+        "default_profile": {"const": "text-visible-v1"},
+        "schema": {"const": "schemas/observation.v1.schema.json"},
+        "participant_camera": {"const": "operator-follow-v1"},
+        "spectator_camera_is_sensor": {"const": false}
+      }
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "schema", "axis_min", "axis_max", "maximum_duration_ticks", "default_duration_ticks", "axes", "held_buttons", "edge_buttons"],
+      "properties": {
+        "profile": {"const": "direct-controller-v1"},
+        "schema": {"const": "schemas/controller-action.v1.schema.json"},
+        "axis_min": {"const": -1000},
+        "axis_max": {"const": 1000},
+        "maximum_duration_ticks": {"const": 20},
+        "default_duration_ticks": {"const": 10},
+        "axes": {"const": ["move_x", "move_y", "look_x", "look_y"]},
+        "held_buttons": {"const": ["interact", "primary", "guard"]},
+        "edge_buttons": {"const": ["dash", "ability_1", "ability_2", "cycle_item", "cancel"]}
+      }
+    },
+    "managed_solo_task_plans": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_track", "tracks", "world_pauses_during_inference", "observation_after_each_action", "solo_window_ticks", "scored_duel_window_ticks"],
+      "properties": {
+        "default_track": {"const": "step-locked-v1"},
+        "tracks": {"const": ["step-locked-v1"]},
+        "world_pauses_during_inference": {"const": true},
+        "observation_after_each_action": {"const": true},
+        "solo_window_ticks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "maximum", "default"],
+          "properties": {
+            "minimum": {"const": 1},
+            "maximum": {"const": 20},
+            "default": {"const": 10}
+          }
+        },
+        "scored_duel_window_ticks": {"const": 10}
+      }
+    },
+    "curriculum": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "goal"],
+        "properties": {
+          "id": {"enum": ["orientation-v0", "interaction-v0", "construction-v0", "neutral-encounter-v0", "movement-maze-v0", "operator-action-course-v0", "duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0", "duo-resource-relay-v0", "rts-skirmish-v0"]},
+          "goal": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["one_body_per_participant", "semantic_world_commands_exposed", "exact_world_coordinates_exposed", "action_repair_allowed", "provider_retry_allowed", "maximum_memory_utf8_bytes", "maximum_action_utf8_bytes"],
+      "properties": {
+        "one_body_per_participant": {"const": true},
+        "semantic_world_commands_exposed": {"const": false},
+        "exact_world_coordinates_exposed": {"const": false},
+        "action_repair_allowed": {"const": false},
+        "provider_retry_allowed": {"const": false},
+        "maximum_memory_utf8_bytes": {"type": "integer", "minimum": 0, "maximum": 8192},
+        "maximum_action_utf8_bytes": {"type": "integer", "minimum": 512, "maximum": 16384}
+      }
+    },
+    "fairness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identical_bodies", "identical_controller_surface", "simultaneous_step_boundaries", "mirrored_maps", "side_swapped_series", "profile_specific_leaderboards"],
+      "properties": {
+        "identical_bodies": {"const": true},
+        "identical_controller_surface": {"const": true},
+        "simultaneous_step_boundaries": {"const": true},
+        "mirrored_maps": {"const": true},
+        "side_swapped_series": {"const": true},
+        "profile_specific_leaderboards": {"const": true}
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_receipt", "authority_event", "capability_status", "decision_window", "episode_config", "episode_replay", "managed_authority_launch", "multi_participant_step_result", "transport_frame"],
+      "properties": {
+        "action_receipt": {"const": "schemas/action-receipt.v1.schema.json"},
+        "authority_event": {"const": "schemas/authority-event.v1.schema.json"},
+        "capability_status": {"const": "schemas/capability-status.v1.schema.json"},
+        "decision_window": {"const": "schemas/decision-window.v1.schema.json"},
+        "episode_config": {"const": "schemas/episode-config.v1.schema.json"},
+        "episode_replay": {"const": "schemas/episode-replay.v1.schema.json"},
+        "managed_authority_launch": {"const": "schemas/managed-authority-launch.v1.schema.json"},
+        "multi_participant_step_result": {"const": "schemas/multi-participant-step-result.v1.schema.json"},
+        "transport_frame": {"const": "schemas/transport-frame.v1.schema.json"}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implemented_modes", "implemented_observation_profiles", "implemented_tasks", "certified_modes", "certified_observation_profiles", "scored_observation_profiles"],
+      "properties": {
+        "implemented_modes": {"const": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+        "implemented_observation_profiles": {"const": ["text-visible-v1", "hybrid-visible-v1"]},
+        "implemented_tasks": {"const": ["movement-maze-v0", "operator-action-course-v0", "duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0", "duo-resource-relay-v0", "rts-skirmish-v0"]},
+        "certified_modes": {"const": []},
+        "certified_observation_profiles": {"const": []},
+        "scored_observation_profiles": {"const": []}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_json", "text_encoding", "checkpoint_hash", "message_authentication"],
+      "properties": {
+        "canonical_json": {"const": "rfc8785-integer-nfc-subset-v1"},
+        "text_encoding": {"const": "utf-8"},
+        "checkpoint_hash": {"const": "sha256"},
+        "message_authentication": {"const": "hmac-sha256-domain-separated-v1"}
+      }
+    }
+  }
+}

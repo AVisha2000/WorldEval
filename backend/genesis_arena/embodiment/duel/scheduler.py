@@ -86,6 +86,7 @@ class AsyncDuelSession(Protocol):
 
 SessionFactory = Callable[[DuelLegPlan], Awaitable[AsyncDuelSession]]
 ProviderFactory = Callable[[DuelEntrant, DuelLegPlan], Awaitable[ProviderAdapter]]
+ParticipantFrameSink = Callable[[int, str, int, bytes], Awaitable[None]]
 
 
 class PairedDuelScheduler:
@@ -101,6 +102,7 @@ class PairedDuelScheduler:
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
         require_verified_evidence: bool = False,
         live_provider_call_budget: LiveProviderCallBudget | None = None,
+        participant_frame_sink: ParticipantFrameSink | None = None,
     ) -> None:
         if not isinstance(plan, PairedDuelPlan):
             raise TypeError("plan must be PairedDuelPlan")
@@ -112,6 +114,8 @@ class PairedDuelScheduler:
             raise TypeError("monotonic_ns must be callable")
         if not isinstance(require_verified_evidence, bool):
             raise TypeError("require_verified_evidence must be a boolean")
+        if participant_frame_sink is not None and not callable(participant_frame_sink):
+            raise TypeError("participant_frame_sink must be callable")
         self.plan = plan
         self._session_factory = session_factory
         self._provider_factory = provider_factory
@@ -122,6 +126,7 @@ class PairedDuelScheduler:
             plan.max_live_provider_calls
         )
         self._evidence: PairedDuelEvidence | None = None
+        self._participant_frame_sink = participant_frame_sink
 
     @property
     def evidence(self) -> PairedDuelEvidence | None:
@@ -263,6 +268,19 @@ class PairedDuelScheduler:
             frames.append(
                 await self._frame(session, assignment, observations[assignment.participant_id])
             )
+        if self._participant_frame_sink is not None:
+            await asyncio.gather(
+                *(
+                    self._participant_frame_sink(
+                        plan.leg_index,
+                        assignment.participant_id,
+                        observation_seq,
+                        frame,
+                    )
+                    for assignment, frame in zip(ordered, frames)
+                    if frame is not None
+                )
+            )
         shared_deadline = self._monotonic_ns() + self.plan.settings.timeout_ms * 1_000_000
         entrants = {entrant.entrant_id: entrant for entrant in self.plan.entrants}
         requests: dict[str, ProviderRequest] = {}
@@ -288,7 +306,7 @@ class PairedDuelScheduler:
 
         self._live_provider_call_budget.reserve(
             sum(
-                providers[assignment.participant_id].provider_name != "scripted"
+                providers[assignment.participant_id].provider_name not in ("scripted", "demo")
                 for assignment in ordered
             )
         )
@@ -584,6 +602,7 @@ __all__ = [
     "MAX_PAIR_ATTEMPTS",
     "PairedDuelScheduler",
     "ProviderFactory",
+    "ParticipantFrameSink",
     "RepeatedInvalidPairError",
     "SessionFactory",
     "derive_paired_duel_rerun_plan",

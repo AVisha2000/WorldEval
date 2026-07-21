@@ -26,6 +26,44 @@ def test_role_keys_round_trip_and_sequence_fail_closed() -> None:
         godot.encode("hello", boundary_hash=ZERO_HASH, body={"connection_id": "connection_0"})
 
 
+def test_v2_transport_round_trips_and_cross_version_frames_fail_closed() -> None:
+    secret = bytearray(range(32))
+    python = TransportSession(
+        episode_id="ep_transport_v2",
+        local_sender="python",
+        session_secret=secret,
+        protocol_version="llm-controller/0.2.0",
+    )
+    godot = TransportSession(
+        episode_id="ep_transport_v2",
+        local_sender="godot",
+        session_secret=secret,
+        protocol_version="llm-controller/0.2.0",
+    )
+    payload = godot.encode("hello", boundary_hash=ZERO_HASH, body={"connection_id": "v2"})
+    frame = python.decode(payload, expected_message_type="hello")
+    assert frame.protocol_version == "llm-controller/0.2.0"
+
+    v1 = TransportSession(
+        episode_id="ep_transport_v2", local_sender="python", session_secret=secret
+    )
+    second_godot = TransportSession(
+        episode_id="ep_transport_v2",
+        local_sender="godot",
+        session_secret=secret,
+        protocol_version="llm-controller/0.2.0",
+    )
+    with pytest.raises(EmbodimentTransportError, match="identity_mismatch"):
+        v1.decode(second_godot.encode("hello", boundary_hash=ZERO_HASH, body={}))
+    with pytest.raises(ValueError, match="unsupported"):
+        TransportSession(
+            episode_id="ep_transport_unknown",
+            local_sender="python",
+            session_secret=secret,
+            protocol_version="llm-controller/9.9.9",
+        )
+
+
 class FakeWebSocket:
     def __init__(self, incoming: str) -> None:
         self.incoming = asyncio.Queue()
@@ -73,6 +111,50 @@ async def test_endpoint_stays_alive_after_attachment_until_socket_close() -> Non
     assert client.decode(websocket.sent[1].encode()).message_type == "decision_window"
     await socket.close()
     await asyncio.wait_for(handler, 1)
+
+
+@pytest.mark.asyncio
+async def test_endpoint_binds_registered_v2_protocol_to_both_directions() -> None:
+    secret = bytearray(range(32))
+    ticket = "V" * 43
+    client = TransportSession(
+        episode_id="ep_socket_v2",
+        local_sender="godot",
+        session_secret=secret,
+        protocol_version="llm-controller/0.2.0",
+    )
+    hello = client.encode(
+        "hello", boundary_hash=ZERO_HASH, body={"connection_id": "connection_v2"}
+    ).decode()
+    websocket = FakeWebSocket(hello)
+    endpoint = ManagedWebSocketEndpoint()
+    attached = endpoint.register(
+        ticket=ticket,
+        episode_id="ep_socket_v2",
+        connection_id="connection_v2",
+        session_secret=bytearray(secret),
+        protocol_version="llm-controller/0.2.0",
+    )
+    handler = asyncio.create_task(endpoint.handle(ticket, websocket))
+    socket = await asyncio.wait_for(attached, 1)
+    auth = client.decode(websocket.sent[0].encode(), expected_message_type="auth")
+    assert auth.protocol_version == "llm-controller/0.2.0"
+    assert socket.transport.protocol_version == "llm-controller/0.2.0"
+    await socket.close()
+    await asyncio.wait_for(handler, 1)
+
+
+@pytest.mark.asyncio
+async def test_endpoint_rejects_unknown_registered_protocol_before_attachment() -> None:
+    endpoint = ManagedWebSocketEndpoint()
+    with pytest.raises(ValueError, match="unsupported"):
+        endpoint.register(
+            ticket="U" * 43,
+            episode_id="ep_socket_unknown",
+            connection_id="connection_unknown",
+            session_secret=bytearray(range(32)),
+            protocol_version="llm-controller/9.9.9",
+        )
 
 
 @pytest.mark.asyncio

@@ -248,11 +248,11 @@ function BuildAndRepository() {
           </div>
           <div>
             <dt>Core</dt>
-            <dd>Deterministic research prototype</dd>
+            <dd>Credential-free solo, 1v1, and trio Demo paths</dd>
           </div>
           <div>
             <dt>Evidence</dt>
-            <dd>Versioned events and replay artifacts</dd>
+            <dd>Authority evaluation and versioned verified replay</dd>
           </div>
           <div>
             <dt>Controller Lab</dt>

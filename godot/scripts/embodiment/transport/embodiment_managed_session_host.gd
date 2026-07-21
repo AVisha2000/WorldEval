@@ -36,7 +36,7 @@ var _config_hash := ""
 var _participant_ids: Array[String] = ["participant_0"]
 var _observation_profile := "text-visible-v1"
 var _task_id := ""
-var _presentation = null
+var _presentations := {}
 var _cached_frame_metadata := {}
 var _active_autonomous_task := ""
 var _active_autonomous_ticks := 0
@@ -45,8 +45,8 @@ var _active_autonomous_ticks := 0
 func configure(
 	launch: Dictionary,
 	session_secret: PackedByteArray,
-	presentation_scene: Node = null,
-	viewport: SubViewport = null,
+	presentation_scene: Variant = null,
+	viewport: Variant = null,
 ) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if _phase != PHASE_UNCONFIGURED:
@@ -85,9 +85,20 @@ func configure(
 		_authority = null
 		return errors
 	if _observation_profile == "hybrid-visible-v1":
-		_presentation = HybridAdapter.new(
-			_authority, presentation_scene, viewport, null, 8, 64 * 1024 * 1024
-		)
+		for participant_id: String in _participant_ids:
+			var participant_scene: Variant = (
+				presentation_scene.get(participant_id)
+				if presentation_scene is Dictionary else presentation_scene
+			)
+			var participant_viewport: Variant = (
+				viewport.get(participant_id) if viewport is Dictionary else viewport
+			)
+			if not participant_scene is Node or not participant_viewport is SubViewport:
+				errors.append("hybrid_presentation_unavailable")
+				break
+			_presentations[participant_id] = HybridAdapter.new(
+				_authority, participant_scene, participant_viewport, null, 8, 64 * 1024 * 1024
+			)
 	_codec = FrameCodec.new()
 	errors.append_array(_codec.configure(str(config.episode_id), session_secret, "godot"))
 	if not errors.is_empty():
@@ -122,9 +133,12 @@ func receive(payload: PackedByteArray) -> Dictionary:
 func close() -> void:
 	if _codec != null:
 		_codec.close()
-	if _presentation != null:
-		_presentation.close()
-		_presentation = null
+	var closed := {}
+	for presentation: Variant in _presentations.values():
+		if presentation != null and not closed.has(presentation):
+			presentation.close()
+			closed[presentation] = true
+	_presentations.clear()
 	_attachment_ticket = ""
 	_connection_id = ""
 	if _phase != PHASE_COMPLETE:
@@ -191,17 +205,18 @@ func _boundary_observations(capture_fresh_frame: bool) -> Dictionary:
 				if _participant_ids.size() == 2 else _authority.observe()
 			)
 			continue
-		if _presentation == null:
+		var presentation: Variant = _presentations.get(participant_id)
+		if presentation == null:
 			return _failure("hybrid_presentation_unavailable")
 		if capture_fresh_frame or not _cached_frame_metadata.has(participant_id):
 			_discard_cached_frame(participant_id)
-			var captured: Dictionary = await _presentation.capture_boundary(participant_id)
+			var captured: Dictionary = await presentation.capture_boundary(participant_id)
 			if not bool(captured.get("ok", false)):
 				return _failure(str(captured.get("code", "hybrid_capture_failed")))
 			observations[participant_id] = captured.observation
 			_cached_frame_metadata[participant_id] = captured.observation.frame.duplicate(true)
 		else:
-			var reused: Dictionary = _presentation.observe_with_cached_frame(
+			var reused: Dictionary = presentation.observe_with_cached_frame(
 				participant_id, _cached_frame_metadata[participant_id]
 			)
 			if not bool(reused.get("ok", false)):
@@ -211,19 +226,20 @@ func _boundary_observations(capture_fresh_frame: bool) -> Dictionary:
 
 
 func _receive_frame_request(frame: Dictionary) -> Dictionary:
-	if _presentation == null or not _exact_body(
+	if not _exact_body(
 		frame.body, ["participant_id", "sensor_id", "observation_seq", "transport_ref"]
-	):
+	) or not _presentations.has(str(frame.body.get("participant_id", ""))):
 		return _fail("frame_request_invalid")
 	if frame.body.participant_id not in _participant_ids \
 		or frame.body.sensor_id != "operator-follow-v1" \
 		or typeof(frame.body.observation_seq) != TYPE_INT \
 		or typeof(frame.body.transport_ref) != TYPE_STRING:
 		return _fail("frame_request_invalid")
-	var fetched: Dictionary = _presentation.frame_bytes(frame.body.transport_ref)
+	var presentation: Variant = _presentations.get(str(frame.body.participant_id))
+	var fetched: Dictionary = presentation.frame_bytes(frame.body.transport_ref)
 	if not bool(fetched.get("ok", false)):
 		return _fail("frame_request_invalid")
-	var fetched_record: Dictionary = _presentation.frame_record(frame.body.transport_ref)
+	var fetched_record: Dictionary = presentation.frame_record(frame.body.transport_ref)
 	if not bool(fetched_record.get("ok", false)):
 		return _fail("frame_request_invalid")
 	var record: Dictionary = fetched_record.record
@@ -295,8 +311,9 @@ func _task_completed(result: Dictionary) -> bool:
 
 func _discard_cached_frame(participant_id: String) -> void:
 	var metadata: Variant = _cached_frame_metadata.get(participant_id)
-	if metadata is Dictionary:
-		_presentation.discard_frame(str(metadata.get("transport_ref", "")))
+	var presentation: Variant = _presentations.get(participant_id)
+	if metadata is Dictionary and presentation != null:
+		presentation.discard_frame(str(metadata.get("transport_ref", "")))
 	_cached_frame_metadata.erase(participant_id)
 
 

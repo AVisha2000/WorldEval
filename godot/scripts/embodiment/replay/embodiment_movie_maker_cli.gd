@@ -77,7 +77,15 @@ func _play_verified_replay(path: String) -> bool:
 	if not errors.is_empty():
 		_fail("embodiment_movie_maker_authority_rejected")
 		return false
-	var participant_id := "participant_0"
+	var participant_id := _participant_id()
+	if participant_id.is_empty() or (not duel and participant_id != "participant_0"):
+		_fail("embodiment_movie_maker_participant_invalid")
+		return false
+	if duel and _scene.has_method("configure_presentation_entrant"):
+		_scene.call(
+			"configure_presentation_entrant",
+			_duo_entrant_for_seat(str(replay.config.episode_id), participant_id)
+		)
 	var initial_result := _filtered_snapshot(authority, participant_id)
 	if not bool(initial_result.get("ok", false)):
 		return false
@@ -169,6 +177,23 @@ func _replay_paths() -> PackedStringArray:
 			if not path.is_empty():
 				paths.append(path)
 	return paths
+
+
+func _participant_id() -> String:
+	var participant_id := "participant_0"
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--embodiment-participant="):
+			participant_id = argument.trim_prefix("--embodiment-participant=")
+	return participant_id if participant_id in ["participant_0", "participant_1"] else ""
+
+
+func _duo_entrant_for_seat(episode_id: String, participant_id: String) -> String:
+	if participant_id not in ["participant_0", "participant_1"]:
+		return ""
+	var swapped := episode_id.ends_with("_b")
+	if participant_id == "participant_0":
+		return "bravo" if swapped else "alpha"
+	return "alpha" if swapped else "bravo"
 
 
 func _fail(code: String) -> void:

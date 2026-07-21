@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/authority-event.v1.schema.json",
+  "title": "LLM Controller typed public authority event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "tick", "kind", "summary", "participant_ids", "data"],
+  "properties": {
+    "event_id": {"type": "string", "pattern": "^evt_[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"},
+    "tick": {"type": "integer", "minimum": 0},
+    "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "summary": {"type": "string", "maxLength": 240},
+    "participant_ids": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {"type": "string", "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "uniqueItems": true
+    },
+    "data": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]{0,63}$"},
+      "additionalProperties": {
+        "type": ["string", "integer", "boolean", "null"]
+      }
+    }
+  }
+}

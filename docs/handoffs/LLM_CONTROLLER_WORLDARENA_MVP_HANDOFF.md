@@ -1,5 +1,12 @@
 # Handoff Prompt — WorldArena scripted gameplay expansion
 
+> **Status (2026-07-21): superseded implementation handoff.** The baseline and “important gaps”
+> below describe the repository before the completed local implementation wave. Do not restart
+> work from them. The authoritative current status is the checkpoint table in
+> `docs/features/LLM_CONTROLLER_WORLDARENA_SCRIPTED_GAMEPLAY_FEATURE.md`: the credential-free solo,
+> duo, and trio product paths are implemented; final native showcase approval/publication remains.
+> This file is retained only as historical rationale and constraints.
+
 Copy the prompt below into a new Codex chat.
 
 ---

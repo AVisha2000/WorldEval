@@ -9,6 +9,7 @@ from genesis_arena.embodiment.protocol import (
     canonical_json_bytes,
     canonical_sha256,
 )
+from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.replay import ReplayLedger, ReplayValidationError, verify_replay_bytes
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -98,6 +99,65 @@ def _reseal(value: dict) -> bytes:
     return canonical_json_bytes(value)
 
 
+def _rts_replay_with_task_plan_evidence() -> bytes:
+    """Make a schema-valid task-plan-evidence variant of the checked-in RTS replay.
+
+    The source replay is deliberately an older ordinary-controller ledger, so this fixture
+    changes only the generated receipt action IDs required by the new task executor audit.
+    It lets Python verify the extension without depending on a local Godot binary or /tmp.
+    """
+
+    value = json.loads(
+        (ROOT / "runs/rts-skirmish-v0/rts-skirmish-cinematic-final.replay.json").read_bytes()
+    )
+    evidence: list[dict] = []
+    for index, step in enumerate(value["steps"]):
+        ordinary = step["decision_window"]
+        plans = {
+            "participant_0": {
+                "protocol": "rts-task-plan-v1",
+                "episode_id": ordinary["episode_id"],
+                "observation_seq": index,
+                "intent_label": "Harvest Blue Tree 0",
+                "memory_update": "deterministic fixture",
+                "assignments": [
+                    {"unit_id": "blue_0", "task": "gather", "target_id": "blue_tree_0"}
+                ],
+            },
+            "participant_1": {
+                "protocol": "rts-task-plan-v1",
+                "episode_id": ordinary["episode_id"],
+                "observation_seq": index,
+                "intent_label": "Harvest Red Tree 0",
+                "memory_update": "deterministic fixture",
+                "assignments": [
+                    {"unit_id": "red_0", "task": "gather", "target_id": "red_tree_0"}
+                ],
+            },
+        }
+        evidence.append(
+            {
+                field: ordinary[field]
+                for field in (
+                    "episode_id",
+                    "observation_seq",
+                    "mode",
+                    "start_tick",
+                    "duration_ticks",
+                )
+            }
+            | {"plans": plans}
+        )
+        for participant_id in ("participant_0", "participant_1"):
+            action_id = f"task_plan_{participant_id}_{index}"
+            step["result"]["receipts"][participant_id]["action_id"] = action_id
+            step["result"]["observations"][participant_id]["previous_receipt"][
+                "action_id"
+            ] = action_id
+    value["rts_task_plan_evidence"] = evidence
+    return _reseal(value)
+
+
 def test_replay_is_canonical_schema_valid_and_tamper_evident() -> None:
     payload, package = _valid_replay()
     verify_replay_bytes(payload, package=package)
@@ -142,3 +202,38 @@ def test_replay_rejects_receipt_mismatch_even_when_resealed() -> None:
     ] = 1
     with pytest.raises(ReplayValidationError, match="receipt boundary"):
         verify_replay_bytes(_reseal(changed))
+
+
+def test_rts_task_plan_evidence_accepts_aligned_task_windows() -> None:
+    verified = verify_replay_bytes(
+        _rts_replay_with_task_plan_evidence(),
+        registry=EmbodimentProtocolRegistry.from_repository(ROOT),
+    )
+    assert verified["config"]["task_id"] == "rts-skirmish-v0"
+    assert len(verified["rts_task_plan_evidence"]) == len(verified["steps"])
+
+
+def test_rts_task_plan_evidence_rejects_malformed_or_misaligned_windows() -> None:
+    value = json.loads(_rts_replay_with_task_plan_evidence())
+    value["rts_task_plan_evidence"][0]["plans"]["participant_0"]["assignments"][0][
+        "coordinate"
+    ] = 1
+    with pytest.raises(ReplayValidationError, match="assignment fields"):
+        verify_replay_bytes(
+            _reseal(value), registry=EmbodimentProtocolRegistry.from_repository(ROOT)
+        )
+
+    value = json.loads(_rts_replay_with_task_plan_evidence())
+    value["rts_task_plan_evidence"][1]["start_tick"] += 1
+    with pytest.raises(ReplayValidationError, match="does not align"):
+        verify_replay_bytes(
+            _reseal(value), registry=EmbodimentProtocolRegistry.from_repository(ROOT)
+        )
+
+
+def test_rts_task_plan_evidence_is_rejected_for_non_rts_replay() -> None:
+    payload, _ = _valid_replay()
+    value = json.loads(payload)
+    value["rts_task_plan_evidence"] = []
+    with pytest.raises(ReplayValidationError, match="not permitted"):
+        verify_replay_bytes(_reseal(value))

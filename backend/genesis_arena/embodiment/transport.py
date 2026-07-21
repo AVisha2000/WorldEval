@@ -14,6 +14,9 @@ from typing import Any, Dict, Literal, Mapping, Protocol
 from .protocol import ProtocolValidationError, canonical_json_bytes, strict_json_loads
 
 PROTOCOL_VERSION = "llm-controller/0.1.0"
+SUPPORTED_PROTOCOL_VERSIONS = frozenset(
+    (PROTOCOL_VERSION, "llm-controller/0.2.0", "llm-controller/0.3.0")
+)
 TRANSPORT_SCHEMA_VERSION = "llm-controller/transport-frame/1.0.0"
 ZERO_HASH = "0" * 64
 MAX_TRANSPORT_FRAME_BYTES = 16 * 1024 * 1024
@@ -121,6 +124,7 @@ def derive_role_key(session_secret: bytes | bytearray, sender: Sender) -> bytes:
 
 def _unsigned_frame(
     *,
+    protocol_version: str = PROTOCOL_VERSION,
     episode_id: str,
     sender: Sender,
     sequence: int,
@@ -128,6 +132,8 @@ def _unsigned_frame(
     boundary_hash: str,
     body: Mapping[str, Any],
 ) -> Dict[str, Any]:
+    if protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
+        raise EmbodimentTransportError("embodiment_transport_protocol_invalid")
     if _EPISODE.fullmatch(episode_id) is None:
         raise EmbodimentTransportError("embodiment_transport_episode_invalid")
     if (
@@ -149,7 +155,7 @@ def _unsigned_frame(
         raise EmbodimentTransportError("embodiment_transport_body_invalid")
     value = {
         "schema_version": TRANSPORT_SCHEMA_VERSION,
-        "protocol_version": PROTOCOL_VERSION,
+        "protocol_version": protocol_version,
         "episode_id": episode_id,
         "sender": sender,
         "sequence": sequence,
@@ -169,13 +175,21 @@ class TransportSession:
     """Canonical per-direction framing for one non-reconnectable episode socket."""
 
     def __init__(
-        self, *, episode_id: str, local_sender: Sender, session_secret: bytes | bytearray
+        self,
+        *,
+        episode_id: str,
+        local_sender: Sender,
+        session_secret: bytes | bytearray,
+        protocol_version: str = PROTOCOL_VERSION,
     ) -> None:
         if local_sender not in ("python", "godot"):
             raise ValueError("local_sender is unsupported")
         if _EPISODE.fullmatch(episode_id) is None:
             raise ValueError("episode_id is invalid")
+        if protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
+            raise ValueError("protocol_version is unsupported")
         self.episode_id = episode_id
+        self.protocol_version = protocol_version
         self.local_sender = local_sender
         self.remote_sender: Sender = "godot" if local_sender == "python" else "python"
         self._local_key = derive_role_key(session_secret, local_sender)
@@ -202,6 +216,7 @@ class TransportSession:
         self._require_open()
         try:
             unsigned = _unsigned_frame(
+                protocol_version=self.protocol_version,
                 episode_id=self.episode_id,
                 sender=self.local_sender,
                 sequence=self._outbound_sequence,
@@ -259,6 +274,7 @@ class TransportSession:
                 raise ValueError("frame fields differ")
             tag = value.pop("auth_tag")
             unsigned = _unsigned_frame(
+                protocol_version=value["protocol_version"],
                 episode_id=value["episode_id"],
                 sender=value["sender"],
                 sequence=value["sequence"],
@@ -288,7 +304,11 @@ class TransportSession:
             raise
         except (KeyError, ProtocolValidationError, TypeError, ValueError):
             return self._fail("embodiment_transport_frame_invalid")
-        if frame.episode_id != self.episode_id or frame.sender != self.remote_sender:
+        if (
+            frame.protocol_version != self.protocol_version
+            or frame.episode_id != self.episode_id
+            or frame.sender != self.remote_sender
+        ):
             return self._fail("embodiment_transport_identity_mismatch")
         if frame.sequence != self._inbound_sequence:
             return self._fail("embodiment_transport_sequence_mismatch")
@@ -409,6 +429,7 @@ class SingleAttachmentRegistry:
 class _PendingAttachment:
     episode_id: str
     connection_id: str
+    protocol_version: str
     session_secret: bytearray = field(repr=False)
     future: asyncio.Future[ManagedSocket]
 
@@ -431,16 +452,23 @@ class ManagedWebSocketEndpoint:
         episode_id: str,
         connection_id: str,
         session_secret: bytearray,
+        protocol_version: str = PROTOCOL_VERSION,
     ) -> asyncio.Future[ManagedSocket]:
         if _TICKET.fullmatch(ticket) is None or _CONNECTION.fullmatch(connection_id) is None:
             raise ValueError("attachment identity is invalid")
         if _EPISODE.fullmatch(episode_id) is None or len(session_secret) != 32:
             raise ValueError("attachment material is invalid")
+        if protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
+            raise ValueError("attachment protocol version is unsupported")
         if ticket in self._pending or ticket in self._consumed:
             raise ValueError("attachment ticket is already used")
         future: asyncio.Future[ManagedSocket] = asyncio.get_running_loop().create_future()
         self._pending[ticket] = _PendingAttachment(
-            episode_id, connection_id, bytearray(session_secret), future
+            episode_id,
+            connection_id,
+            protocol_version,
+            bytearray(session_secret),
+            future,
         )
         future.add_done_callback(
             lambda completed: self.cancel(ticket) if completed.cancelled() else None
@@ -460,6 +488,7 @@ class ManagedWebSocketEndpoint:
                 episode_id=pending.episode_id,
                 local_sender="python",
                 session_secret=pending.session_secret,
+                protocol_version=pending.protocol_version,
             )
             socket = ManagedSocket(websocket, transport)
             pending.session_secret[:] = b"\x00" * len(pending.session_secret)
@@ -524,6 +553,7 @@ __all__ = [
     "EmbodimentTransportError",
     "MAX_TRANSPORT_FRAME_BYTES",
     "PROTOCOL_VERSION",
+    "SUPPORTED_PROTOCOL_VERSIONS",
     "TRANSPORT_SCHEMA_VERSION",
     "ZERO_HASH",
     "ManagedSocket",

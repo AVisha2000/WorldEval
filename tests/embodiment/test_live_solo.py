@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from genesis_arena.embodiment.construction_task_provider import ConstructionTaskProvider
+from genesis_arena.embodiment.construction_task_provider import (
+    TASK_PROMPT,
+    ConstructionTaskProvider,
+)
 from genesis_arena.embodiment.contracts import (
     ActionReceipt,
     CapabilityStatus,
@@ -13,7 +18,8 @@ from genesis_arena.embodiment.contracts import (
     MultiParticipantStepResult,
     TerminalState,
 )
-from genesis_arena.embodiment.live_solo import LiveSoloRunner
+from genesis_arena.embodiment.demo_provider import DemoPolicyLock, DemoProvider
+from genesis_arena.embodiment.live_solo import LiveSoloError, LiveSoloRunner
 from genesis_arena.embodiment.protocol import (
     EmbodimentProtocolPackage,
     canonical_json_bytes,
@@ -23,9 +29,14 @@ from genesis_arena.embodiment.providers.contracts import (
     InMemoryProviderAuditLog,
     ProviderAuditRecord,
     ProviderCallResult,
+    ProviderFailureKind,
+    ProviderRequest,
     ProviderTelemetry,
 )
 from genesis_arena.embodiment.replay import ReplayLedger
+from genesis_arena.embodiment.scripted_construction_demo import (
+    ScriptedConstructionDemoProvider,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -139,6 +150,7 @@ class _Session:
 
     async def step(self, window):
         self.window = window
+        no_input_reason = window.decisions["participant_0"].no_input_reason
         receipt = ActionReceipt(
             action_id="no_input_participant_0_0",
             observation_seq=0,
@@ -149,7 +161,7 @@ class _Session:
             codes=("no_input",),
             disposition="no_input",
             fallback="neutral",
-            no_input_reason="invalid",
+            no_input_reason=no_input_reason,
         )
         final_observation = (
             _observation(self.episode_id, seq=1, tick=10, ended=True)
@@ -210,6 +222,27 @@ class _TaskPlanProvider:
         )
 
 
+class _TamperedTaskAuditProvider(_TaskPlanProvider):
+    provider_name = "demo"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.audit_log = InMemoryProviderAuditLog()
+
+    async def request(self, request):
+        result = await super().request(request)
+        self.audit_log.record(
+            ProviderAuditRecord(
+                provider=self.provider_name,
+                request=replace(request, model="tampered-model"),
+                result=result,
+                started_monotonic_ns=1,
+                completed_monotonic_ns=2,
+            )
+        )
+        return result
+
+
 class _CachedFrameTaskSession:
     """Small authority double with three executor ticks and one reused frame reference."""
 
@@ -243,6 +276,16 @@ class _CachedFrameTaskSession:
                 "outcome": "success",
                 "reason": "objective_complete",
             }
+        value["visible_entities"] = [
+            {
+                "affordances": ["gather"],
+                "bearing": "front",
+                "distance": "touching",
+                "id": "v_resource_1",
+                "kind": "resource",
+                "state": "available",
+            }
+        ]
         return value
 
     async def reset(self):
@@ -371,6 +414,163 @@ async def test_invalid_provider_output_records_neutral_window_and_advances_time(
 
 
 @pytest.mark.asyncio
+async def test_demo_run_integrity_binds_policy_lock_and_non_network_capabilities() -> None:
+    config = EpisodeConfig(
+        episode_id="ep_demo_evidence",
+        mode="solo-curriculum-v0",
+        task_id="orientation-v0",
+        seed=17,
+        capability_status=CapabilityStatus(),
+    )
+    package = EmbodimentProtocolPackage.from_repository(ROOT)
+    lock = DemoPolicyLock(
+        scenario_id="orientation-v0",
+        policy_id="evidence-demo-v1",
+        fixture_sha256="a" * 64,
+        seed=17,
+        participant_id="participant_0",
+        model="evidence-demo-v1",
+        total_decision_budget=1,
+    )
+    provider = DemoProvider(lock, behavior=lambda _request, _lock, _index: b'{"invalid":true}')
+    runner = LiveSoloRunner(
+        config=config,
+        session=_Session(config, package),
+        provider=provider,
+        model="evidence-demo-v1",
+        system_prompt="Return strict JSON.",
+        protocol_package=package,
+    )
+
+    outcome = await runner.run()
+
+    assert outcome.bundles is not None
+    summary = json.loads(outcome.bundles.public.read("replay_summary"))
+    expected_settings = {
+        "action_schema_sha256": hashlib.sha256(
+            canonical_json_bytes(package.schema("controller-action"))
+        ).hexdigest(),
+        "certification_eligible": False,
+        "demo_policy_lock": lock.as_dict(),
+        "demo_policy_lock_sha256": lock.sha256,
+        "fallback_duration_ticks": 10,
+        "max_input_bytes": 8_388_608,
+        "max_output_bytes": 4_096,
+        "observation_profile": "text-visible-v1",
+        "provider_capabilities": {
+            "credential_required": False,
+            "networked": False,
+            "provider_name": "demo",
+        },
+        "provider_timeout_ms": 45_000,
+        "run_class": "demo",
+        "system_prompt_sha256": hashlib.sha256(b"Return strict JSON.").hexdigest(),
+    }
+    frozen = summary["frozen_configuration"]
+    assert frozen["provider_sha256"] == canonical_sha256({"provider": "demo"})
+    assert frozen["settings_sha256"] == canonical_sha256(expected_settings)
+    protected = outcome.bundles.protected.bundle_bytes
+    assert b"api_key" not in protected
+    assert b"credential" not in protected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fixture_kind",
+    ("malformed", "stale", "oversized", "fake_timeout", "budget_exhausted"),
+)
+async def test_demo_failures_advance_one_recorded_neutral_window(
+    fixture_kind: str,
+) -> None:
+    config = EpisodeConfig(
+        episode_id=f"ep_demo_fallback_{fixture_kind}",
+        mode="solo-curriculum-v0",
+        task_id="orientation-v0",
+        seed=23,
+        capability_status=CapabilityStatus(),
+    )
+    package = EmbodimentProtocolPackage.from_repository(ROOT)
+    lock = DemoPolicyLock(
+        scenario_id="orientation-v0",
+        policy_id="failure-demo-v1",
+        fixture_sha256="b" * 64,
+        seed=23,
+        participant_id="participant_0",
+        model="failure-demo-v1",
+        total_decision_budget=1,
+    )
+
+    def behavior(request, _lock, _index):
+        if fixture_kind == "malformed":
+            return b"{malformed"
+        if fixture_kind == "oversized":
+            return b"x" * (request.max_output_bytes + 1)
+        if fixture_kind == "fake_timeout":
+            return ProviderFailureKind.TIMEOUT
+        return canonical_json_bytes(
+            {
+                "protocol_version": "llm-controller/0.1.0",
+                "episode_id": request.episode_id,
+                "observation_seq": request.observation_seq + 1,
+                "action_id": "stale_demo_action",
+                "control": {
+                    "move_x": 0,
+                    "move_y": 0,
+                    "look_x": 0,
+                    "look_y": 0,
+                    "duration_ticks": 1,
+                    "buttons": {
+                        "interact": False,
+                        "primary": False,
+                        "guard": False,
+                        "dash": False,
+                        "ability_1": False,
+                        "ability_2": False,
+                        "cycle_item": False,
+                        "cancel": False,
+                    },
+                },
+                "intent_label": "stale fixture",
+                "memory_update": "",
+            }
+        )
+
+    provider = DemoProvider(lock, behavior=behavior)
+    if fixture_kind == "budget_exhausted":
+        observation = _observation(config.episode_id, seq=0, tick=0, ended=False)
+        await provider.request(
+            ProviderRequest(
+                episode_id=config.episode_id,
+                participant_id="participant_0",
+                observation_seq=0,
+                deadline_monotonic_ns=1,
+                model="failure-demo-v1",
+                system_prompt="Return strict JSON.",
+                observation_json=canonical_json_bytes(observation),
+                action_schema_json=canonical_json_bytes(package.schema("controller-action")),
+            )
+        )
+        provider.audit_log.drain_episode(config.episode_id)
+
+    outcome = await LiveSoloRunner(
+        config=config,
+        session=_Session(config, package),
+        provider=provider,
+        model="failure-demo-v1",
+        system_prompt="Return strict JSON.",
+        protocol_package=package,
+    ).run()
+
+    assert outcome.windows == 1
+    assert outcome.provider_failures == 1
+    assert outcome.bundles is not None
+    receipts = json.loads(outcome.bundles.public.read("receipts"))
+    assert receipts[0]["participants"]["participant_0"]["disposition"] == "no_input"
+    assert receipts[0]["participants"]["participant_0"]["fallback"] == "neutral"
+    assert receipts[0]["participants"]["participant_0"]["applied_ticks"] == 10
+
+
+@pytest.mark.asyncio
 async def test_hybrid_runner_publishes_player_frame_at_each_decision_boundary() -> None:
     config = EpisodeConfig(
         episode_id="ep_live_frames",
@@ -419,7 +619,16 @@ async def test_construction_continuations_reuse_frame_and_skip_duplicate_provide
         ),
     )
     package = EmbodimentProtocolPackage.from_repository(ROOT)
-    planner = _TaskPlanProvider()
+    lock = DemoPolicyLock(
+        scenario_id="construction-v0",
+        policy_id="construction-demo-v1",
+        fixture_sha256="c" * 64,
+        seed=3,
+        participant_id="participant_0",
+        model="construction-demo-v1",
+        total_decision_budget=4,
+    )
+    planner = DemoProvider(lock, delegate=ScriptedConstructionDemoProvider())
     session = _CachedFrameTaskSession(config, package)
     published: list[tuple[str, int, bytes]] = []
 
@@ -437,7 +646,7 @@ async def test_construction_continuations_reuse_frame_and_skip_duplicate_provide
     ).run()
 
     assert outcome.bundles is not None
-    assert planner.calls == 1
+    assert planner.decision_count == 1
     assert session.render_calls == [
         ("frame:participant_0.shared", 0),
         ("frame:participant_0.terminal", 3),
@@ -448,6 +657,93 @@ async def test_construction_continuations_reuse_frame_and_skip_duplicate_provide
     ]
     frames = json.loads(outcome.bundles.protected.read("frames"))
     telemetry = json.loads(outcome.bundles.protected.read("telemetry"))
+    prompts = json.loads(outcome.bundles.protected.read("prompts"))
+    provider_outputs = json.loads(outcome.bundles.protected.read("provider_outputs"))
     assert [frame["observation_seq"] for frame in frames] == [0, 3]
     assert [record["observation_seq"] for record in telemetry] == [0]
+    assert prompts == [{"observation_seq": 0, "prompt": TASK_PROMPT}]
+    planned = json.loads(base64.b64decode(provider_outputs[0]["raw_output_base64"]))
+    assert planned["task_id"] == "gather_materials"
+    assert "control" not in planned
+    evidence = telemetry[0]["provider_evidence"]
+    assert evidence["adapter_audit"]["recorded"] is True
+    assert evidence["schema_sha256"] == hashlib.sha256(
+        canonical_json_bytes(package.schema("construction-task-plan"))
+    ).hexdigest()
     assert session.closed
+
+
+@pytest.mark.asyncio
+async def test_construction_adapter_rejects_tampered_transformed_audit_request() -> None:
+    config = EpisodeConfig(
+        episode_id="ep_construction_tampered_audit",
+        mode="solo-curriculum-v0",
+        task_id="construction-v0",
+        seed=9,
+        observation_profile="hybrid-visible-v1",
+        capability_status=CapabilityStatus(
+            implemented_observation_profiles=("hybrid-visible-v1",),
+            implemented_tasks=("construction-v0",),
+        ),
+    )
+    package = EmbodimentProtocolPackage.from_repository(ROOT)
+    session = _CachedFrameTaskSession(config, package)
+    provider = ConstructionTaskProvider(_TamperedTaskAuditProvider(), package)
+
+    with pytest.raises(LiveSoloError, match="embodiment_provider_audit_mismatch"):
+        await LiveSoloRunner(
+            config=config,
+            session=session,
+            provider=provider,
+            model="construction-demo-v1",
+            system_prompt="Return strict JSON.",
+            protocol_package=package,
+        ).run()
+
+    assert session.closed
+
+
+@pytest.mark.asyncio
+async def test_construction_evidence_preserves_invalid_planner_output_not_generated_control(
+) -> None:
+    config = EpisodeConfig(
+        episode_id="ep_construction_invalid_plan_evidence",
+        mode="solo-curriculum-v0",
+        task_id="construction-v0",
+        seed=10,
+        observation_profile="hybrid-visible-v1",
+        capability_status=CapabilityStatus(
+            implemented_observation_profiles=("hybrid-visible-v1",),
+            implemented_tasks=("construction-v0",),
+        ),
+    )
+    package = EmbodimentProtocolPackage.from_repository(ROOT)
+    lock = DemoPolicyLock(
+        scenario_id="construction-v0",
+        policy_id="construction-demo-v1",
+        fixture_sha256="d" * 64,
+        seed=10,
+        participant_id="participant_0",
+        model="construction-demo-v1",
+        total_decision_budget=1,
+    )
+    malformed = b'{"malformed_plan":true}'
+    provider = ConstructionTaskProvider(
+        DemoProvider(lock, behavior=lambda *_args: malformed), package
+    )
+    frames = {0: _frame_png(0), 1: _frame_png(1)}
+
+    outcome = await LiveSoloRunner(
+        config=config,
+        session=_Session(config, package, frames),
+        provider=provider,
+        model="construction-demo-v1",
+        system_prompt="Return strict JSON.",
+        protocol_package=package,
+    ).run()
+
+    assert outcome.bundles is not None
+    outputs = json.loads(outcome.bundles.protected.read("provider_outputs"))
+    assert base64.b64decode(outputs[0]["raw_output_base64"]) == malformed
+    telemetry = json.loads(outcome.bundles.protected.read("telemetry"))
+    assert telemetry[0]["provider_evidence"]["parsing_disposition"] == "not_attempted"

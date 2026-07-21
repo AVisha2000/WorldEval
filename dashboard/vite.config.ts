@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
   const environment = loadEnv(mode, process.cwd(), "")
   const repositoryName = environment.GITHUB_REPOSITORY?.split("/").at(-1)
   const pagesBase = normalizeBasePath(
-    environment.VITE_BASE_PATH || repositoryName || "WorldEval"
+    environment.VITE_BASE_PATH || repositoryName || "WorldArena"
   )
 
   return {

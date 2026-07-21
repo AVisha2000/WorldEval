@@ -11,13 +11,64 @@ import hashlib
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol, Tuple, runtime_checkable
+from types import MappingProxyType
+from typing import Mapping, Protocol, Tuple, runtime_checkable
 
 from ..protocol import canonical_json_bytes, strict_json_loads
 
 ProviderName = str
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+@dataclass(frozen=True)
+class ProviderCapabilities:
+    """Small, immutable provider properties used before credentials are requested.
+
+    These flags describe transport requirements only.  They deliberately contain no model,
+    credential, endpoint, or run-specific material.
+    """
+
+    provider_name: ProviderName
+    requires_credential: bool
+    is_networked: bool
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.provider_name, str) or not _SAFE_ID.fullmatch(self.provider_name):
+            raise ValueError("provider_name must be a safe identifier")
+        for name in ("requires_credential", "is_networked"):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"{name} must be a boolean")
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "provider_name": self.provider_name,
+            "requires_credential": self.requires_credential,
+            "is_networked": self.is_networked,
+        }
+
+
+_PROVIDER_CAPABILITIES: Mapping[ProviderName, ProviderCapabilities] = MappingProxyType(
+    {
+        name: ProviderCapabilities(name, requires_credential=True, is_networked=True)
+        for name in ("openai", "anthropic", "gemini")
+    }
+    | {
+        name: ProviderCapabilities(name, requires_credential=False, is_networked=False)
+        for name in ("scripted", "demo")
+    }
+)
+
+
+def provider_capabilities(name: ProviderName) -> ProviderCapabilities:
+    """Return the frozen capabilities for one registered provider, failing closed."""
+
+    if not isinstance(name, str):
+        raise TypeError("provider name must be a string")
+    try:
+        return _PROVIDER_CAPABILITIES[name]
+    except KeyError as error:
+        raise ValueError("provider is not registered") from error
 
 
 class ProviderFailureKind(str, Enum):

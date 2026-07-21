@@ -13,13 +13,24 @@ from typing import Any, Dict, Mapping, MutableMapping
 from urllib.parse import urlsplit
 
 from .protocol import ProtocolValidationError, canonical_json_bytes, canonical_sha256
+from .protocol_registry import EmbodimentProtocolRegistry
 
 MANAGED_LAUNCH_SCHEMA_VERSION = "llm-controller/managed-authority-launch/1.0.0"
 MANAGED_AUTHORITY_SCRIPT = "res://scripts/embodiment/transport/embodiment_managed_authority_cli.gd"
+V2_MANAGED_AUTHORITY_SCRIPT = (
+    "res://scripts/embodiment/v2/transport/embodiment_managed_authority_cli_v2.gd"
+)
+V3_MANAGED_AUTHORITY_SCRIPT = (
+    "res://scripts/embodiment/v3/transport/embodiment_managed_authority_cli_v3.gd"
+)
 MAX_MANAGED_LAUNCH_BYTES = 65_536
 MAX_CONTROL_LINE_BYTES = 4_096
 _STARTED_KIND = "embodiment_managed_started"
 _ERROR_KIND = "embodiment_managed_error"
+_V2_STARTED_KIND = "embodiment_managed_v2_started"
+_V2_ERROR_KIND = "embodiment_managed_v2_error"
+_V3_STARTED_KIND = "embodiment_managed_v3_started"
+_V3_ERROR_KIND = "embodiment_managed_v3_error"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _EPISODE = re.compile(r"^ep_[A-Za-z0-9._-]{1,120}$")
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -50,6 +61,12 @@ class ManagedLaunchSpec:
     config_sha256: str
     protocol_package_sha256: str
     session_secret: bytearray = field(repr=False)
+    # Presentation-only identity mapping.  It deliberately sits outside the immutable authority
+    # config and is never forwarded as an observation, provider request, or replay field.
+    presentation_entrant_ids: Mapping[str, str] | None = field(default=None, repr=False)
+    # RTS-only public tactical presentation ingress. It authorizes JPEG pixels only and is not
+    # a gameplay ticket, authority input, observation field, or replay-verification input.
+    presentation_broadcast_ticket: str | None = field(default=None, repr=False)
 
     def scrub(self) -> None:
         _zero_bytearray(self.session_secret)
@@ -108,6 +125,7 @@ class ManagedProcessLauncher:
         project_path: Path,
         startup_timeout_s: float = 10.0,
         shutdown_timeout_s: float = 5.0,
+        protocol_registry: EmbodimentProtocolRegistry | None = None,
     ) -> None:
         if startup_timeout_s <= 0 or shutdown_timeout_s <= 0:
             raise ValueError("timeouts must be positive")
@@ -115,6 +133,7 @@ class ManagedProcessLauncher:
         self._project_path = Path(project_path)
         self._startup_timeout_s = startup_timeout_s
         self._shutdown_timeout_s = shutdown_timeout_s
+        self._protocol_registry = protocol_registry
 
     async def launch(self, spec: ManagedLaunchSpec) -> ManagedProcessHandle:
         payload = bytearray()
@@ -123,8 +142,9 @@ class ManagedProcessLauncher:
         handle: ManagedProcessHandle | None = None
         ready: asyncio.Future[None] | None = None
         try:
-            executable, project = self._validate_runtime()
-            self._validate_spec(spec)
+            self._validate_spec(spec, protocol_registry=self._protocol_registry)
+            protocol_version = str(spec.config.get("protocol_version", "llm-controller/0.1.0"))
+            executable, project = self._validate_runtime(protocol_version)
             launch = {
                 "attachment_ticket": spec.attachment_ticket,
                 "config": dict(spec.config),
@@ -135,6 +155,10 @@ class ManagedProcessLauncher:
                 "protocol_package_sha256": spec.protocol_package_sha256,
                 "session_secret": list(spec.session_secret),
             }
+            if spec.presentation_entrant_ids is not None:
+                launch["presentation_entrant_ids"] = dict(spec.presentation_entrant_ids)
+            if spec.presentation_broadcast_ticket is not None:
+                launch["presentation_broadcast_ticket"] = spec.presentation_broadcast_ticket
             payload.extend(
                 canonical_json_bytes(
                     {"schema_version": MANAGED_LAUNCH_SCHEMA_VERSION, "launch": launch}
@@ -142,34 +166,12 @@ class ManagedProcessLauncher:
             )
             if len(payload) > MAX_MANAGED_LAUNCH_BYTES:
                 raise ManagedProcessError("embodiment_bootstrap_input_rejected")
-            if spec.config.get("observation_profile") == "hybrid-visible-v1":
-                command = (
-                    str(executable),
-                    "--no-header",
-                    "--audio-driver",
-                    "Dummy",
-                    "--display-driver",
-                    "macos",
-                    "--windowed",
-                    "--resolution",
-                    "1280x720",
-                    "--position",
-                    "10000,10000",
-                    "--path",
-                    str(project),
-                    "--script",
-                    MANAGED_AUTHORITY_SCRIPT,
-                )
-            else:
-                command = (
-                    str(executable),
-                    "--no-header",
-                    "--headless",
-                    "--path",
-                    str(project),
-                    "--script",
-                    MANAGED_AUTHORITY_SCRIPT,
-                )
+            command = _managed_authority_command(
+                executable,
+                project,
+                protocol_version=protocol_version,
+                hybrid=spec.config.get("observation_profile") == "hybrid-visible-v1",
+            )
             try:
                 process = await asyncio.create_subprocess_exec(
                     *command,
@@ -187,7 +189,12 @@ class ManagedProcessLauncher:
                 raise ManagedProcessError("embodiment_spawn_failed")
             ready = asyncio.get_running_loop().create_future()
             output_task = asyncio.create_task(
-                _consume_control_output(process.stdout, ready, expected_episode_id=spec.episode_id),
+                _consume_control_output(
+                    process.stdout,
+                    ready,
+                    expected_episode_id=spec.episode_id,
+                    protocol_version=protocol_version,
+                ),
                 name=f"embodiment-output-{spec.episode_id}",
             )
             handle = ManagedProcessHandle(
@@ -226,7 +233,9 @@ class ManagedProcessLauncher:
             _zero_bytearray(payload)
             spec.scrub()
 
-    def _validate_runtime(self) -> tuple[Path, Path]:
+    def _validate_runtime(
+        self, protocol_version: str = "llm-controller/0.1.0"
+    ) -> tuple[Path, Path]:
         try:
             executable = self._executable.expanduser().resolve(strict=True)
             project = self._project_path.expanduser().resolve(strict=True)
@@ -236,18 +245,37 @@ class ManagedProcessLauncher:
             raise ManagedProcessError("embodiment_runtime_unavailable")
         if not project.is_dir() or not (project / "project.godot").is_file():
             raise ManagedProcessError("embodiment_runtime_unavailable")
-        script = project / "scripts/embodiment/transport/embodiment_managed_authority_cli.gd"
+        script = project / _authority_script(protocol_version).removeprefix("res://")
         if not script.is_file():
             raise ManagedProcessError("embodiment_runtime_unavailable")
         return executable, project
 
     @staticmethod
-    def _validate_spec(spec: ManagedLaunchSpec) -> None:
+    def _validate_spec(
+        spec: ManagedLaunchSpec,
+        *,
+        protocol_registry: EmbodimentProtocolRegistry | None = None,
+    ) -> None:
         if _EPISODE.fullmatch(spec.episode_id) is None:
             raise ManagedProcessError("embodiment_bootstrap_input_rejected")
         if (
             _TICKET.fullmatch(spec.attachment_ticket) is None
             or _IDENTIFIER.fullmatch(spec.connection_id) is None
+        ):
+            raise ManagedProcessError("embodiment_bootstrap_input_rejected")
+        presentation_ids = spec.presentation_entrant_ids
+        if presentation_ids is not None:
+            if (
+                spec.config.get("protocol_version") != "llm-controller/0.2.0"
+                or set(presentation_ids) != {"participant_0", "participant_1"}
+                or any(value not in {"alpha", "bravo"} for value in presentation_ids.values())
+            ):
+                raise ManagedProcessError("embodiment_bootstrap_input_rejected")
+        broadcast_ticket = spec.presentation_broadcast_ticket
+        if broadcast_ticket is not None and (
+            spec.config.get("protocol_version") != "llm-controller/0.2.0"
+            or spec.config.get("task_id") != "rts-skirmish-v0"
+            or _TICKET.fullmatch(broadcast_ticket) is None
         ):
             raise ManagedProcessError("embodiment_bootstrap_input_rejected")
         if (
@@ -262,8 +290,57 @@ class ManagedProcessLauncher:
             or len(spec.session_secret) != 32
         ):
             raise ManagedProcessError("embodiment_bootstrap_input_rejected")
+        protocol_version = spec.config.get("protocol_version", "llm-controller/0.1.0")
+        try:
+            _authority_script(protocol_version)
+            if protocol_version in ("llm-controller/0.2.0", "llm-controller/0.3.0"):
+                if protocol_registry is None:
+                    raise ProtocolValidationError("versioned launch requires protocol registry")
+                protocol_registry.package_for_launch(
+                    spec.config, spec.protocol_package_sha256
+                )
+        except (ProtocolValidationError, TypeError, ValueError):
+            raise ManagedProcessError("embodiment_bootstrap_input_rejected") from None
         if not _is_loopback_gateway(spec.gateway_url, spec.attachment_ticket):
             raise ManagedProcessError("embodiment_gateway_not_loopback")
+
+
+def _authority_script(protocol_version: object) -> str:
+    if protocol_version == "llm-controller/0.1.0":
+        return MANAGED_AUTHORITY_SCRIPT
+    if protocol_version == "llm-controller/0.2.0":
+        return V2_MANAGED_AUTHORITY_SCRIPT
+    if protocol_version == "llm-controller/0.3.0":
+        return V3_MANAGED_AUTHORITY_SCRIPT
+    raise ValueError("unsupported managed authority protocol version")
+
+
+def _managed_authority_command(
+    executable: Path,
+    project: Path,
+    *,
+    protocol_version: str,
+    hybrid: bool,
+) -> tuple[str, ...]:
+    prefix = [str(executable), "--no-header"]
+    if hybrid:
+        prefix.extend(
+            (
+                "--audio-driver",
+                "Dummy",
+                "--display-driver",
+                "macos",
+                "--windowed",
+                "--resolution",
+                "1280x720",
+                "--position",
+                "10000,10000",
+            )
+        )
+    else:
+        prefix.append("--headless")
+    prefix.extend(("--path", str(project), "--script", _authority_script(protocol_version)))
+    return tuple(prefix)
 
 
 async def _handoff(stdin: asyncio.StreamWriter, payload: bytearray) -> None:
@@ -285,7 +362,9 @@ async def _consume_control_output(
     ready: asyncio.Future[None],
     *,
     expected_episode_id: str,
+    protocol_version: str = "llm-controller/0.1.0",
 ) -> None:
+    started_kind, error_kind = _control_kinds(protocol_version)
     try:
         while True:
             line = await stream.readline()
@@ -301,16 +380,16 @@ async def _consume_control_output(
                 continue
             if not isinstance(value, dict):
                 continue
-            if value.get("kind") == _STARTED_KIND and not ready.done():
+            if value.get("kind") == started_kind and not ready.done():
                 if value == {
-                    "kind": _STARTED_KIND,
+                    "kind": started_kind,
                     "schema_version": MANAGED_LAUNCH_SCHEMA_VERSION,
                     "episode_id": expected_episode_id,
                 }:
                     ready.set_result(None)
                 else:
                     ready.set_exception(ManagedProcessError("embodiment_bootstrap_output_invalid"))
-            elif value.get("kind") == _ERROR_KIND and not ready.done():
+            elif value.get("kind") == error_kind and not ready.done():
                 if (
                     set(value) == {"kind", "schema_version", "code"}
                     and value.get("schema_version") == MANAGED_LAUNCH_SCHEMA_VERSION
@@ -321,6 +400,16 @@ async def _consume_control_output(
     finally:
         if not ready.done():
             ready.set_exception(ManagedProcessError("embodiment_bootstrap_exited"))
+
+
+def _control_kinds(protocol_version: str) -> tuple[str, str]:
+    if protocol_version == "llm-controller/0.1.0":
+        return _STARTED_KIND, _ERROR_KIND
+    if protocol_version == "llm-controller/0.2.0":
+        return _V2_STARTED_KIND, _V2_ERROR_KIND
+    if protocol_version == "llm-controller/0.3.0":
+        return _V3_STARTED_KIND, _V3_ERROR_KIND
+    raise ValueError("unsupported managed authority protocol version")
 
 
 async def _stop_process(process: asyncio.subprocess.Process, timeout_s: float) -> None:
@@ -399,6 +488,7 @@ def _zero_bytearray(value: bytearray) -> None:
 __all__ = [
     "MANAGED_AUTHORITY_SCRIPT",
     "MANAGED_LAUNCH_SCHEMA_VERSION",
+    "V2_MANAGED_AUTHORITY_SCRIPT",
     "MAX_MANAGED_LAUNCH_BYTES",
     "ManagedLaunchSpec",
     "ManagedProcessError",

@@ -102,6 +102,70 @@ def test_public_and_protected_episode_evidence_are_separate_and_verifiable() -> 
     assert verified["final_terminal"]["outcome"] == "success"
 
 
+def test_demo_identity_is_bound_into_sealed_public_evaluation() -> None:
+    replay, package = _stage_a_replay()
+    replay_value = verify_replay_bytes(replay, package=package)
+    recorder = EpisodeArtifactRecorder(
+        "ep_golden_stage_a_orientation_forward_v1", protocol_package=package
+    )
+    recorder.freeze_run_configuration(
+        provider="demo",
+        model="orientation-demo-v1",
+        settings={"demo_policy_lock": {"scenario_id": "orientation-v0"}},
+    )
+    recorder.record_boundary(
+        observation_seq=0,
+        state_hash=replay_value["initial_state_hash"],
+        observations=replay_value["initial_observations"],
+        terminal=next(iter(replay_value["initial_observations"].values()))["terminal"],
+    )
+    for index, step in enumerate(replay_value["steps"]):
+        result = step["result"]
+        recorder.record_boundary(
+            observation_seq=index + 1,
+            state_hash=result["state_hash"],
+            observations=result["observations"],
+            receipts=result["receipts"],
+            public_events=result["public_events"],
+            terminal=result["terminal"],
+        )
+    bundles = recorder.seal(authority_replay=replay, evaluation={})
+    evaluation = json.loads(bundles.public.read("evaluation"))
+    assert evaluation["scenario_id"] == "orientation-v0"
+    assert evaluation["evaluation_profile_id"] == "solo-orientation-v1"
+
+
+def test_short_replay_cannot_be_sealed_as_multi_action_showcase() -> None:
+    replay, package = _stage_a_replay()
+    replay_value = verify_replay_bytes(replay, package=package)
+    recorder = EpisodeArtifactRecorder(
+        "ep_golden_stage_a_orientation_forward_v1", protocol_package=package
+    )
+    recorder.freeze_run_configuration(
+        provider="demo",
+        model="construction-demo-v1",
+        settings={"demo_policy_lock": {"scenario_id": "multi-action-demo-v0"}},
+    )
+    recorder.record_boundary(
+        observation_seq=0,
+        state_hash=replay_value["initial_state_hash"],
+        observations=replay_value["initial_observations"],
+        terminal=next(iter(replay_value["initial_observations"].values()))["terminal"],
+    )
+    for index, step in enumerate(replay_value["steps"]):
+        result = step["result"]
+        recorder.record_boundary(
+            observation_seq=index + 1,
+            state_hash=result["state_hash"],
+            observations=result["observations"],
+            receipts=result["receipts"],
+            public_events=result["public_events"],
+            terminal=result["terminal"],
+        )
+    with pytest.raises(ValueError, match="multi-action"):
+        recorder.seal(authority_replay=replay, evaluation={})
+
+
 def test_artifacts_reject_credential_keys_and_secret_like_bytes() -> None:
     with pytest.raises(EpisodeArtifactError, match="credential"):
         EpisodeArtifact.json("evaluation", {"api_key": "not-allowed"})

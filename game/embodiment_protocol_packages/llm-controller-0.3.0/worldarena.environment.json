@@ -1,0 +1,129 @@
+{
+  "$schema": "./schemas/environment-manifest.v1.schema.json",
+  "protocol_version": "llm-controller/0.3.0",
+  "environment_id": "worldarena-embodiment-v0",
+  "name": "WorldArena Embodiment",
+  "description": "A deterministic exactly-three-participant embodiment benchmark for symmetric relay and free-for-all games.",
+  "authority": {
+    "engine": "godot",
+    "engine_version": "4.5",
+    "simulation_hz": 10,
+    "numeric_model": "integer-authority",
+    "integer_division": "truncate-toward-zero"
+  },
+  "modes": [
+    {
+      "id": "trio-game-v0",
+      "participants": 3,
+      "scored": true,
+      "description": "Exactly three controllers contest a symmetric integer-authority arena."
+    }
+  ],
+  "observations": {
+    "profiles": [
+      "text-visible-v1",
+      "rgb-v1",
+      "hybrid-visible-v1"
+    ],
+    "default_profile": "text-visible-v1",
+    "schema": "schemas/observation.v1.schema.json",
+    "participant_camera": "operator-follow-v1",
+    "spectator_camera_is_sensor": false
+  },
+  "controller": {
+    "profile": "direct-controller-v1",
+    "schema": "schemas/controller-action.v1.schema.json",
+    "axis_min": -1000,
+    "axis_max": 1000,
+    "maximum_duration_ticks": 10,
+    "default_duration_ticks": 10,
+    "axes": [
+      "move_x",
+      "move_y",
+      "look_x",
+      "look_y"
+    ],
+    "held_buttons": [
+      "interact",
+      "primary",
+      "guard"
+    ],
+    "edge_buttons": [
+      "dash",
+      "ability_1",
+      "ability_2",
+      "cycle_item",
+      "cancel"
+    ]
+  },
+  "timing": {
+    "default_track": "step-locked-v1",
+    "tracks": [
+      "step-locked-v1"
+    ],
+    "world_pauses_during_inference": true,
+    "observation_after_each_action": true,
+    "trio_window_ticks": 10
+  },
+  "curriculum": [
+    {
+      "id": "trio-relay-v0",
+      "goal": "Secure the visible relay against two rivals."
+    },
+    {
+      "id": "trio-free-for-all-v0",
+      "goal": "Win by relay hold or deterministic last-standing combat."
+    }
+  ],
+  "constraints": {
+    "one_body_per_participant": true,
+    "semantic_world_commands_exposed": false,
+    "exact_world_coordinates_exposed": false,
+    "action_repair_allowed": false,
+    "provider_retry_allowed": false,
+    "maximum_memory_utf8_bytes": 2048,
+    "maximum_action_utf8_bytes": 4096
+  },
+  "fairness": {
+    "identical_bodies": true,
+    "identical_controller_surface": true,
+    "simultaneous_step_boundaries": true,
+    "exact_three_way_symmetry": true,
+    "cyclic_seat_rotations": 3,
+    "profile_specific_leaderboards": true
+  },
+  "contracts": {
+    "action_receipt": "schemas/action-receipt.v1.schema.json",
+    "authority_event": "schemas/authority-event.v1.schema.json",
+    "capability_status": "schemas/capability-status.v1.schema.json",
+    "decision_window": "schemas/decision-window.v1.schema.json",
+    "episode_config": "schemas/episode-config.v1.schema.json",
+    "episode_replay": "schemas/episode-replay.v1.schema.json",
+    "managed_authority_launch": "schemas/managed-authority-launch.v1.schema.json",
+    "multi_participant_step_result": "schemas/multi-participant-step-result.v1.schema.json",
+    "transport_frame": "schemas/transport-frame.v1.schema.json",
+    "trio_result": "schemas/trio-result.v1.schema.json"
+  },
+  "capabilities": {
+    "implemented_modes": [
+      "trio-game-v0"
+    ],
+    "implemented_observation_profiles": [
+      "text-visible-v1",
+      "hybrid-visible-v1"
+    ],
+    "implemented_tasks": [
+      "trio-relay-v0",
+      "trio-free-for-all-v0"
+    ],
+    "certified_modes": [],
+    "certified_observation_profiles": [],
+    "scored_observation_profiles": []
+  },
+  "integrity": {
+    "canonical_json": "rfc8785-integer-nfc-subset-v1",
+    "text_encoding": "utf-8",
+    "checkpoint_hash": "sha256",
+    "message_authentication": "hmac-sha256-domain-separated-v1"
+  }
+}

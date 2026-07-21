@@ -16,6 +16,9 @@ from .contracts import (
     MultiParticipantStepResult,
     ReceiptEffect,
     TerminalState,
+    TrioParticipantOutcome,
+    TrioPlacementGroup,
+    TrioResult,
 )
 from .managed_process import ManagedLaunchSpec, ManagedProcessHandle, ManagedProcessLauncher
 from .protocol import (
@@ -25,6 +28,7 @@ from .protocol import (
     canonical_sha256,
     strict_json_loads,
 )
+from .protocol_registry import EmbodimentProtocolRegistry
 from .replay import ReplayLedger, verify_replay_bytes
 from .transport import EmbodimentTransportError, ManagedSocket
 
@@ -55,10 +59,15 @@ class ManagedWorldArenaSession:
         if min(attachment_timeout_s, step_timeout_s, close_timeout_s) <= 0:
             raise ValueError("managed session timeouts must be positive")
         config_value = episode_config_as_dict(config)
+        try:
+            protocol_package.validate("episode-config", config_value)
+        except ProtocolValidationError as error:
+            raise ValueError("episode config does not match protocol package") from error
         if (
             launch_spec.episode_id != config.episode_id
             or dict(launch_spec.config) != config_value
             or launch_spec.config_sha256 != canonical_sha256(config_value)
+            or config.protocol_version != protocol_package.PROTOCOL_VERSION
             or launch_spec.protocol_package_sha256 != protocol_package.package_sha256
         ):
             raise ValueError("launch spec and episode config differ")
@@ -90,6 +99,39 @@ class ManagedWorldArenaSession:
         self._render_cache_key: tuple[str, str, str, str] | None = None
         self._render_cache_png: bytes | None = None
 
+    @property
+    def protocol_version(self) -> str:
+        return self._package.PROTOCOL_VERSION
+
+    @classmethod
+    def from_protocol_registry(
+        cls,
+        *,
+        config: EpisodeConfig,
+        launcher: ManagedProcessLauncher,
+        launch_spec: ManagedLaunchSpec,
+        socket_future: asyncio.Future[ManagedSocket],
+        protocol_registry: EmbodimentProtocolRegistry,
+        attachment_timeout_s: float = 10.0,
+        step_timeout_s: float = 10.0,
+        close_timeout_s: float = 5.0,
+    ) -> ManagedWorldArenaSession:
+        """Select a hash-bound v1/v2 package before constructing a managed session."""
+
+        package = protocol_registry.package_for_launch(
+            config.as_dict(), launch_spec.protocol_package_sha256
+        )
+        return cls(
+            config=config,
+            launcher=launcher,
+            launch_spec=launch_spec,
+            socket_future=socket_future,
+            protocol_package=package,
+            attachment_timeout_s=attachment_timeout_s,
+            step_timeout_s=step_timeout_s,
+            close_timeout_s=close_timeout_s,
+        )
+
     async def reset(self) -> Mapping[str, Mapping[str, Any]]:
         if self._started or self._closed:
             raise ManagedSessionError("embodiment_session_reset_invalid")
@@ -105,7 +147,15 @@ class ManagedWorldArenaSession:
                 ),
                 self._attachment_timeout_s,
             )
-            if set(ready.body) != {"capability_status", "observations", "state_hash"}:
+            ready_fields = {"capability_status", "observations", "state_hash"}
+            if self.protocol_version in ("llm-controller/0.2.0", "llm-controller/0.3.0"):
+                ready_fields.add("protocol_package_sha256")
+            if set(ready.body) != ready_fields:
+                raise ManagedSessionError("embodiment_session_ready_invalid")
+            if (
+                self.protocol_version in ("llm-controller/0.2.0", "llm-controller/0.3.0")
+                and ready.body["protocol_package_sha256"] != self._package.package_sha256
+            ):
                 raise ManagedSessionError("embodiment_session_ready_invalid")
             self._package.validate("capability-status", ready.body["capability_status"])
             observations = ready.body["observations"]
@@ -371,12 +421,54 @@ def _result_from_dict(value: Mapping[str, Any]) -> MultiParticipantStepResult:
     terminal = TerminalState(
         terminal_value["ended"], terminal_value["outcome"], terminal_value["reason"]
     )
+    include_trio_fields = set(value) == {
+        "observations", "receipts", "public_events", "state_hash", "terminal", "placements",
+        "trio_result",
+    }
+    placements = (
+        tuple(_trio_placement_from_dict(group) for group in value["placements"])
+        if include_trio_fields
+        else ()
+    )
+    trio_result = (
+        _trio_result_from_dict(value["trio_result"])
+        if include_trio_fields and value["trio_result"] is not None
+        else None
+    )
     return MultiParticipantStepResult(
         observations=_copy_json(value["observations"]),
         receipts=receipts,
         public_events=events,
         state_hash=value["state_hash"],
         terminal=terminal,
+        placements=placements,
+        trio_result=trio_result,
+        include_trio_fields=include_trio_fields,
+    )
+
+
+def _trio_placement_from_dict(value: Mapping[str, Any]) -> TrioPlacementGroup:
+    return TrioPlacementGroup(
+        value["place"], tuple(value["participant_ids"]), value["tie"], value["basis"]
+    )
+
+
+def _trio_result_from_dict(value: Mapping[str, Any]) -> TrioResult:
+    return TrioResult(
+        schema_version=value["schema_version"],
+        task_id=value["task_id"],
+        outcome=value["outcome"],
+        reason=value["reason"],
+        winner_id=value["winner_id"],
+        placements=tuple(_trio_placement_from_dict(group) for group in value["placements"]),
+        participant_outcomes={
+            participant_id: TrioParticipantOutcome(
+                participant_value["participant_id"], participant_value["outcome"],
+                participant_value["place"], participant_value["tied"],
+                participant_value["eliminated_tick"],
+            )
+            for participant_id, participant_value in value["participant_outcomes"].items()
+        },
     )
 
 

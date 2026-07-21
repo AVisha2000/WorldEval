@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json",
+  "title": "LLM Controller typed trio terminal result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "outcome",
+    "reason",
+    "winner_id",
+    "placements",
+    "participant_outcomes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "llm-controller/trio-result/1.0.0"
+    },
+    "task_id": {
+      "enum": [
+        "trio-relay-v0",
+        "trio-free-for-all-v0"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "win",
+        "draw",
+        "void"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "winner_id": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        }
+      ]
+    },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json#/$defs/placement_group"
+      }
+    },
+    "participant_outcomes": {
+      "type": "object",
+      "minProperties": 3,
+      "maxProperties": 3,
+      "required": [
+        "participant_0",
+        "participant_1",
+        "participant_2"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "participant_0": {
+          "allOf": [
+            {"$ref": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json#/$defs/participant_outcome"},
+            {"properties": {"participant_id": {"const": "participant_0"}}}
+          ]
+        },
+        "participant_1": {
+          "allOf": [
+            {"$ref": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json#/$defs/participant_outcome"},
+            {"properties": {"participant_id": {"const": "participant_1"}}}
+          ]
+        },
+        "participant_2": {
+          "allOf": [
+            {"$ref": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json#/$defs/participant_outcome"},
+            {"properties": {"participant_id": {"const": "participant_2"}}}
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "placement_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "place",
+        "participant_ids",
+        "tie",
+        "basis"
+      ],
+      "properties": {
+        "place": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "participant_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "uniqueItems": true
+        },
+        "tie": {
+          "type": "boolean"
+        },
+        "basis": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        }
+      }
+    },
+    "participant_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "participant_id",
+        "outcome",
+        "place",
+        "tied",
+        "eliminated_tick"
+      ],
+      "properties": {
+        "participant_id": {
+          "type": "string",
+          "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "outcome": {
+          "enum": [
+            "win",
+            "loss",
+            "draw",
+            "void",
+            "eliminated"
+          ]
+        },
+        "place": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "tied": {
+          "type": "boolean"
+        },
+        "eliminated_tick": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -15,6 +15,11 @@ window/size/viewport_height=900
 window/size/window_width_override=1440
 window/size/window_height_override=900
 window/stretch/mode="canvas_items"
+window/size/viewport_width.movie=1920
+window/size/viewport_height.movie=1080
+window/size/window_width_override.movie=1280
+window/size/window_height_override.movie=720
+window/stretch/mode.movie="viewport"
 
 [debug]
 

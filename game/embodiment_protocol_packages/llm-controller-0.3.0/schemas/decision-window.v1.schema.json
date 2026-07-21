@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.3.0/decision-window.v1.schema.json",
+  "title": "LLM Controller exactly-three-participant joint decision window v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "episode_id",
+    "observation_seq",
+    "mode",
+    "start_tick",
+    "duration_ticks",
+    "decisions"
+  ],
+  "properties": {
+    "episode_id": {
+      "type": "string",
+      "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"
+    },
+    "observation_seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "mode": {
+      "const": "trio-game-v0"
+    },
+    "start_tick": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "duration_ticks": {
+      "const": 10,
+      "type": "integer"
+    },
+    "decisions": {
+      "type": "object",
+      "minProperties": 3,
+      "maxProperties": 3,
+      "required": [
+        "participant_0",
+        "participant_1",
+        "participant_2"
+      ],
+      "propertyNames": {
+        "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "https://worldeval.local/llm-controller/0.3.0/decision-window.v1.schema.json#/$defs/participant_decision"
+      }
+    }
+  },
+  "$defs": {
+    "participant_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disposition",
+        "action",
+        "fallback",
+        "no_input_reason"
+      ],
+      "properties": {
+        "disposition": {
+          "enum": [
+            "accepted",
+            "no_input",
+            "eliminated"
+          ]
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "https://worldeval.local/llm-controller/0.3.0/controller-action.v1.schema.json"
+            }
+          ]
+        },
+        "fallback": {
+          "enum": [
+            "none",
+            "neutral"
+          ]
+        },
+        "no_input_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "missing",
+            "invalid",
+            "timeout",
+            "stale_observation",
+            "budget_exhausted",
+            "eliminated"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "disposition": {
+              "const": "accepted"
+            },
+            "action": {
+              "$ref": "https://worldeval.local/llm-controller/0.3.0/controller-action.v1.schema.json"
+            },
+            "fallback": {
+              "const": "none"
+            },
+            "no_input_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "disposition": {
+              "const": "no_input"
+            },
+            "action": {
+              "type": "null"
+            },
+            "fallback": {
+              "const": "neutral"
+            },
+            "no_input_reason": {
+              "enum": [
+                "missing",
+                "invalid",
+                "timeout",
+                "stale_observation",
+                "budget_exhausted"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "disposition": {
+              "const": "eliminated"
+            },
+            "action": {
+              "type": "null"
+            },
+            "fallback": {
+              "const": "neutral"
+            },
+            "no_input_reason": {
+              "const": "eliminated"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

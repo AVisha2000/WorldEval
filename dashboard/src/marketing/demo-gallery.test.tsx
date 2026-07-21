@@ -38,7 +38,9 @@ describe("demo gallery", () => {
     render(
       <DemoGallery demos={[{ ...configuredDemo, youtubeId: undefined }]} />
     )
-    expect(screen.getByText("Coming soon")).toBeInTheDocument()
+    expect(
+      screen.getByText("Local poster · video coming soon")
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: /Load/ })
     ).not.toBeInTheDocument()

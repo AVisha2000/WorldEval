@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.3.0/capability-status.v1.schema.json",
+  "title": "LLM Controller runtime capability status v1",
+  "description": "Schema presence declares the full protocol vocabulary. These lists report only capabilities implemented by this runtime and separately identify certification/scoring state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "implemented_modes",
+    "implemented_observation_profiles",
+    "implemented_tasks",
+    "certified_modes",
+    "certified_observation_profiles",
+    "scored_observation_profiles"
+  ],
+  "properties": {
+    "implemented_modes": {
+      "type": "array",
+      "items": {
+        "const": "trio-game-v0"
+      },
+      "uniqueItems": true
+    },
+    "implemented_observation_profiles": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "text-visible-v1",
+          "rgb-v1",
+          "hybrid-visible-v1"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "implemented_tasks": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "trio-relay-v0",
+          "trio-free-for-all-v0"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "certified_modes": {
+      "type": "array",
+      "items": {
+        "const": "trio-game-v0"
+      },
+      "uniqueItems": true
+    },
+    "certified_observation_profiles": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "text-visible-v1",
+          "rgb-v1",
+          "hybrid-visible-v1"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "scored_observation_profiles": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "text-visible-v1",
+          "rgb-v1",
+          "hybrid-visible-v1"
+        ]
+      },
+      "uniqueItems": true
+    }
+  }
+}

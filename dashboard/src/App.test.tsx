@@ -24,10 +24,104 @@ const readiness = {
   source_fingerprint: "a".repeat(64),
 }
 
+const cachedRtsShowcase = {
+  showcase_id: "rts-skirmish-v0",
+  task_id: "rts-skirmish-v0",
+  label: "WorldArena: Mini RTS — Blue vs Red",
+  status: "ready",
+  cached: true,
+  video: {
+    duration_seconds: 150, fps: 30, height: 1080, mime_type: "video/mp4",
+    sha256: "b".repeat(64), width: 1920,
+  },
+  winner: { team: "Blue Command" },
+  completion: { outcome: "win", reason: "town_hall_destroyed", tick: 1190 },
+  casualties: [
+    { at_tick: 850, team: "Blue", unit_id: "blue_0" },
+    { at_tick: 880, team: "Red", unit_id: "red_0" },
+    { at_tick: 900, team: "Red", unit_id: "red_1" },
+    { at_tick: 1020, team: "Red", unit_id: "red_2" },
+  ],
+  highlights: [
+    { at_seconds: 0, label: "Workers deploy" },
+    { at_seconds: 80, label: "Bridge battle" },
+    { at_seconds: 145, label: "Blue victory" },
+  ],
+}
+
+const cachedRtsEvaluation = {
+  showcase_id: "rts-skirmish-v0",
+  task_id: "rts-skirmish-v0",
+  completion: cachedRtsShowcase.completion,
+  metrics: [
+    { id: "economy", label: "Economy", value: "Workers spread across wood and ore" },
+    { id: "determinism", label: "Determinism", value: "Replay verified" },
+  ],
+  verification: {
+    manifest_sha256: "c".repeat(64), replay_sha256: "d".repeat(64),
+    video_sha256: "e".repeat(64), final_state_sha256: "f".repeat(64), state: "verified",
+  },
+}
+
+const cachedMazeShowcase = {
+  showcase_id: "trio-maze-race-v0",
+  task_id: "trio-maze-race-v0",
+  label: "WorldArena: Labyrinth Run",
+  tagline: "Three agents. The same maze. No shared vision. One memory-limited race.",
+  status: "ready",
+  cached: true,
+  video: { duration_seconds: 72, fps: 30, height: 1080, mime_type: "video/mp4", sha256: "1".repeat(64), width: 1920 },
+  entrants: [
+    { participant_id: "participant_0", entrant_id: "sol", display_name: "Sol", model: "demo-sol-v1", color: "#fbbf24", lane: "gold", style: "Right-first depth-first search" },
+    { participant_id: "participant_1", entrant_id: "luna", display_name: "Luna", model: "demo-luna-v1", color: "#a78bfa", lane: "purple", style: "Cautious left-first search" },
+    { participant_id: "participant_2", entrant_id: "terra", display_name: "Terra", model: "demo-terra-v1", color: "#34d399", lane: "green", style: "Forward-biased landmark search" },
+  ],
+  winner: { participant_id: "participant_0", display_name: "Sol" },
+  result: {
+    winner_id: "participant_0", winner: "Sol",
+    finish_order: ["participant_0", "participant_2", "participant_1"], completion_tick: 584,
+    reason: "all_racers_finished",
+    explanation: "Sol won by eliminating exhausted branches more efficiently. Terra recovered from two incorrect branches. Luna completed the maze but travelled the longest route.",
+  },
+  timeline: [
+    { at_seconds: 0, participant_id: "broadcast", kind: "title", label: "Three identical private maze lanes" },
+    { at_seconds: 49, participant_id: "participant_0", kind: "finish", label: "Sol reaches the exit first at 44.8 seconds" },
+    { at_seconds: 66, participant_id: "broadcast", kind: "result", label: "Winner calling card and spatial-reasoning metrics" },
+  ],
+}
+
+const cachedMazeEvaluation = {
+  showcase_id: "trio-maze-race-v0",
+  task_id: "trio-maze-race-v0",
+  scope: "trio_maze_race",
+  summary: cachedMazeShowcase.result.explanation,
+  participants: [
+    ["participant_0", "Sol", "demo-sol-v1", "#fbbf24", 1, 448, "44.8", 64, 9375, 1],
+    ["participant_2", "Terra", "demo-terra-v1", "#34d399", 2, 536, "53.6", 84, 7142, 2],
+    ["participant_1", "Luna", "demo-luna-v1", "#a78bfa", 3, 584, "58.4", 104, 5769, 3],
+  ].map(([participant_id, display_name, model, color, place, finish_tick, completion_seconds, distance_cells, path_efficiency_basis_points, dead_ends_entered]) => ({
+    participant_id, display_name, model, color, place, finish_tick, completion_seconds,
+    distance_cells, shortest_path_cells: 60, path_efficiency_basis_points,
+    unique_corridor_cells: 61, repeated_corridor_cells: Number(distance_cells) - 60,
+    passages_explored: Number(place) * 2 + 4, dead_ends_entered,
+    successful_backtracks: dead_ends_entered, collisions: 0, invalid_decisions: 0,
+    idle_thinking_ticks: 180,
+  })),
+  verification: {
+    state: "verified", deterministic: true, map_sha256: "2".repeat(64),
+    final_state_sha256: "3".repeat(64), manifest_sha256: "4".repeat(64),
+    replay_sha256: "5".repeat(64), video_sha256: "6".repeat(64),
+  },
+}
+
 function lifecycleFetch() {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url.endsWith("/certification/readiness")) return response(readiness)
+    if (url.endsWith("/showcases/rts-skirmish-v0/evaluation")) return response(cachedRtsEvaluation)
+    if (url.endsWith("/showcases/rts-skirmish-v0")) return response(cachedRtsShowcase)
+    if (url.endsWith("/showcases/trio-maze-race-v0/evaluation")) return response(cachedMazeEvaluation)
+    if (url.endsWith("/showcases/trio-maze-race-v0")) return response(cachedMazeShowcase)
     if (url.endsWith("/frame")) {
       return new Response(null, { status: 204, headers: { "X-Frame-State": "finished" } })
     }
@@ -59,7 +153,7 @@ function renderApp() {
 }
 
 async function selectLiveProvider(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("radio", { name: "Live provider" }))
+  await user.click(screen.getByRole("radio", { name: "Live games" }))
 }
 
 describe("Controller dashboard", () => {
@@ -75,14 +169,197 @@ describe("Controller dashboard", () => {
   })
   it("defaults to the credential-free scripted solo demos", () => {
     render(<QueryClientProvider client={new QueryClient()}><App /></QueryClientProvider>)
-    expect(screen.getByRole("heading", { name: /WorldArena Controller Lab/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /WorldArena Mini RTS Arena/i })).toBeInTheDocument()
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Start scripted demo" })).toBeEnabled()
-    expect(screen.getByRole("combobox", { name: "Workflow" })).toBeDisabled()
-    expect(screen.getByRole("combobox", { name: "Task" })).toHaveTextContent("construction-v0")
+    expect(screen.getByRole("button", { name: "Run selected solo demo" })).toBeEnabled()
+    expect(screen.getByRole("combobox", { name: "Selected demo folder" })).toBeEnabled()
+    expect(screen.getByRole("radio", { name: "Pre-run saves" })).toBeChecked()
+    expect(screen.getByRole("combobox", { name: "Demo scenario" })).toHaveTextContent("construction-v0")
     expect(screen.getByRole("tab", { name: "Timeline" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Replay" })).toBeInTheDocument()
     expect(screen.getByText("Configure a hybrid solo episode")).toBeInTheDocument()
+  })
+  it("quick starts the keyless multi-action solo showcase through the ordinary Demo API flow", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    expect(screen.getByText(/No credentials or provider network calls/i)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Run solo preset" }))
+
+    const post = fetch.mock.calls.find(
+      ([input, init]) => String(input).endsWith("/episodes") && init?.method === "POST"
+    )
+    expect(post).toBeDefined()
+    const payload = JSON.parse(String(post?.[1]?.body))
+    expect(payload).toMatchObject({
+      provider: "demo",
+      model: "construction-demo-v1",
+      scenario_id: "multi-action-demo-v0",
+      task_id: "construction-v0",
+      maximum_episode_ticks: 1300,
+    })
+    expect(JSON.stringify(payload)).not.toMatch(/api_key|credential/)
+  })
+  it("quick starts the coloured Alpha versus Bravo Central Relay team demo without credentials", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    expect(screen.getByLabelText("Configurable deterministic demos")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Run duo preset" }))
+
+    const post = fetch.mock.calls.find(
+      ([input, init]) => String(input).endsWith("/series") && init?.method === "POST"
+    )
+    expect(post).toBeDefined()
+    const payload = JSON.parse(String(post?.[1]?.body))
+    expect(payload).toMatchObject({
+      task_id: "central-relay-v0",
+      entrants: [
+        { provider: "demo", model: "duelist-alpha-v1" },
+        { provider: "demo", model: "duelist-bravo-v1" },
+      ],
+    })
+    expect(JSON.stringify(payload)).not.toMatch(/api_key|credential/)
+  })
+  it("opens the featured RTS Skirmish MVP from the cached local showcase without starting a run", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    expect(screen.getByText(/Alpha builds the economy while Bravo commands the rival force/i)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Play Mini RTS" }))
+
+    expect(screen.getByRole("heading", { name: "Blue Command vs Red Legion" })).toBeInTheDocument()
+    expect(screen.getByText(/saved authority-verified demo/i)).toBeInTheDocument()
+    expect(screen.getByLabelText("Cached RTS skirmish showcase").querySelector("video"))
+      .toHaveAttribute("src", "/api/embodiment/showcases/rts-skirmish-v0/video")
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      "/api/embodiment/showcases/rts-skirmish-v0", { cache: "force-cache" }
+    ))
+    const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")
+    expect(post).toBeUndefined()
+  })
+  it("renders each RTS showcase tab from cached safe metadata only", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Play Mini RTS" }))
+    await user.click(screen.getByRole("tab", { name: "Timeline" }))
+    expect(await screen.findByText("Cinematic timeline")).toBeInTheDocument()
+    expect(screen.getByText("Bridge battle")).toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Result" }))
+    expect(screen.getByText("Blue Command wins")).toBeInTheDocument()
+    expect(screen.getByText(/Tick 1020/)).toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Evaluation" }))
+    expect(await screen.findByText("Verified evaluation")).toBeInTheDocument()
+    expect(screen.getByText("Workers spread across wood and ore")).toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Replay" }))
+    expect(await screen.findByText("Replay identity")).toBeInTheDocument()
+    expect(screen.getByText(/Manifest, replay, final state, and video hashes verified/)).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([url]) => String(url).includes(".replay.json"))).toBe(false)
+    expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
+  })
+  it("opens Labyrinth Run as a second cached highlight with a model key, podium, metrics, and winner rationale", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Play Labyrinth Run" }))
+    expect(await screen.findByRole("heading", { name: "WorldArena: Labyrinth Run" })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText("Model colour key")).toHaveTextContent("Sol · demo-sol-v1"))
+    expect(screen.getByLabelText("Model colour key")).toHaveTextContent("Luna · demo-luna-v1")
+    expect(screen.getByLabelText("Model colour key")).toHaveTextContent("Terra · demo-terra-v1")
+    expect(screen.getByLabelText("Cached Trio Maze Race showcase").querySelector("video"))
+      .toHaveAttribute("src", "/api/embodiment/showcases/trio-maze-race-v0/video")
+    await user.click(screen.getByRole("tab", { name: "Result" }))
+    expect(await screen.findByText("Sol wins the Labyrinth Run")).toBeInTheDocument()
+    expect(screen.getByText(/Terra recovered from two incorrect branches/)).toBeInTheDocument()
+    expect(screen.getByText("44.8s · 64 cells")).toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Evaluation" }))
+    expect(await screen.findByText("Spatial-reasoning evaluation")).toBeInTheDocument()
+    expect(screen.getByText("93.75%")).toBeInTheDocument()
+    await user.click(screen.getByRole("tab", { name: "Replay" }))
+    expect(await screen.findByText(/Python package and Godot authority agree/)).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
+  })
+  it("launches the keyless scripted 1v1 with exactly two Demo policies", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("combobox", { name: "Selected demo folder" }))
+    await user.click(await screen.findByRole("option", { name: "/demos/duo" }))
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Run selected duo demo" }))
+
+    const post = fetch.mock.calls.find(([input, init]) => String(input).endsWith("/series") && init?.method === "POST")
+    expect(post).toBeDefined()
+    const payload = JSON.parse(String(post?.[1]?.body))
+    expect(payload.entrants).toEqual([
+      { provider: "demo", model: "duelist-alpha-v1" },
+      { provider: "demo", model: "duelist-bravo-v1" },
+    ])
+    expect(JSON.stringify(payload)).not.toContain("api_key")
+  })
+  it("selects a simple duo game and launches its exact independent Demo policies", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("combobox", { name: "Selected demo folder" }))
+    await user.click(await screen.findByRole("option", { name: "/demos/duo" }))
+    await user.click(screen.getByRole("combobox", { name: "Duo game" }))
+    await user.click(await screen.findByRole("option", { name: "Checkpoint Race" }))
+    expect(screen.getByLabelText("Demo duel entrants")).toHaveTextContent("checkpoint-racer-alpha-v1")
+    expect(screen.getByLabelText("Demo duel entrants")).toHaveTextContent("checkpoint-racer-bravo-v1")
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Run selected duo demo" }))
+
+    const post = fetch.mock.calls.find(([input, init]) => String(input).endsWith("/series") && init?.method === "POST")
+    const payload = JSON.parse(String(post?.[1]?.body))
+    expect(payload.task_id).toBe("duo-checkpoint-race-v0")
+    expect(payload.entrants).toEqual([
+      { provider: "demo", model: "checkpoint-racer-alpha-v1" },
+      { provider: "demo", model: "checkpoint-racer-bravo-v1" },
+    ])
+  })
+  it("offers Resource Relay with its exact independent Demo policies", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("combobox", { name: "Selected demo folder" }))
+    await user.click(await screen.findByRole("option", { name: "/demos/duo" }))
+    await user.click(screen.getByRole("combobox", { name: "Duo game" }))
+    await user.click(await screen.findByRole("option", { name: "Frontier Resource Relay" }))
+    expect(screen.getByLabelText("Demo duel entrants")).toHaveTextContent(
+      "resource-relay-alpha-v1"
+    )
+    expect(screen.getByLabelText("Demo duel entrants")).toHaveTextContent(
+      "resource-relay-bravo-v1"
+    )
+    await user.click(screen.getByRole("button", { name: "Run selected duo demo" }))
+
+    const post = fetch.mock.calls.find(
+      ([input, init]) => String(input).endsWith("/series") && init?.method === "POST"
+    )
+    const payload = JSON.parse(String(post?.[1]?.body))
+    expect(payload.task_id).toBe("duo-resource-relay-v0")
+    expect(payload.entrants).toEqual([
+      { provider: "demo", model: "resource-relay-alpha-v1" },
+      { provider: "demo", model: "resource-relay-bravo-v1" },
+    ])
   })
   it("renders credential-free certification readiness", async () => {
     renderApp()
@@ -108,7 +385,7 @@ describe("Controller dashboard", () => {
 
     await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), secret)
-    await user.click(screen.getByRole("button", { name: "Start episode" }))
+    await user.click(screen.getByRole("button", { name: "Start live game" }))
 
     await waitFor(() => expect(screen.getByLabelText("API key")).toHaveValue(""))
     const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")
@@ -138,7 +415,7 @@ describe("Controller dashboard", () => {
     expect(screen.getByLabelText("Scripted tier")).toBeInTheDocument()
     expect(screen.queryByLabelText("Opponent API key")).not.toBeInTheDocument()
     await user.type(screen.getByLabelText("API key"), secret)
-    await user.click(screen.getByRole("button", { name: "Start two-leg series" }))
+    await user.click(screen.getByRole("button", { name: "Start live two-leg game" }))
 
     await waitFor(() => {
       expect(screen.getByLabelText("API key")).toHaveValue("")
@@ -197,7 +474,7 @@ describe("Controller dashboard", () => {
 
     await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), "polling-session-secret")
-    await user.click(screen.getByRole("button", { name: "Start episode" }))
+    await user.click(screen.getByRole("button", { name: "Start live game" }))
 
     expect(await screen.findByText("● running")).toBeInTheDocument()
     expect(await screen.findByText("● success", {}, { timeout: 2500 })).toBeInTheDocument()
@@ -248,7 +525,7 @@ describe("Controller dashboard", () => {
     }))
     renderApp()
 
-    await user.click(screen.getByRole("button", { name: "Start scripted demo" }))
+    await user.click(screen.getByRole("button", { name: "Run selected solo demo" }))
     expect(await screen.findByText("● running")).toBeInTheDocument()
     expect(timelineReads).toBe(0)
 
@@ -307,7 +584,7 @@ describe("Controller dashboard", () => {
 
     await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), "camera-session-secret")
-    await user.click(screen.getByRole("button", { name: "Start episode" }))
+    await user.click(screen.getByRole("button", { name: "Start live game" }))
 
     expect(await screen.findByRole("img", { name: "Active participant Godot camera frame" })).toHaveAttribute(
       "src",

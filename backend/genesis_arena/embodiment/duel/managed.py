@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import tempfile
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from ..contracts import DecisionWindow, MultiParticipantStepResult
 from ..managed_session import ManagedWorldArenaSession
@@ -29,6 +30,7 @@ class VerifiedManagedDuelSession:
         godot_executable: Path,
         project_path: Path,
         verification_timeout_s: float = 20.0,
+        on_close: Callable[[], None] | None = None,
     ) -> None:
         if not isinstance(session, ManagedWorldArenaSession):
             raise TypeError("session must be ManagedWorldArenaSession")
@@ -42,6 +44,7 @@ class VerifiedManagedDuelSession:
         self._project_path = Path(project_path)
         self._verification_timeout_s = float(verification_timeout_s)
         self._verified_replay_bytes: bytes | None = None
+        self._on_close = on_close
 
     async def reset(self) -> Mapping[str, Mapping[str, Any]]:
         return await self._session.reset()
@@ -98,10 +101,18 @@ class VerifiedManagedDuelSession:
         return replay
 
     async def close(self) -> None:
-        await self._session.close()
+        try:
+            await self._session.close()
+        finally:
+            if self._on_close is not None:
+                callback = self._on_close
+                self._on_close = None
+                callback()
 
     async def _verify_with_godot(self, replay: bytes) -> Mapping[str, Any]:
-        process = await asyncio.create_subprocess_exec(
+        v2 = self._package.PROTOCOL_VERSION == "llm-controller/0.2.0"
+        replay_path: Path | None = None
+        command = [
             str(self._godot_executable),
             "--no-header",
             "--headless",
@@ -110,24 +121,60 @@ class VerifiedManagedDuelSession:
             "--path",
             str(self._project_path),
             "--script",
-            "res://scripts/embodiment/replay/embodiment_replay_cli.gd",
-            stdin=asyncio.subprocess.PIPE,
+        ]
+        if v2:
+            temporary = tempfile.NamedTemporaryFile(
+                mode="wb", prefix="worldarena-duo-replay-", suffix=".json", delete=False
+            )
+            try:
+                temporary.write(replay)
+                temporary.flush()
+            finally:
+                temporary.close()
+            replay_path = Path(temporary.name)
+            command.extend(
+                (
+                    "res://scripts/embodiment/v2/replay/embodiment_versioned_replay_cli.gd",
+                    "--",
+                    str(replay_path),
+                )
+            )
+        else:
+            command.append("res://scripts/embodiment/replay/embodiment_replay_cli.gd")
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdin=None if v2 else asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
         try:
             output, _ = await asyncio.wait_for(
-                process.communicate(replay), self._verification_timeout_s
+                process.communicate(None if v2 else replay), self._verification_timeout_s
             )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
             raise RuntimeError("duel Godot replay verification timed out") from None
+        finally:
+            if replay_path is not None:
+                replay_path.unlink(missing_ok=True)
         if process.returncode != 0:
             raise RuntimeError("duel Godot replay verification failed")
         lines = output.strip().splitlines()
         if not lines:
             raise RuntimeError("duel Godot replay verifier emitted no seal")
+        if v2:
+            replay_value = verify_replay_bytes(replay, package=self._package)
+            expected = (
+                f"EMBODIMENT_REPLAY_VERIFIED {self._package.PROTOCOL_VERSION} "
+                f"{replay_value['final_state_hash']}"
+            ).encode()
+            if lines[-1] != expected:
+                raise RuntimeError("duel Godot replay verifier emitted an invalid seal")
+            return {
+                "episode_id": replay_value["config"]["episode_id"],
+                "final_state_hash": replay_value["final_state_hash"],
+            }
         seal = strict_json_loads(lines[-1])
         if not isinstance(seal, dict) or seal.get("kind") != "embodiment_replay_verified":
             raise RuntimeError("duel Godot replay verifier emitted an invalid seal")
@@ -135,16 +182,20 @@ class VerifiedManagedDuelSession:
 
 
 def _winner_participant(replay: Mapping[str, Any]) -> str | None:
-    winners = []
+    winners = set()
     for step in replay["steps"]:
         for event in step["result"]["public_events"]:
             if event.get("kind") == "episode_won":
                 winner = event.get("data", {}).get("winner")
                 if winner in ("participant_0", "participant_1"):
-                    winners.append(winner)
+                    winners.add(winner)
+            elif event.get("kind") == "duo_game_completed":
+                winner = event.get("data", {}).get("winner_id")
+                if winner in ("participant_0", "participant_1"):
+                    winners.add(winner)
     if len(winners) > 1:
         raise ValueError("replay contains multiple winner events")
-    return winners[0] if winners else None
+    return next(iter(winners)) if winners else None
 
 
 __all__ = ["VerifiedManagedDuelSession"]

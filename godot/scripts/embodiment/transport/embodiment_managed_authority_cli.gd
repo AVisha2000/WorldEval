@@ -37,10 +37,11 @@ const CONFIG_FIELDS := [
 var _client = null
 var _host = null
 var _finished := false
-var _presentation_viewport: SubViewport = null
+var _presentation_viewports := {}
+var _presentation_scenes := {}
 # The publisher is loaded via the explicit preload above; leave this untyped so the managed CLI
 # remains parseable even when Godot has not indexed the new class_name in its global cache yet.
-var _preview_publisher = null
+var _preview_publishers := {}
 
 
 func _init() -> void:
@@ -76,34 +77,52 @@ func _bootstrap() -> void:
 	var secret: PackedByteArray = launch.session_secret
 	var presentation_scene: Node = null
 	if hybrid:
-		_presentation_viewport = SubViewport.new()
-		_presentation_viewport.name = "ParticipantPresentationViewport"
-		_presentation_viewport.size = Vector2i(1280, 720)
-		_presentation_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-		_presentation_viewport.transparent_bg = false
-		root.add_child(_presentation_viewport)
-		presentation_scene = PresentationScene.instantiate()
-		_presentation_viewport.add_child(presentation_scene)
+		for participant_id: String in launch.config.participant_ids:
+			var participant_viewport := SubViewport.new()
+			participant_viewport.name = "ParticipantPresentationViewport_%s" % participant_id
+			participant_viewport.size = Vector2i(1280, 720)
+			participant_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			participant_viewport.transparent_bg = false
+			root.add_child(participant_viewport)
+			var participant_scene: Node = PresentationScene.instantiate()
+			participant_viewport.add_child(participant_scene)
+			if str(launch.config.mode) in ["scripted-duel-v0", "model-duel-v0"] \
+				and participant_scene.has_method("configure_presentation_entrant"):
+				participant_scene.call(
+					"configure_presentation_entrant",
+					_duo_entrant_for_seat(str(launch.config.episode_id), participant_id)
+				)
+			_presentation_viewports[participant_id] = participant_viewport
+			_presentation_scenes[participant_id] = participant_scene
 	_host = SessionHost.new()
 	var errors: PackedStringArray = _host.configure(
-		launch, secret, presentation_scene, _presentation_viewport
+		launch, secret, _presentation_scenes, _presentation_viewports
 	)
 	# Preview publication is deliberately best-effort.  It is configured only after the managed
 	# host has accepted its participant-filtered scene, and failure to configure it cannot affect
 	# authority, replay, scoring, or the canonical PNG snapshot path.
 	if errors.is_empty() and hybrid and str(launch.config.task_id) in [
 		"orientation-v0", "interaction-v0", "construction-v0", "neutral-encounter-v0",
+		"central-relay-v0",
 	]:
-		_preview_publisher = PreviewPublisher.new()
-		root.add_child(_preview_publisher)
-		var preview_errors: PackedStringArray = _preview_publisher.configure(
-			str(launch.gateway_url), str(launch.attachment_ticket), episode_id, secret,
-			_presentation_viewport, presentation_scene,
-		)
-		if not preview_errors.is_empty():
-			_preview_publisher.close()
-			_preview_publisher.queue_free()
-			_preview_publisher = null
+		var duel_mode := str(launch.config.mode) in ["scripted-duel-v0", "model-duel-v0"]
+		for participant_id: String in launch.config.participant_ids:
+			var preview_ticket := (
+				_derive_duel_preview_ticket(secret, str(launch.attachment_ticket), participant_id)
+				if duel_mode else str(launch.attachment_ticket)
+			)
+			var preview_publisher = PreviewPublisher.new()
+			root.add_child(preview_publisher)
+			var preview_errors: PackedStringArray = preview_publisher.configure(
+				str(launch.gateway_url), preview_ticket, episode_id, secret,
+				_presentation_viewports[participant_id], _presentation_scenes[participant_id],
+				participant_id,
+			)
+			if preview_errors.is_empty():
+				_preview_publishers[participant_id] = preview_publisher
+			else:
+				preview_publisher.close()
+				preview_publisher.queue_free()
 	_scrub_bytes(secret)
 	launch.erase("session_secret")
 	if not errors.is_empty():
@@ -199,10 +218,48 @@ func _fail(code: String) -> void:
 
 
 func _close_preview() -> void:
-	if _preview_publisher != null:
-		_preview_publisher.close()
-		_preview_publisher.queue_free()
-		_preview_publisher = null
+	for preview_publisher: Variant in _preview_publishers.values():
+		preview_publisher.close()
+		preview_publisher.queue_free()
+	_preview_publishers.clear()
+	_presentation_viewports.clear()
+	_presentation_scenes.clear()
+
+
+static func _duo_entrant_for_seat(episode_id: String, participant_id: String) -> String:
+	# Public paired-series suffixes identify the ordinary seat swap.  This affects avatar pixels
+	# only and is intentionally outside frozen protocol config and all authority data.
+	if participant_id not in ["participant_0", "participant_1"]:
+		return ""
+	var swapped := episode_id.ends_with("_b")
+	if participant_id == "participant_0":
+		return "bravo" if swapped else "alpha"
+	return "alpha" if swapped else "bravo"
+
+
+static func _derive_duel_preview_ticket(
+		session_secret: PackedByteArray, attachment_ticket: String, participant_id: String
+) -> String:
+	if session_secret.size() != 32 or participant_id not in ["participant_0", "participant_1"]:
+		return ""
+	var material := "llm-controller/duel-preview-ticket/v1\u0000".to_utf8_buffer()
+	material.append_array(attachment_ticket.to_utf8_buffer())
+	material.append(0)
+	material.append_array(participant_id.to_utf8_buffer())
+	var digest := _hmac_bytes(session_secret, material)
+	material.fill(0)
+	if digest.size() != 32:
+		return ""
+	return Marshalls.raw_to_base64(digest).replace("+", "-").replace("/", "_").trim_suffix("=")
+
+
+static func _hmac_bytes(key: PackedByteArray, material: PackedByteArray) -> PackedByteArray:
+	var context := HMACContext.new()
+	if context.start(HashingContext.HASH_SHA256, key) != OK:
+		return PackedByteArray()
+	if context.update(material) != OK:
+		return PackedByteArray()
+	return context.finish()
 
 
 func _emit_control(value: Dictionary) -> void:

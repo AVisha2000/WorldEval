@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json",
+  "title": "LLM Controller player-scoped observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "episode_id",
+    "observation_seq",
+    "tick",
+    "profile",
+    "goal",
+    "remaining_ticks",
+    "previous_receipt",
+    "terminal"
+  ],
+  "properties": {
+    "protocol_version": {"const": "llm-controller/0.3.0"},
+    "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "tick": {"type": "integer", "minimum": 0},
+    "profile": {"enum": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]},
+    "goal": {"type": "string", "minLength": 1, "maxLength": 500},
+    "remaining_ticks": {"type": "integer", "minimum": 0},
+    "self": {"$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json#/$defs/self"},
+    "visible_entities": {"$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json#/$defs/visible_entities"},
+    "recent_events": {"$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json#/$defs/recent_events"},
+    "previous_receipt": {
+      "anyOf": [
+        {"type": "null"},
+        {"$ref": "https://worldeval.local/llm-controller/0.3.0/action-receipt.v1.schema.json"}
+      ]
+    },
+    "memory": {"type": "string", "maxLength": 2048},
+    "frame": {"$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json#/$defs/frame"},
+    "terminal": {"$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json#/$defs/terminal"}
+  },
+  "oneOf": [
+    {
+      "title": "Text-visible observation",
+      "required": ["self", "visible_entities", "recent_events", "memory"],
+      "properties": {
+        "profile": {"const": "text-visible-v1"},
+        "frame": false
+      }
+    },
+    {
+      "title": "RGB-only observation",
+      "required": ["frame"],
+      "properties": {
+        "profile": {"const": "rgb-v1"},
+        "self": false,
+        "visible_entities": false,
+        "recent_events": false,
+        "memory": false
+      }
+    },
+    {
+      "title": "Hybrid-visible observation",
+      "required": ["self", "visible_entities", "recent_events", "memory", "frame"],
+      "properties": {
+        "profile": {"const": "hybrid-visible-v1"}
+      }
+    }
+  ],
+  "$defs": {
+    "self": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["health_percent", "energy_percent", "facing", "contact", "inventory", "status"],
+      "properties": {
+        "health_percent": {"type": "integer", "minimum": 0, "maximum": 100},
+        "energy_percent": {"type": "integer", "minimum": 0, "maximum": 100},
+        "facing": {"enum": ["north", "north_east", "east", "south_east", "south", "south_west", "west", "north_west"]},
+        "contact": {"enum": ["clear", "blocked_front", "blocked_left", "blocked_right", "blocked_multiple"]},
+        "inventory": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "count", "selected"],
+            "properties": {
+              "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+              "count": {"type": "integer", "minimum": 0, "maximum": 99},
+              "selected": {"type": "boolean"}
+            }
+          }
+        },
+        "status": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "visible_entities": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "bearing", "distance", "affordances", "state"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^v_[A-Za-z0-9._-]{1,80}$"},
+          "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "bearing": {"enum": ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]},
+          "distance": {"enum": ["touching", "near", "medium", "far"]},
+          "affordances": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+            "uniqueItems": true
+          },
+          "state": {"type": "string", "maxLength": 160}
+        }
+      }
+    },
+    "recent_events": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {"$ref": "https://worldeval.local/llm-controller/0.3.0/authority-event.v1.schema.json"}
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensor_id", "mime_type", "width", "height", "sha256", "transport_ref"],
+      "properties": {
+        "sensor_id": {"const": "operator-follow-v1"},
+        "mime_type": {"const": "image/png"},
+        "width": {"const": 1280},
+        "height": {"const": 720},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "transport_ref": {"type": "string", "pattern": "^frame:[A-Za-z0-9._-]{1,160}$"}
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ended", "outcome", "reason"],
+      "properties": {
+        "ended": {"type": "boolean"},
+        "outcome": {"enum": ["running", "success", "failure", "win", "loss", "draw", "void"]},
+        "reason": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"ended": {"const": false}}, "required": ["ended"]},
+          "then": {"properties": {"outcome": {"const": "running"}}}
+        },
+        {
+          "if": {"properties": {"ended": {"const": true}}, "required": ["ended"]},
+          "then": {"properties": {"outcome": {"not": {"const": "running"}}, "reason": {"not": {"const": "running"}}}}
+        }
+      ]
+    }
+  }
+}

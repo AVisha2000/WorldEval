@@ -14,7 +14,15 @@ from genesis_arena.embodiment.artifacts import (
     EpisodeArtifactBundle,
     EpisodeBundles,
 )
-from genesis_arena.embodiment.episode_service import EpisodeRunSpec, EpisodeService
+from genesis_arena.embodiment.demo_provider import DemoPolicyLock
+from genesis_arena.embodiment.episode_service import (
+    EpisodeRunSpec,
+    EpisodeService,
+    demo_fixture_bytes,
+)
+from genesis_arena.embodiment.evaluation_projection import (
+    build_unavailable_evaluation_projection,
+)
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage
 from genesis_arena.embodiment.replay_archive import SavedReplay, SavedReplayArchive
 from genesis_arena.embodiment.scripted_construction_demo import (
@@ -24,6 +32,45 @@ from genesis_arena.embodiment.scripted_construction_demo import (
 from genesis_arena.embodiment.scripted_solo_demo import scripted_demo_model
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_v2_movie_archive_selects_versioned_participant_renderer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from genesis_arena.embodiment import replay_archive as module
+
+    replay_path = tmp_path / "authority.replay.json"
+    replay_path.write_bytes(b"{}")
+    output_path = tmp_path / "participant-replay.mp4"
+    commands: list[tuple[str, ...]] = []
+
+    def run(command, **_kwargs):
+        commands.append(command)
+        if "--write-movie" in command:
+            movie_path = Path(command[command.index("--write-movie") + 1])
+            movie_path.write_bytes(b"A" * 2048)
+        elif command[-1] == str(output_path):
+            output_path.write_bytes(b"\x00\x00\x00\x18ftypmp42moovmdat" + b"P" * 64)
+
+    monkeypatch.setattr(module, "_run", run)
+    module._render_participant_mp4(
+        replay_path=replay_path,
+        output_path=output_path,
+        godot_executable=Path("/usr/bin/true"),
+        godot_project_path=ROOT / "godot",
+        ffmpeg_executable=Path("/usr/bin/true"),
+        protocol_version="llm-controller/0.2.0",
+    )
+
+    assert any(
+        "res://scripts/embodiment/v2/replay/embodiment_movie_maker_cli_v2.gd"
+        in command
+        for command in commands
+    )
+    assert not any(
+        "res://scripts/embodiment/replay/embodiment_movie_maker_cli.gd" in command
+        for command in commands
+    )
 
 
 def _spec(task_id: str = SCRIPTED_CONSTRUCTION_TASK) -> EpisodeRunSpec:
@@ -55,6 +102,28 @@ def _bundles() -> EpisodeBundles:
     )
 
 
+def _demo_spec(task_id: str = "orientation-v0") -> EpisodeRunSpec:
+    model = scripted_demo_model(task_id)
+    fixture = demo_fixture_bytes(model=model, task_id=task_id)
+    return EpisodeRunSpec(
+        episode_id="ep_saved_demo_provider",
+        provider="demo",
+        model=model,
+        task_id=task_id,
+        seed=7,
+        maximum_episode_ticks=600,
+        demo_policy_lock=DemoPolicyLock(
+            scenario_id=task_id,
+            policy_id=model,
+            fixture_sha256=hashlib.sha256(fixture).hexdigest(),
+            seed=7,
+            participant_id="participant_0",
+            model=model,
+            total_decision_budget=600,
+        ),
+    )
+
+
 def _replay(spec: EpisodeRunSpec) -> dict:
     return {
         "config": {
@@ -66,6 +135,115 @@ def _replay(spec: EpisodeRunSpec) -> dict:
         "final_terminal": {"ended": True, "outcome": "success", "reason": "barricade_built"},
         "steps": [{"result": {"observations": {"participant_0": {"tick": 12}}}}],
     }
+
+
+def _showcase_replay(spec: EpisodeRunSpec) -> dict:
+    value = _replay(spec)
+    participant_id = "participant_0"
+    value["config"]["participant_ids"] = [participant_id]
+    event_kinds = (
+        "resource_gathered",
+        "material_deposited",
+        "barricade_completed",
+        "episode_succeeded",
+    )
+    end_ticks = (200, 500, 800, 900)
+    value["steps"] = []
+    for index, (kind, end_tick) in enumerate(zip(event_kinds, end_ticks)):
+        effects = []
+        control = {"look_x": 0, "look_y": 0, "move_x": 0, "move_y": 0}
+        if index == 0:
+            effects = [
+                {"kind": "heading_steps", "value": 1},
+                {"kind": "distance_moved_mt", "value": 1_000},
+            ]
+            control.update({"look_x": 1_000, "move_y": 1_000})
+        value["steps"].append(
+            {
+                "decision_window": {
+                    "decisions": {participant_id: {"action": {"control": control}}}
+                },
+                "result": {
+                    "observations": {participant_id: {"tick": end_tick}},
+                    "receipts": {
+                        participant_id: {
+                            "accepted": True,
+                            "applied_ticks": end_tick - (end_ticks[index - 1] if index else 0),
+                            "codes": ["applied"],
+                            "effects": effects,
+                            "end_tick": end_tick,
+                        }
+                    },
+                    "public_events": [{"kind": kind, "tick": end_tick}],
+                },
+            }
+        )
+    return value
+
+
+def test_replay_archive_accepts_demo_provider_without_rewriting_run_identity() -> None:
+    from genesis_arena.embodiment import replay_archive as module
+
+    spec = _demo_spec()
+    module._validate_scripted_solo_spec(spec)
+
+    assert spec.provider == "demo"
+    assert spec.run_class == "demo"
+    assert spec.public_dict()["certification_eligible"] is False
+
+
+def test_multi_action_replay_persists_scenario_label_and_evaluation_identity(tmp_path) -> None:
+    from genesis_arena.embodiment import replay_archive as module
+
+    fixture = demo_fixture_bytes(
+        model="construction-demo-v1",
+        task_id="construction-v0",
+        scenario_id="multi-action-demo-v0",
+    )
+    spec = EpisodeRunSpec(
+        episode_id="ep_saved_multi_action",
+        provider="demo",
+        model="construction-demo-v1",
+        task_id="construction-v0",
+        scenario_id="multi-action-demo-v0",
+        seed=7,
+        maximum_episode_ticks=1_300,
+        demo_policy_lock=DemoPolicyLock(
+            scenario_id="multi-action-demo-v0",
+            policy_id="multi-action-construction-demo-v1",
+            fixture_sha256=hashlib.sha256(fixture).hexdigest(),
+            seed=7,
+            participant_id="participant_0",
+            model="construction-demo-v1",
+            total_decision_budget=1_300,
+        ),
+    )
+    video_path = tmp_path / "participant-replay.mp4"
+    video_path.write_bytes(b"participant-pixels-only")
+    manifest = module._manifest_for(
+        spec,
+        _showcase_replay(spec),
+        b'{"authority":"sealed"}',
+        _bundles().public,
+        video_path,
+    )
+    saved = module._saved_replay_from_manifest(manifest)
+
+    assert manifest["task_id"] == "construction-v0"
+    assert manifest["scenario_id"] == "multi-action-demo-v0"
+    assert manifest["label"] == "Multi-action solo showcase"
+    assert manifest["evaluation_profile_id"] == "solo-multi-action-showcase-v1"
+    assert saved.public_dict()["scenario_id"] == "multi-action-demo-v0"
+    assert saved.public_dict()["evaluation_profile_id"] == "solo-multi-action-showcase-v1"
+
+    with pytest.raises(module.SavedReplayError, match="showcase evidence"):
+        module._manifest_for(
+            spec,
+            _replay(spec),
+            b'{"authority":"sealed"}',
+            _bundles().public,
+            video_path,
+        )
 
 
 @pytest.mark.asyncio
@@ -93,11 +271,27 @@ async def test_saved_replay_archives_only_verified_participant_video(tmp_path, m
     monkeypatch.setattr(module, "verify_offline_replay_with_godot", verify_with_godot)
     monkeypatch.setattr(module, "_render_participant_mp4", render_participant_mp4)
 
-    saved = await archive.save(spec, bundles)
+    evaluation = build_unavailable_evaluation_projection(
+        run_spec={
+            "certification_eligible": False,
+            "episode_id": spec.episode_id,
+            "run_class": spec.run_class,
+            "task_id": spec.task_id,
+        },
+        scope="solo",
+        reason="evaluation_unavailable",
+    )
+    saved = await archive.save(spec, bundles, evaluation=evaluation)
 
     assert saved.public_dict() == {
         "replay_id": spec.episode_id,
         "episode_id": spec.episode_id,
+        "scenario_id": "construction-v0",
+        "evaluation_profile_id": "solo-construction-v1",
+        "evaluation": {
+            "available": True,
+            "sha256": hashlib.sha256(evaluation.canonical_bytes).hexdigest(),
+        },
         "task_id": "construction-v0",
         "label": "Construction v0 scripted demo",
         "outcome": "success",
@@ -121,6 +315,17 @@ async def test_saved_replay_archives_only_verified_participant_video(tmp_path, m
     assert archive.video_path(spec.episode_id) == directory / "participant-replay.mp4"
     assert archive.get("../authority.replay.json") is None
     assert archive.list() == (saved,)
+    restarted = SavedReplayArchive(
+        runs_dir=tmp_path,
+        protocol_package=package,
+        godot_executable=Path("/bin/true"),
+        godot_project_path=ROOT / "godot",
+        ffmpeg_executable=Path("/bin/true"),
+    )
+    assert restarted.evaluation(spec.episode_id) == evaluation.as_dict()
+    manifest = (directory / "manifest.json").read_bytes()
+    assert b'"archive_format":"llm-controller/embodiment-saved-replay/1.2.0"' in manifest
+    assert b'"evaluation_sha256"' in manifest
     assert b"raw-model-output-must-stay-local" not in (directory / "manifest.json").read_bytes()
     assert (directory / "authority.replay.json").stat().st_mode & 0o077 == 0
 

@@ -96,7 +96,7 @@ function VideoFacade({ demo }: { demo: VideoDemo }) {
           </a>
         </>
       ) : (
-        <span className="coming-soon">Coming soon</span>
+        <span className="coming-soon">Local poster · video coming soon</span>
       )}
     </article>
   )
@@ -115,8 +115,9 @@ export function DemoGallery({ demos }: { demos: VideoDemo[] }) {
           <h2 id="demos-heading">See behaviour become evidence.</h2>
         </div>
         <p>
-          Local posters load first. Video is requested only after you choose to
-          play.
+          Participant-view video is requested only after you choose to play.
+          Until publication, each slot keeps a local poster and makes no
+          third-party request.
         </p>
       </div>
       <div className="demo-layout">

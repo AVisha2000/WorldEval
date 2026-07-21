@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/action-receipt.v1.schema.json",
+  "title": "LLM Controller action receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action_id", "observation_seq", "accepted", "disposition", "fallback", "no_input_reason", "start_tick", "end_tick", "applied_ticks", "codes", "effects"],
+  "properties": {
+    "action_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "accepted": {"type": "boolean"},
+    "disposition": {"enum": ["accepted", "no_input"]},
+    "fallback": {"enum": ["none", "neutral"]},
+    "no_input_reason": {
+      "type": ["string", "null"],
+      "enum": [null, "missing", "invalid", "timeout", "stale_observation"]
+    },
+    "start_tick": {"type": "integer", "minimum": 0},
+    "end_tick": {"type": "integer", "minimum": 0},
+    "applied_ticks": {"type": "integer", "minimum": 0, "maximum": 20},
+    "codes": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+      "uniqueItems": true
+    },
+    "effects": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "value": {"type": "integer"}
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "accepted": {"const": true},
+        "disposition": {"const": "accepted"},
+        "fallback": {"const": "none"},
+        "no_input_reason": {"type": "null"}
+      }
+    },
+    {
+      "properties": {
+        "accepted": {"const": false},
+        "disposition": {"const": "no_input"},
+        "fallback": {"const": "neutral"},
+        "no_input_reason": {"enum": ["missing", "invalid", "timeout", "stale_observation"]}
+      }
+    }
+  ]
+}

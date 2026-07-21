@@ -35,6 +35,7 @@ const KENNEY_PANEL := (
 	"res://assets/external/kenney_ui_pack_adventure/Vector/panel_grey_blue.svg"
 )
 const YBot := preload("res://scenes/embodiment/y_bot_operator.tscn")
+const EntrantPalette := preload("res://scripts/embodiment/presentation/entrant_palette.gd")
 
 var _built := false
 var _snapshot: Dictionary = {}
@@ -49,6 +50,7 @@ var _hud_receipt: Label
 var _hud_intent: Label
 var _event_audio: AudioStreamPlayer3D
 var _last_error := ""
+var _presentation_entrant_id := "alpha"
 
 
 func _ready() -> void:
@@ -84,6 +86,14 @@ func participant_camera(participant_id: String) -> Camera3D:
 	)):
 		return null
 	return _participant_camera
+
+
+## Deliberately presentation-only: this public series identity is not added to an authority
+## snapshot, semantic observation, provider request, checkpoint, or replay verification input.
+func configure_presentation_entrant(entrant_id: String) -> void:
+	_presentation_entrant_id = EntrantPalette.normalize(entrant_id, "alpha")
+	if _operator != null:
+		_apply_entrant_identity(_operator, _presentation_entrant_id)
 
 
 func projection_node(entity_id: String) -> Node3D:
@@ -184,13 +194,14 @@ func _add_reviewed_landmark(arena: Node3D) -> void:
 
 
 func _build_operator() -> void:
-	_operator = YBot.instantiate() as Node3D
+	_operator = _instantiate_y_bot()
 	assert(_operator != null, "reviewed Y Bot presentation scene must load")
 	_operator.name = "OperatorProjection"
 	add_child(_operator)
 	_operator.set_meta("presentation_placeholder", false)
 	_operator.set_meta("asset_identity", "mixamo-y-bot")
-	_operator.add_child(_label("OperatorLabel", "OPERATOR", Color("dbe7ff"), Vector3(0, 2.8, 0)))
+	_operator.add_child(_label("OperatorLabel", EntrantPalette.label(_presentation_entrant_id), EntrantPalette.color(_presentation_entrant_id), Vector3(0, 2.8, 0)))
+	_apply_entrant_identity(_operator, _presentation_entrant_id)
 
 	_camera_rig = Node3D.new()
 	_camera_rig.name = "ParticipantCameraRig"
@@ -284,6 +295,7 @@ func _apply_operator(operator_state: Dictionary, participant_id: String) -> void
 	var state := str(operator_state["state"])
 	_operator.set_meta("state", state)
 	_operator.set_meta("participant_id", participant_id)
+	_apply_entrant_identity(_operator, _presentation_entrant_id)
 	_participant_camera.set_meta("participant_id", participant_id)
 	_participant_camera.current = true
 	_apply_operator_visual_state(state)
@@ -323,7 +335,8 @@ func _apply_operator_visual_state(state: String) -> void:
 	var previous_state := str(_operator.get_meta("visual_state", ""))
 	_operator.set_meta("visual_state", state)
 	var label := _operator.get_node("OperatorLabel") as Label3D
-	label.text = "OPERATOR\n%s" % state.to_upper().replace("_", " ")
+	label.text = "%s\n%s" % [EntrantPalette.label(_presentation_entrant_id), state.to_upper().replace("_", " ")]
+	label.modulate = EntrantPalette.color(_presentation_entrant_id)
 	_operator.call("play_state", StringName(state))
 	if not previous_state.is_empty() and previous_state != state and state != "idle":
 		_event_audio.set_meta("last_cue", state)
@@ -354,6 +367,17 @@ func _apply_entities(entities: Array) -> void:
 
 
 func _create_entity(entity_id: String, kind: String) -> Node3D:
+	if kind == "operator":
+		var visible_operator := _instantiate_y_bot()
+		visible_operator.name = "Projection_%s" % _safe_node_name(entity_id)
+		visible_operator.set_meta("entity_id", entity_id)
+		visible_operator.set_meta("kind", kind)
+		visible_operator.add_child(_label(
+			"StateLabel", EntrantPalette.label(_rival_entrant_identity()),
+			EntrantPalette.color(_rival_entrant_identity()), Vector3(0, 2.8, 0)
+		))
+		_apply_entrant_identity(visible_operator, _rival_entrant_identity())
+		return visible_operator
 	var root := Node3D.new()
 	root.name = "Projection_%s" % _safe_node_name(entity_id)
 	root.set_meta("entity_id", entity_id)
@@ -445,7 +469,15 @@ func _update_entity(projection: Node3D, entity: Dictionary) -> void:
 	projection.set_meta("state", str(entity["state"]))
 	projection.set_meta("kind", kind)
 	var label := projection.get_node("StateLabel") as Label3D
-	label.text = "%s\n%s" % [kind.to_upper().replace("_", " "), str(entity["state"])]
+	if kind == "operator":
+		var entrant := _rival_entrant_identity()
+		_apply_entrant_identity(projection, entrant)
+		label.text = "%s\n%s" % [EntrantPalette.label(entrant), str(entity["state"]).to_upper()]
+		label.modulate = EntrantPalette.color(entrant)
+		var animation := str(entity["state"])
+		projection.call("play_state", StringName(animation if animation in ["idle", "walk", "run", "attack", "guard", "hit", "defeat"] else "idle"))
+	else:
+		label.text = "%s\n%s" % [kind.to_upper().replace("_", " "), str(entity["state"])]
 	if kind == "barricade":
 		var completion := _state_fraction(str(entity["state"]), 0.0)
 		projection.scale.y = 0.22 + completion * 0.78
@@ -468,6 +500,22 @@ func _update_entity(projection: Node3D, entity: Dictionary) -> void:
 		projection.scale = Vector3.ONE * (0.72 if depleted else 1.0)
 	elif kind == "neutral":
 		projection.visible = not str(entity["state"]).begins_with("defeated")
+
+
+func _instantiate_y_bot() -> Node3D:
+	var operator := YBot.instantiate() as Node3D
+	var animation_tree := operator.get_node_or_null("AnimationTree") as AnimationTree
+	if animation_tree != null and animation_tree.tree_root != null:
+		animation_tree.tree_root = animation_tree.tree_root.duplicate(true)
+	return operator
+
+
+func _rival_entrant_identity() -> String:
+	return "bravo" if _presentation_entrant_id == "alpha" else "alpha"
+
+
+func _apply_entrant_identity(avatar: Node3D, entrant_id: String) -> void:
+	EntrantPalette.tint_avatar(avatar, entrant_id)
 
 
 func _validate_snapshot(snapshot: Dictionary) -> String:

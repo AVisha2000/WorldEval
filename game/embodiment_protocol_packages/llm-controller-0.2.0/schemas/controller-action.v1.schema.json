@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/controller-action.v1.schema.json",
+  "title": "LLM Controller direct controller action v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "episode_id", "observation_seq", "action_id", "control", "intent_label", "memory_update"],
+  "properties": {
+    "protocol_version": {"const": "llm-controller/0.2.0"},
+    "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "action_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["move_x", "move_y", "look_x", "look_y", "duration_ticks", "buttons"],
+      "properties": {
+        "move_x": {"type": "integer", "minimum": -1000, "maximum": 1000},
+        "move_y": {"type": "integer", "minimum": -1000, "maximum": 1000},
+        "look_x": {"type": "integer", "minimum": -1000, "maximum": 1000},
+        "look_y": {"type": "integer", "minimum": -1000, "maximum": 1000},
+        "duration_ticks": {"type": "integer", "minimum": 1, "maximum": 20},
+        "buttons": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["interact", "primary", "guard", "dash", "ability_1", "ability_2", "cycle_item", "cancel"],
+          "properties": {
+            "interact": {"type": "boolean"},
+            "primary": {"type": "boolean"},
+            "guard": {"type": "boolean"},
+            "dash": {"type": "boolean"},
+            "ability_1": {"type": "boolean"},
+            "ability_2": {"type": "boolean"},
+            "cycle_item": {"type": "boolean"},
+            "cancel": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "intent_label": {"type": "string", "maxLength": 160},
+    "memory_update": {"type": "string", "maxLength": 2048}
+  }
+}

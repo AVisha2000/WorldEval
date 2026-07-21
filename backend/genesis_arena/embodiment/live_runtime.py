@@ -11,13 +11,28 @@ import httpx
 
 from .construction_task_provider import ConstructionTaskProvider
 from .contracts import CapabilityStatus, EpisodeConfig
+from .control_games.movement_maze_demo import (
+    MOVEMENT_MAZE_SCENARIO_ID,
+    movement_maze_demo_behavior,
+)
+from .control_games.operator_action_course_demo import (
+    OPERATOR_ACTION_COURSE_SCENARIO_ID,
+    operator_action_course_demo_behavior,
+)
 from .credentials import SessionCredential
-from .episode_service import EpisodeRunSpec, EpisodeService
+from .demo_provider import DemoPolicyLock, DemoProvider
+from .demo_scenarios import demo_scenario_fixture_bytes
+from .episode_service import (
+    DEMO_PROVIDER,
+    EpisodeRunSpec,
+    EpisodeService,
+)
 from .live_solo import LiveSoloOutcome, LiveSoloRunner
 from .managed_process import ManagedLaunchSpec, ManagedProcessLauncher
 from .managed_session import ManagedWorldArenaSession
 from .presentation.preview_ingress import InternalParticipantPreviewIngress
-from .protocol import EmbodimentProtocolPackage, canonical_sha256
+from .protocol import canonical_sha256
+from .protocol_registry import EmbodimentProtocolRegistry
 from .providers.anthropic_adapter import AnthropicAdapter, AnthropicHTTPResponse
 from .providers.gemini_adapter import GeminiAdapter, GeminiHTTPResponse
 from .providers.openai_adapter import OpenAIProviderAdapter
@@ -50,10 +65,11 @@ def default_episode_service(
     """Assemble the production executor without persisting credentials or evidence."""
 
     root = Path(repository_root)
-    package = EmbodimentProtocolPackage.from_repository(root)
+    registry = EmbodimentProtocolRegistry.from_repository(root)
     launcher = ManagedProcessLauncher(
         executable=godot_executable,
         project_path=godot_project_path,
+        protocol_registry=registry,
     )
     ingress = preview_ingress or InternalParticipantPreviewIngress()
     service: EpisodeService
@@ -65,6 +81,11 @@ def default_episode_service(
         publish_frame: Callable[[str, int, bytes], Awaitable[None]],
         publish_progress: Callable[[int, int], Awaitable[None]],
     ) -> LiveSoloOutcome:
+        package = registry.package(spec.protocol_version)
+        control_validation = spec.task_id in (
+            MOVEMENT_MAZE_SCENARIO_ID,
+            OPERATOR_ACTION_COURSE_SCENARIO_ID,
+        )
         config = EpisodeConfig(
             episode_id=spec.episode_id,
             mode="solo-curriculum-v0",
@@ -75,10 +96,12 @@ def default_episode_service(
             participant_ids=("participant_0",),
             capability_status=CapabilityStatus(
                 implemented_observation_profiles=("hybrid-visible-v1",),
+                implemented_tasks=(spec.task_id,),
                 certified_modes=(),
                 certified_observation_profiles=(),
                 scored_observation_profiles=(),
             ),
+            protocol_version=spec.protocol_version,
         )
         config_value = config.as_dict()
         ticket = secrets.token_urlsafe(32)
@@ -89,6 +112,7 @@ def default_episode_service(
             episode_id=spec.episode_id,
             connection_id=connection_id,
             session_secret=bytearray(session_secret),
+            protocol_version=spec.protocol_version,
         )
         preview_registered = False
 
@@ -109,12 +133,12 @@ def default_episode_service(
             protocol_package_sha256=package.package_sha256,
             session_secret=session_secret,
         )
-        session = ManagedWorldArenaSession(
+        session = ManagedWorldArenaSession.from_protocol_registry(
             config=config,
             launcher=launcher,
             launch_spec=launch,
             socket_future=socket_future,
-            protocol_package=package,
+            protocol_registry=registry,
             step_timeout_s=max(10.0, provider_timeout_s),
         )
         adapter: Any | None = None
@@ -124,7 +148,7 @@ def default_episode_service(
             # Every solo curriculum stage can publish the same signed, participant-filtered
             # local preview.  This best-effort channel is intentionally independent from the
             # authority socket and is registered before any provider is contacted.
-            if spec.task_id in SCRIPTED_SOLO_TASKS:
+            if spec.task_id in SCRIPTED_SOLO_TASKS or control_validation:
                 ingress.register(
                     ticket=ticket,
                     episode_id=spec.episode_id,
@@ -133,18 +157,25 @@ def default_episode_service(
                     sink=publish_direct_preview,
                 )
                 preview_registered = True
-            if spec.provider == SCRIPTED_CONSTRUCTION_PROVIDER:
+            if spec.provider in (SCRIPTED_CONSTRUCTION_PROVIDER, DEMO_PROVIDER):
                 # Local curriculum demos never receive a credential and remain outside every
                 # live-provider/scored path. Construction retains its strict task-plan boundary;
                 # the other curriculum stages retain the frozen direct-controller contract.
+                provider: Any
+                if spec.provider == DEMO_PROVIDER:
+                    provider = _demo_provider(spec)
+                elif spec.task_id == "construction-v0":
+                    provider = ScriptedConstructionDemoProvider()
+                else:
+                    provider = ScriptedSoloDemoProvider(spec.task_id)
                 if spec.task_id == "construction-v0":
                     adapter = ConstructionTaskProvider(
-                        ScriptedConstructionDemoProvider(),
+                        provider,
                         package,
                         task_timeout_ticks=demo_task_timeout_ticks,
                     )
                 else:
-                    adapter = ScriptedSoloDemoProvider(spec.task_id)
+                    adapter = provider
             else:
                 if credential is None:
                     raise ValueError("live provider credential is unavailable")
@@ -172,7 +203,7 @@ def default_episode_service(
     replay_archive = (
         SavedReplayArchive(
             runs_dir=runs_dir,
-            protocol_package=package,
+            protocol_registry=registry,
             godot_executable=godot_executable,
             godot_project_path=godot_project_path,
             ffmpeg_executable=ffmpeg_executable,
@@ -193,6 +224,37 @@ def provider_adapter(provider: str, credential: SessionCredential) -> Any:
     if provider == "gemini":
         return GeminiAdapter(api_key=key, transport=_gemini_transport)
     raise ValueError("unsupported provider")
+
+
+def _demo_provider(spec: EpisodeRunSpec) -> DemoProvider:
+    """Wrap the proven solo fixture behind the bounded provider-neutral Demo adapter."""
+
+    policy_lock = spec.demo_policy_lock
+    if not isinstance(policy_lock, DemoPolicyLock):
+        raise ValueError("demo policy lock is unavailable")
+    if spec.scenario_id is None:
+        raise ValueError("demo scenario identity is unavailable")
+    fixture = demo_scenario_fixture_bytes(spec.scenario_id)
+    behavior = None
+    delegate: Any | None = None
+    if spec.task_id == MOVEMENT_MAZE_SCENARIO_ID:
+        behavior = movement_maze_demo_behavior
+    elif spec.task_id == OPERATOR_ACTION_COURSE_SCENARIO_ID:
+        behavior = operator_action_course_demo_behavior
+    else:
+        delegate = (
+            ScriptedConstructionDemoProvider(
+                showcase=spec.scenario_id == "multi-action-demo-v0"
+            )
+            if spec.task_id == "construction-v0"
+            else ScriptedSoloDemoProvider(spec.task_id)
+        )
+    return DemoProvider(
+        policy_lock,
+        behavior=behavior,
+        delegate=delegate,
+        fixture_bytes=fixture,
+    )
 
 
 async def _anthropic_transport(**request: Any) -> AnthropicHTTPResponse:

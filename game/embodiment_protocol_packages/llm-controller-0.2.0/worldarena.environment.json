@@ -1,0 +1,115 @@
+{
+  "$schema": "./schemas/environment-manifest.v1.schema.json",
+  "protocol_version": "llm-controller/0.2.0",
+  "environment_id": "worldarena-embodiment-v0",
+  "name": "WorldArena Embodiment",
+  "description": "A deterministic staged embodiment benchmark with one physical Operator per model, including solo control-validation and symmetric two-participant games.",
+  "authority": {
+    "engine": "godot",
+    "engine_version": "4.5",
+    "simulation_hz": 10,
+    "numeric_model": "integer-authority",
+    "integer_division": "truncate-toward-zero"
+  },
+  "modes": [
+    {
+      "id": "solo-curriculum-v0",
+      "participants": 1,
+      "scored": true,
+      "description": "One model controls one Operator through orientation, interaction, construction, and neutral-encounter tasks."
+    },
+    {
+      "id": "scripted-duel-v0",
+      "participants": 2,
+      "scored": true,
+      "description": "One model faces a deterministic baseline using an identical Operator."
+    },
+    {
+      "id": "model-duel-v0",
+      "participants": 2,
+      "scored": true,
+      "description": "Two models play a mirrored two-leg 1v1 series with identical bodies and inputs."
+    }
+  ],
+  "observations": {
+    "profiles": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"],
+    "default_profile": "text-visible-v1",
+    "schema": "schemas/observation.v1.schema.json",
+    "participant_camera": "operator-follow-v1",
+    "spectator_camera_is_sensor": false
+  },
+  "controller": {
+    "profile": "direct-controller-v1",
+    "schema": "schemas/controller-action.v1.schema.json",
+    "axis_min": -1000,
+    "axis_max": 1000,
+    "maximum_duration_ticks": 20,
+    "default_duration_ticks": 10,
+    "axes": ["move_x", "move_y", "look_x", "look_y"],
+    "held_buttons": ["interact", "primary", "guard"],
+    "edge_buttons": ["dash", "ability_1", "ability_2", "cycle_item", "cancel"]
+  },
+  "timing": {
+    "default_track": "step-locked-v1",
+    "tracks": ["step-locked-v1"],
+    "world_pauses_during_inference": true,
+    "observation_after_each_action": true,
+    "solo_window_ticks": {"minimum": 1, "maximum": 20, "default": 10},
+    "scored_duel_window_ticks": 10
+  },
+  "curriculum": [
+    {"id": "orientation-v0", "goal": "Reach and hold the visible beacon."},
+    {"id": "interaction-v0", "goal": "Collect one marked resource and deposit it at the home relay."},
+    {"id": "construction-v0", "goal": "Gather material and construct one barricade on the marked pad."},
+    {"id": "neutral-encounter-v0", "goal": "Activate the relay defended by a deterministic neutral."},
+    {"id": "movement-maze-v0", "goal": "Navigate the visible checkpoints in order and reach the final beacon."},
+    {"id": "operator-action-course-v0", "goal": "Complete the visible controller-action stations in order."},
+    {"id": "duo-checkpoint-race-v0", "goal": "Finish a mirrored visible-checkpoint course before the rival."},
+    {"id": "duo-relay-control-v0", "goal": "Hold the central relay uncontested with attacks disabled."},
+    {"id": "duo-spar-v0", "goal": "Use movement, facing, dash, guard, and primary attacks to knock out the rival."},
+    {"id": "duo-resource-relay-v0", "goal": "Gather visible material, deposit it at the friendly relay, build and defend, and outscore or knock out the rival."},
+    {"id": "rts-skirmish-v0", "goal": "Gather visible materials, construct a base, train units, and capture the central objective or destroy the rival town hall."}
+  ],
+  "constraints": {
+    "one_body_per_participant": true,
+    "semantic_world_commands_exposed": false,
+    "exact_world_coordinates_exposed": false,
+    "action_repair_allowed": false,
+    "provider_retry_allowed": false,
+    "maximum_memory_utf8_bytes": 2048,
+    "maximum_action_utf8_bytes": 4096
+  },
+  "fairness": {
+    "identical_bodies": true,
+    "identical_controller_surface": true,
+    "simultaneous_step_boundaries": true,
+    "mirrored_maps": true,
+    "side_swapped_series": true,
+    "profile_specific_leaderboards": true
+  },
+  "contracts": {
+    "action_receipt": "schemas/action-receipt.v1.schema.json",
+    "authority_event": "schemas/authority-event.v1.schema.json",
+    "capability_status": "schemas/capability-status.v1.schema.json",
+    "decision_window": "schemas/decision-window.v1.schema.json",
+    "episode_config": "schemas/episode-config.v1.schema.json",
+    "episode_replay": "schemas/episode-replay.v1.schema.json",
+    "managed_authority_launch": "schemas/managed-authority-launch.v1.schema.json",
+    "multi_participant_step_result": "schemas/multi-participant-step-result.v1.schema.json",
+    "transport_frame": "schemas/transport-frame.v1.schema.json"
+  },
+  "capabilities": {
+    "implemented_modes": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"],
+    "implemented_observation_profiles": ["text-visible-v1", "hybrid-visible-v1"],
+    "implemented_tasks": ["movement-maze-v0", "operator-action-course-v0", "duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0", "duo-resource-relay-v0", "rts-skirmish-v0"],
+    "certified_modes": [],
+    "certified_observation_profiles": [],
+    "scored_observation_profiles": []
+  },
+  "integrity": {
+    "canonical_json": "rfc8785-integer-nfc-subset-v1",
+    "text_encoding": "utf-8",
+    "checkpoint_hash": "sha256",
+    "message_authentication": "hmac-sha256-domain-separated-v1"
+  }
+}

@@ -6,10 +6,12 @@ from .contracts import (
     ProviderAdapter,
     ProviderAuditRecord,
     ProviderCallResult,
+    ProviderCapabilities,
     ProviderFailureKind,
     ProviderName,
     ProviderRequest,
     ProviderTelemetry,
+    provider_capabilities,
 )
 from .gemini_adapter import GeminiAdapter, GeminiHTTPResponse
 from .openai_adapter import OpenAIProviderAdapter
@@ -24,8 +26,10 @@ __all__ = [
     "ProviderAdapter",
     "ProviderAuditRecord",
     "ProviderCallResult",
+    "ProviderCapabilities",
     "ProviderFailureKind",
     "ProviderName",
     "ProviderRequest",
     "ProviderTelemetry",
+    "provider_capabilities",
 ]

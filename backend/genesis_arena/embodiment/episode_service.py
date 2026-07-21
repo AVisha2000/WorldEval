@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
 import secrets
 from dataclasses import dataclass, field
@@ -10,23 +11,31 @@ from typing import Any, Awaitable, Callable, Dict, Mapping, Optional
 
 from .artifacts import EpisodeArtifactBundle, EpisodeBundles
 from .credentials import InMemoryCredentialStore, SessionCredential
+from .demo_provider import DemoPolicyLock
+from .demo_scenarios import demo_scenario, demo_scenario_fixture_bytes
+from .evaluation_projection import EvaluationProjection, build_solo_evaluation_projection
 from .live_solo import LiveSoloError, LiveSoloOutcome
 from .presentation import (
     ParticipantFrameSnapshot,
     ParticipantFrameStore,
+    ParticipantLivePreviewHub,
+    ParticipantLivePreviewSnapshot,
+    ParticipantLivePreviewStore,
     ParticipantPreviewHub,
+    sanitize_participant_jpeg,
     sanitize_participant_png,
 )
 from .protocol import strict_json_loads
 from .replay_archive import SavedReplay, SavedReplayArchive
 from .scripted_construction_demo import (
-    DEMO_MINIMUM_EPISODE_TICKS,
     SCRIPTED_CONSTRUCTION_PROVIDER,
-    SCRIPTED_CONSTRUCTION_TASK,
 )
 from .scripted_solo_demo import is_scripted_solo_demo
 
-_PROVIDERS = frozenset(("openai", "anthropic", "gemini", SCRIPTED_CONSTRUCTION_PROVIDER))
+DEMO_PROVIDER = "demo"
+_PROVIDERS = frozenset(
+    ("openai", "anthropic", "gemini", SCRIPTED_CONSTRUCTION_PROVIDER, DEMO_PROVIDER)
+)
 _SAFE_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
 _SAFE_TASK = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
@@ -51,6 +60,10 @@ class EpisodeReplayNotReadyError(EpisodeServiceError):
     code = "embodiment_episode_replay_not_ready"
 
 
+class EpisodeEvaluationNotReadyError(EpisodeServiceError):
+    code = "embodiment_evaluation_not_ready"
+
+
 @dataclass(frozen=True)
 class EpisodeRunSpec:
     episode_id: str
@@ -60,6 +73,8 @@ class EpisodeRunSpec:
     seed: int
     maximum_episode_ticks: int = 1800
     observation_profile: str = "hybrid-visible-v1"
+    demo_policy_lock: DemoPolicyLock | None = None
+    scenario_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.episode_id.startswith("ep_"):
@@ -70,6 +85,29 @@ class EpisodeRunSpec:
             provider=self.provider, model=self.model, task_id=self.task_id
         ):
             raise ValueError("scripted provider is reserved for the solo curriculum demos")
+        if self.provider == DEMO_PROVIDER:
+            if self.scenario_id is None:
+                object.__setattr__(self, "scenario_id", self.task_id)
+            scenario = demo_scenario(self.scenario_id)
+            if (
+                scenario.authority_task_id != self.task_id
+                or scenario.provider_model != self.model
+                or scenario.episode_tick_budget != self.maximum_episode_ticks
+            ):
+                raise ValueError("demo provider model/task combination is unsupported")
+            if (
+                not isinstance(self.demo_policy_lock, DemoPolicyLock)
+                or self.demo_policy_lock.scenario_id != self.scenario_id
+                or self.demo_policy_lock.policy_id != scenario.policy_id
+                or self.demo_policy_lock.seed != self.seed
+                or self.demo_policy_lock.participant_id != "participant_0"
+                or self.demo_policy_lock.model != self.model
+                or self.demo_policy_lock.total_decision_budget
+                != scenario.total_decision_budget
+            ):
+                raise ValueError("demo policy lock does not match the episode")
+        elif self.demo_policy_lock is not None or self.scenario_id is not None:
+            raise ValueError("demo identity is reserved for demo episodes")
         if self.observation_profile != "hybrid-visible-v1":
             raise ValueError("only hybrid-visible-v1 is selectable for live episodes")
         if _SAFE_MODEL.fullmatch(self.model) is None or _SAFE_TASK.fullmatch(self.task_id) is None:
@@ -84,15 +122,40 @@ class EpisodeRunSpec:
             raise ValueError("maximum_episode_ticks is invalid")
 
     def public_dict(self) -> Mapping[str, Any]:
-        return {
+        value: dict[str, Any] = {
+            "certification_eligible": False,
             "episode_id": self.episode_id,
             "maximum_episode_ticks": self.maximum_episode_ticks,
             "model": self.model,
             "observation_profile": self.observation_profile,
             "provider": self.provider,
+            "protocol_version": self.protocol_version,
+            "run_class": self.run_class,
             "seed": self.seed,
             "task_id": self.task_id,
         }
+        if self.demo_policy_lock is not None:
+            value["scenario_id"] = self.scenario_id
+            value["evaluation_profile_id"] = demo_scenario(
+                self.scenario_id or ""
+            ).evaluation_profile_id
+            value["demo_policy_lock"] = self.demo_policy_lock.as_dict()
+            value["demo_policy_lock_sha256"] = self.demo_policy_lock.sha256
+        return value
+
+    @property
+    def run_class(self) -> str:
+        if self.provider == DEMO_PROVIDER:
+            return "demo"
+        if self.provider == SCRIPTED_CONSTRUCTION_PROVIDER:
+            return "scripted"
+        return "live"
+
+    @property
+    def protocol_version(self) -> str:
+        if self.provider == DEMO_PROVIDER and self.scenario_id is not None:
+            return demo_scenario(self.scenario_id).protocol_version
+        return "llm-controller/0.1.0"
 
 
 EpisodeExecutor = Callable[
@@ -128,9 +191,11 @@ class _EpisodeRecord:
     preview: ParticipantPreviewHub = field(default_factory=ParticipantPreviewHub)
     # Direct Godot ingress is intentionally isolated from the canonical snapshot/replay preview
     # path above.  It carries only best-effort participant pixels for the live dashboard.
-    live_preview_frames: ParticipantFrameStore = field(default_factory=ParticipantFrameStore)
-    live_preview: ParticipantPreviewHub = field(default_factory=ParticipantPreviewHub)
-    live_preview_pump: _ParticipantFramePump | None = None
+    live_preview_frames: ParticipantLivePreviewStore = field(
+        default_factory=ParticipantLivePreviewStore
+    )
+    live_preview: ParticipantLivePreviewHub = field(default_factory=ParticipantLivePreviewHub)
+    live_preview_pump: _ParticipantLivePreviewPump | None = None
     progress_observation_seq: int | None = None
     progress_tick: int | None = None
     replay_state: str | None = None
@@ -211,6 +276,66 @@ class _ParticipantFramePump:
                 self._queue.task_done()
 
 
+@dataclass(frozen=True)
+class _QueuedLivePreview:
+    participant_id: str
+    sequence: int
+    jpeg: bytes
+
+
+class _ParticipantLivePreviewPump:
+    """Sanitize newest-only JPEG presentation frames outside deterministic authority."""
+
+    def __init__(self, record: _EpisodeRecord) -> None:
+        self._record = record
+        self._queue: asyncio.Queue[_QueuedLivePreview | None] = asyncio.Queue(maxsize=1)
+        self._closed = False
+        self._worker = asyncio.create_task(
+            self._run(), name=f"live-participant-preview-{record.spec.episode_id}"
+        )
+
+    async def publish(self, participant_id: str, sequence: int, jpeg: bytes) -> bool:
+        if self._closed:
+            return False
+        item = _QueuedLivePreview(participant_id, sequence, jpeg)
+        if self._queue.full():
+            try:
+                self._queue.get_nowait()
+                self._queue.task_done()
+            except asyncio.QueueEmpty:
+                pass
+        self._queue.put_nowait(item)
+        return True
+
+    async def finish(self) -> None:
+        if self._closed:
+            await self._worker
+            return
+        self._closed = True
+        await self._queue.join()
+        await self._queue.put(None)
+        await self._worker
+
+    async def _run(self) -> None:
+        while True:
+            item = await self._queue.get()
+            try:
+                if item is None:
+                    return
+                sanitized = await asyncio.to_thread(sanitize_participant_jpeg, item.jpeg)
+                self._record.live_preview_frames.publish_sanitized(
+                    item.participant_id, item.sequence, sanitized
+                )
+                snapshot = self._record.live_preview_frames.snapshot()
+                if snapshot is not None:
+                    self._record.live_preview.publish(snapshot)
+            except Exception:
+                # Preview failures are unscored drops and cannot alter episode state.
+                pass
+            finally:
+                self._queue.task_done()
+
+
 class EpisodeService:
     """Run injected episode executors and expose only sanitized public projections."""
 
@@ -237,30 +362,42 @@ class EpisodeService:
         api_key: str | None = None,
         maximum_episode_ticks: int = 1800,
         observation_profile: str = "hybrid-visible-v1",
+        scenario_id: str | None = None,
     ) -> Mapping[str, Any]:
         episode_id = f"ep_live_{secrets.token_hex(12)}"
-        if (
-            is_scripted_solo_demo(provider=provider, model=model, task_id=task_id)
-            and task_id == SCRIPTED_CONSTRUCTION_TASK
-            and isinstance(maximum_episode_ticks, int)
-            and not isinstance(maximum_episode_ticks, bool)
-        ):
-            # Keep the dedicated presentation demo alive long enough for its deterministic
-            # construction finale even if an older dashboard supplies the prior 600-tick limit.
-            maximum_episode_ticks = max(maximum_episode_ticks, DEMO_MINIMUM_EPISODE_TICKS)
+        if provider == DEMO_PROVIDER:
+            scenario_id = task_id if scenario_id is None else scenario_id
+            scenario = demo_scenario(scenario_id)
+            if scenario.authority_task_id != task_id or scenario.provider_model != model:
+                raise ValueError("demo scenario does not match task/model")
+            maximum_episode_ticks = scenario.episode_tick_budget
+        elif scenario_id is not None:
+            raise ValueError("scenario_id is reserved for demo episodes")
+        demo_policy_lock = (
+            _demo_policy_lock(
+                model=model,
+                task_id=task_id,
+                scenario_id=scenario_id or task_id,
+                seed=seed,
+            )
+            if provider == DEMO_PROVIDER
+            else None
+        )
         spec = EpisodeRunSpec(
-            episode_id,
-            provider,
-            model,
-            task_id,
-            seed,
-            maximum_episode_ticks,
-            observation_profile,
+            episode_id=episode_id,
+            provider=provider,
+            model=model,
+            task_id=task_id,
+            seed=seed,
+            maximum_episode_ticks=maximum_episode_ticks,
+            observation_profile=observation_profile,
+            demo_policy_lock=demo_policy_lock,
+            scenario_id=scenario_id,
         )
         credential: SessionCredential | None = None
-        if provider == SCRIPTED_CONSTRUCTION_PROVIDER:
+        if provider in (SCRIPTED_CONSTRUCTION_PROVIDER, DEMO_PROVIDER):
             if api_key is not None:
-                raise ValueError("scripted demo does not accept an API key")
+                raise ValueError("credential-free provider does not accept an API key")
         else:
             if not isinstance(api_key, str) or not api_key:
                 raise ValueError("provider API key is required")
@@ -287,12 +424,7 @@ class EpisodeService:
             preview=record.preview,
             channel="participant-frame",
         )
-        live_preview_pump = _ParticipantFramePump(
-            record,
-            frames=record.live_preview_frames,
-            preview=record.live_preview,
-            channel="live-participant-preview",
-        )
+        live_preview_pump = _ParticipantLivePreviewPump(record)
         record.live_preview_pump = live_preview_pump
 
         async def publish_frame(participant_id: str, observation_seq: int, png: bytes) -> None:
@@ -416,7 +548,7 @@ class EpisodeService:
         record.preview.unsubscribe(token)
 
     async def publish_live_preview(
-        self, episode_id: str, participant_id: str, observation_seq: int, png: bytes
+        self, episode_id: str, participant_id: str, sequence: int, jpeg: bytes
     ) -> bool:
         """Queue a signed Godot ingress frame without touching canonical frame/replay state."""
 
@@ -424,11 +556,15 @@ class EpisodeService:
         pump = record.live_preview_pump
         if pump is None:
             return False
-        return await pump.publish(participant_id, observation_seq, png)
+        return await pump.publish(participant_id, sequence, jpeg)
 
     async def live_preview_subscription(
         self, episode_id: str
-    ) -> tuple[int, asyncio.Queue[ParticipantFrameSnapshot], ParticipantFrameSnapshot | None]:
+    ) -> tuple[
+        int,
+        asyncio.Queue[ParticipantLivePreviewSnapshot],
+        ParticipantLivePreviewSnapshot | None,
+    ]:
         """Subscribe to direct Godot presentation pixels only, never canonical frame traffic."""
 
         record = await self._record(episode_id)
@@ -444,6 +580,12 @@ class EpisodeService:
         if record.public_bundle is None:
             raise EpisodeReplayNotReadyError()
         return record.public_bundle
+
+    async def evaluation(self, episode_id: str) -> Mapping[str, Any]:
+        record = await self._record(episode_id)
+        if record.public_bundle is None or record.outcome is None:
+            raise EpisodeEvaluationNotReadyError()
+        return _evaluation_projection(record).as_dict()
 
     async def saved_replays(self, *, limit: int = 50) -> tuple[SavedReplay, ...]:
         """List only completed participant-video replays from the local archive."""
@@ -468,6 +610,11 @@ class EpisodeService:
         if self._replay_archive is None:
             return None
         return await asyncio.to_thread(self._replay_archive.public_bundle_path, replay_id)
+
+    async def saved_replay_evaluation(self, replay_id: str) -> Mapping[str, Any] | None:
+        if self._replay_archive is None:
+            return None
+        return await asyncio.to_thread(self._replay_archive.evaluation, replay_id)
 
     async def protected_bundle(self, episode_id: str) -> EpisodeArtifactBundle:
         """Return protected evidence to trusted local certification code, never the API router."""
@@ -524,9 +671,11 @@ class EpisodeService:
     @staticmethod
     def _status(record: _EpisodeRecord) -> Mapping[str, Any]:
         value: dict[str, Any] = {
+            "certification_eligible": False,
             "config": record.spec.public_dict(),
             "episode_id": record.spec.episode_id,
             "failure": record.failure,
+            "run_class": record.spec.run_class,
             "state": record.state,
         }
         if record.progress_observation_seq is not None and record.progress_tick is not None:
@@ -544,24 +693,30 @@ class EpisodeService:
     def _start_replay_archive(self, record: _EpisodeRecord, bundles: EpisodeBundles) -> None:
         """Start presentation-only archival after the authority outcome has sealed."""
 
-        if self._replay_archive is None or not is_scripted_solo_demo(
-            provider=record.spec.provider,
-            model=record.spec.model,
-            task_id=record.spec.task_id,
-        ):
+        if self._replay_archive is None or not _is_archivable_solo_demo(record.spec):
+            return
+        try:
+            projection = _evaluation_projection(record)
+        except Exception:
+            record.replay_state = "unavailable"
             return
         record.replay_state = "saving"
         record.replay_task = asyncio.create_task(
-            self._archive_completed(record, bundles),
+            self._archive_completed(record, bundles, projection),
             name=f"embodiment-replay-archive-{record.spec.episode_id}",
         )
 
-    async def _archive_completed(self, record: _EpisodeRecord, bundles: EpisodeBundles) -> None:
+    async def _archive_completed(
+        self,
+        record: _EpisodeRecord,
+        bundles: EpisodeBundles,
+        evaluation: EvaluationProjection,
+    ) -> None:
         archive = self._replay_archive
         if archive is None:
             return
         try:
-            saved = await archive.save(record.spec, bundles)
+            saved = await archive.save(record.spec, bundles, evaluation=evaluation)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -589,12 +744,113 @@ class EpisodeService:
 
 
 __all__ = [
+    "DEMO_PROVIDER",
     "EpisodeExecutor",
     "EpisodeFrameView",
+    "EpisodeEvaluationNotReadyError",
     "EpisodeNotFoundError",
     "EpisodeReplayNotReadyError",
     "EpisodeResultNotReadyError",
     "EpisodeRunSpec",
     "EpisodeService",
     "EpisodeServiceError",
+    "demo_fixture_bytes",
 ]
+
+
+def _evaluation_projection(record: _EpisodeRecord) -> EvaluationProjection:
+    if record.public_bundle is None or record.outcome is None:
+        raise EpisodeEvaluationNotReadyError()
+    public = EpisodeArtifactBundle.verify(record.public_bundle.bundle_bytes)
+    if public.layer != "public":
+        raise EpisodeEvaluationNotReadyError()
+    values = {
+        role: strict_json_loads(public.read(role))
+        for role in ("evaluation", "public_events", "receipts", "replay_summary")
+    }
+    run: dict[str, Any] = {
+        "certification_eligible": False,
+        "episode_id": record.spec.episode_id,
+        "run_class": record.spec.run_class,
+        "task_id": record.spec.task_id,
+    }
+    if record.spec.scenario_id is not None:
+        scenario = demo_scenario(record.spec.scenario_id)
+        run.update(
+            {
+                "evaluation_profile_id": scenario.evaluation_profile_id,
+                "scenario_id": scenario.scenario_id,
+            }
+        )
+    return build_solo_evaluation_projection(
+        evaluation=values["evaluation"],
+        replay_summary=values["replay_summary"],
+        run_spec=run,
+        result=record.outcome.public_result(),
+        receipts=values["receipts"],
+        public_events=values["public_events"],
+    )
+
+
+def _demo_policy_lock(
+    *, model: str, task_id: str, scenario_id: str, seed: int
+) -> DemoPolicyLock:
+    """Freeze the deterministic solo fixture without adding scenario data to ProviderRequest."""
+
+    scenario = demo_scenario(scenario_id)
+    if scenario.authority_task_id != task_id or scenario.provider_model != model:
+        raise ValueError("demo scenario does not match task/model")
+    fixture = demo_scenario_fixture_bytes(scenario_id)
+
+    return DemoPolicyLock(
+        scenario_id=scenario_id,
+        policy_id=scenario.policy_id,
+        fixture_sha256=hashlib.sha256(fixture).hexdigest(),
+        seed=seed,
+        participant_id="participant_0",
+        model=model,
+        total_decision_budget=scenario.total_decision_budget,
+    )
+
+
+def demo_fixture_bytes(
+    *,
+    model: str,
+    task_id: str,
+    scenario_id: str | None = None,
+    policy_source_sha256: str | None = None,
+) -> bytes:
+    """Compatibility wrapper for catalog-bound deterministic fixture material."""
+
+    resolved_id = task_id if scenario_id is None else scenario_id
+    scenario = demo_scenario(resolved_id)
+    if scenario.authority_task_id != task_id or scenario.provider_model != model:
+        raise ValueError("demo scenario does not match task/model")
+    digests = None
+    if policy_source_sha256 is not None:
+        if re.fullmatch(r"[0-9a-f]{64}", policy_source_sha256) is None:
+            raise ValueError("demo policy source digest is invalid")
+        if len(scenario.policy_source_ids) != 1:
+            raise ValueError("single-source fixture compatibility is unavailable")
+        digests = {scenario.policy_source_ids[0]: policy_source_sha256}
+    return demo_scenario_fixture_bytes(resolved_id, policy_source_sha256=digests)
+
+
+def _is_archivable_solo_demo(spec: EpisodeRunSpec) -> bool:
+    if spec.provider == DEMO_PROVIDER:
+        try:
+            scenario = demo_scenario(spec.scenario_id or "")
+        except (TypeError, ValueError):
+            return False
+        return (
+            scenario.authority_task_id == spec.task_id
+            and scenario.provider_model == spec.model
+        )
+    provider = (
+        SCRIPTED_CONSTRUCTION_PROVIDER if spec.provider == DEMO_PROVIDER else spec.provider
+    )
+    return is_scripted_solo_demo(
+        provider=provider,
+        model=spec.model,
+        task_id=spec.task_id,
+    )

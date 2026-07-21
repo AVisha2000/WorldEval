@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs -- The preview hook returns render state alongside a canvas ref; this component never reads ref.current during render. */
 import { useEffect, useState } from "react"
 import type { UseQueryResult } from "@tanstack/react-query"
 import { LoaderCircleIcon, ShieldCheckIcon } from "lucide-react"
@@ -20,17 +19,17 @@ export function ParticipantFrame({
   episode: EpisodeView
   frame: UseQueryResult<ParticipantFrameView, Error>
 }) {
-  const preview = useParticipantPreview(episode)
+  const { canvasRef, connected, frameReady } = useParticipantPreview(episode)
   const terminal = !["queued", "running"].includes(episode.status)
   const unavailable = episode.failureCode === "embodiment_provider_unavailable"
   const state = frame.data?.state ?? (terminal ? "finished" : "loading")
   // Keep the last verified live frame when the episode ends, but fall back to the canonical
   // snapshot during an unexpected active-stream disconnect whenever one is available.
-  const showLivePreview = preview.frameReady && (preview.connected || terminal || !frame.data?.blob)
+  const showLivePreview = frameReady && (connected || terminal || !frame.data?.blob)
   const presentationState = terminal ? "finished" : showLivePreview ? "live" : state
   const label = presentationState === "finished"
     ? "Finished"
-    : preview.connected || preview.frameReady
+    : connected || frameReady
       ? "Live stream"
       : presentationState === "live"
         ? "Live"
@@ -39,7 +38,7 @@ export function ParticipantFrame({
   return (
     <section className="arena-viewport participant-frame" aria-label="Active participant camera">
       <canvas
-        ref={preview.canvasRef}
+        ref={canvasRef}
         className={`participant-preview${showLivePreview ? " is-live" : ""}`}
         aria-label="Active participant Godot camera stream"
       />

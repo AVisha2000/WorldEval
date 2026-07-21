@@ -7,13 +7,19 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Dict, Literal, Mapping, Protocol, Tuple, Union, runtime_checkable
 
-ProtocolVersion = Literal["llm-controller/0.1.0"]
-EnvironmentMode = Literal["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]
+ProtocolVersion = Literal[
+    "llm-controller/0.1.0", "llm-controller/0.2.0", "llm-controller/0.3.0"
+]
+EnvironmentMode = Literal[
+    "solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0", "trio-game-v0"
+]
 ObservationProfile = Literal["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]
 TimingTrack = Literal["step-locked-v1"]
-ActionDisposition = Literal["accepted", "no_input"]
+ActionDisposition = Literal["accepted", "no_input", "eliminated"]
 FallbackPolicy = Literal["none", "neutral"]
-NoInputReason = Literal["missing", "invalid", "timeout", "stale_observation"]
+NoInputReason = Literal[
+    "missing", "invalid", "timeout", "stale_observation", "budget_exhausted", "eliminated"
+]
 TerminalOutcome = Literal["running", "success", "failure", "win", "loss", "draw", "void"]
 JsonScalar = Union[str, int, bool, None]
 
@@ -25,8 +31,34 @@ _LOWER_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _TASK_ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _EVENT_ID = re.compile(r"^evt_[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 
-_MODES = frozenset(("solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"))
+_MODES = frozenset(
+    ("solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0", "trio-game-v0")
+)
 _PROFILES = frozenset(("text-visible-v1", "rgb-v1", "hybrid-visible-v1"))
+_PROTOCOL_VERSIONS = frozenset(
+    ("llm-controller/0.1.0", "llm-controller/0.2.0", "llm-controller/0.3.0")
+)
+_V1_TASKS = frozenset(
+    (
+        "orientation-v0",
+        "interaction-v0",
+        "construction-v0",
+        "neutral-encounter-v0",
+        "central-relay-v0",
+    )
+)
+_V2_TASKS = _V1_TASKS | frozenset(
+    (
+        "movement-maze-v0",
+        "operator-action-course-v0",
+        "duo-checkpoint-race-v0",
+        "duo-relay-control-v0",
+        "duo-spar-v0",
+        "duo-resource-relay-v0",
+        "rts-skirmish-v0",
+    )
+)
+_V3_TASKS = frozenset(("trio-relay-v0", "trio-free-for-all-v0"))
 
 
 def _strict_int(name: str, value: object, minimum: int, maximum: int) -> None:
@@ -156,13 +188,18 @@ class ControllerAction:
     protocol_version: ProtocolVersion = "llm-controller/0.1.0"
 
     def __post_init__(self) -> None:
-        if self.protocol_version != "llm-controller/0.1.0":
+        if self.protocol_version not in _PROTOCOL_VERSIONS:
             raise ValueError("unsupported protocol_version")
         _strict_pattern("episode_id", self.episode_id, _EPISODE_ID)
         _strict_int("observation_seq", self.observation_seq, 0, _EXACT_INTEGER_MAX)
         _strict_pattern("action_id", self.action_id, _ACTION_ID)
         if not isinstance(self.control, ControllerState):
             raise TypeError("control must be ControllerState")
+        if (
+            self.protocol_version in ("llm-controller/0.2.0", "llm-controller/0.3.0")
+            and self.control.autonomous_task is not None
+        ):
+            raise ValueError("autonomous_task is not defined by this protocol version")
         _strict_string("intent_label", self.intent_label, maximum_utf8_bytes=160)
         _strict_string("memory_update", self.memory_update, maximum_utf8_bytes=2048)
 
@@ -267,18 +304,45 @@ class EpisodeConfig:
     maximum_episode_ticks: int = 1800
     participant_ids: Tuple[str, ...] = ("participant_0",)
     capability_status: CapabilityStatus = field(default_factory=CapabilityStatus, repr=False)
+    protocol_version: ProtocolVersion = "llm-controller/0.1.0"
+    seat_rotation: int | None = None
 
     def __post_init__(self) -> None:
         _strict_pattern("episode_id", self.episode_id, _EPISODE_ID)
+        if self.protocol_version not in _PROTOCOL_VERSIONS:
+            raise ValueError("unsupported protocol_version")
         if self.mode not in _MODES:
             raise ValueError("mode is not defined by this protocol")
         _strict_pattern("task_id", self.task_id, _TASK_ID)
+        # Preserve the original v1 constructor contract: runtime CapabilityStatus remains its task
+        # gate, with the frozen package schema enforcing the wire vocabulary before reset. V2 is
+        # additive and can enforce its newly frozen vocabulary from its first release.
+        if self.protocol_version == "llm-controller/0.2.0" and self.task_id not in _V2_TASKS:
+            raise ValueError("task_id is not defined by this protocol version")
+        if self.protocol_version == "llm-controller/0.3.0" and self.task_id not in _V3_TASKS:
+            raise ValueError("task_id is not defined by this protocol version")
+        if self.task_id in ("movement-maze-v0", "operator-action-course-v0") and self.mode != (
+            "solo-curriculum-v0"
+        ):
+            raise ValueError("control-validation tasks require solo-curriculum-v0")
+        if self.task_id in (
+            "duo-checkpoint-race-v0",
+            "duo-relay-control-v0",
+            "duo-spar-v0",
+            "duo-resource-relay-v0",
+            "rts-skirmish-v0",
+        ) and self.mode not in ("scripted-duel-v0", "model-duel-v0"):
+            raise ValueError("duo games require a two-participant mode")
+        if self.protocol_version == "llm-controller/0.3.0" and self.mode != "trio-game-v0":
+            raise ValueError("protocol v3 requires trio-game-v0")
         if self.observation_profile not in _PROFILES:
             raise ValueError("observation_profile is not defined by this protocol")
         if self.timing_track != "step-locked-v1":
             raise ValueError("unsupported timing_track")
         _strict_tuple("participant_ids", self.participant_ids)
-        expected_participants = 1 if self.mode == "solo-curriculum-v0" else 2
+        expected_participants = (
+            1 if self.mode == "solo-curriculum-v0" else 3 if self.mode == "trio-game-v0" else 2
+        )
         if len(self.participant_ids) != expected_participants:
             raise ValueError(f"{self.mode} requires {expected_participants} participant(s)")
         if len(set(self.participant_ids)) != len(self.participant_ids):
@@ -287,6 +351,14 @@ class EpisodeConfig:
             _strict_pattern("participant_id", participant_id, _PARTICIPANT_ID)
         _strict_int("seed", self.seed, 0, _EXACT_INTEGER_MAX)
         _strict_int("maximum_episode_ticks", self.maximum_episode_ticks, 1, 18_000)
+        if self.protocol_version == "llm-controller/0.3.0":
+            if self.participant_ids != ("participant_0", "participant_1", "participant_2"):
+                raise ValueError("protocol v3 requires the canonical three participant IDs")
+            _strict_int("seat_rotation", self.seat_rotation, 0, 2)
+            if self.maximum_episode_ticks != 1200:
+                raise ValueError("protocol v3 episodes require exactly 1200 maximum ticks")
+        elif self.seat_rotation is not None:
+            raise ValueError("seat_rotation is defined only by protocol v3")
         if not isinstance(self.capability_status, CapabilityStatus):
             raise TypeError("capability_status must be CapabilityStatus")
         if not self.capability_status.supports(
@@ -301,8 +373,8 @@ class EpisodeConfig:
     def as_dict(self) -> Dict[str, Any]:
         """Return the canonical gameplay-affecting wire representation."""
 
-        return {
-            "protocol_version": "llm-controller/0.1.0",
+        value: Dict[str, Any] = {
+            "protocol_version": self.protocol_version,
             "episode_id": self.episode_id,
             "mode": self.mode,
             "task_id": self.task_id,
@@ -312,6 +384,9 @@ class EpisodeConfig:
             "maximum_episode_ticks": self.maximum_episode_ticks,
             "participant_ids": list(self.participant_ids),
         }
+        if self.protocol_version == "llm-controller/0.3.0":
+            value["seat_rotation"] = self.seat_rotation
+        return value
 
 
 @dataclass(frozen=True)
@@ -324,7 +399,7 @@ class ParticipantDecision:
     no_input_reason: NoInputReason | None = None
 
     def __post_init__(self) -> None:
-        if self.disposition not in ("accepted", "no_input"):
+        if self.disposition not in ("accepted", "no_input", "eliminated"):
             raise ValueError("unsupported disposition")
         if self.disposition == "accepted":
             if not isinstance(self.action, ControllerAction):
@@ -336,12 +411,21 @@ class ParticipantDecision:
             raise ValueError("no_input decisions cannot contain an action")
         if self.fallback != "neutral":
             raise ValueError("no_input decisions must use the neutral fallback")
-        if self.no_input_reason not in ("missing", "invalid", "timeout", "stale_observation"):
+        allowed = (
+            ("eliminated",)
+            if self.disposition == "eliminated"
+            else ("missing", "invalid", "timeout", "stale_observation", "budget_exhausted")
+        )
+        if self.no_input_reason not in allowed:
             raise ValueError("no_input decisions require a recognized no_input_reason")
 
     @classmethod
     def no_input(cls, reason: NoInputReason) -> ParticipantDecision:
         return cls("no_input", None, "neutral", reason)
+
+    @classmethod
+    def eliminated(cls) -> ParticipantDecision:
+        return cls("eliminated", None, "neutral", "eliminated")
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -400,6 +484,10 @@ class DecisionWindow:
                 if not isinstance(candidate, ControllerAction):
                     raise ValueError("solo no-input windows require duration_ticks")
                 duration_ticks = candidate.control.duration_ticks
+        elif mode == "trio-game-v0":
+            if duration_ticks is not None and duration_ticks != 10:
+                raise ValueError("trio windows are fixed at 10 ticks")
+            duration_ticks = 10
         else:
             if duration_ticks is not None and duration_ticks != 10:
                 raise ValueError("scored duel windows are fixed at 10 ticks")
@@ -409,7 +497,9 @@ class DecisionWindow:
         for participant_id in participant_ids:
             reason = reasons.get(participant_id)
             candidate = actions.get(participant_id)
-            if reason is not None:
+            if reason == "eliminated":
+                decisions[participant_id] = ParticipantDecision.eliminated()
+            elif reason is not None:
                 decisions[participant_id] = ParticipantDecision.no_input(reason)
             elif candidate is None:
                 decisions[participant_id] = ParticipantDecision.no_input("missing")
@@ -442,6 +532,9 @@ class DecisionWindow:
         if self.mode == "solo-curriculum-v0":
             _strict_int("duration_ticks", self.duration_ticks, 1, 20)
             expected_participants = 1
+        elif self.mode == "trio-game-v0":
+            _strict_int("duration_ticks", self.duration_ticks, 10, 10)
+            expected_participants = 3
         else:
             _strict_int("duration_ticks", self.duration_ticks, 10, 10)
             expected_participants = 2
@@ -538,10 +631,15 @@ class ActionReceipt:
         if self.disposition == "accepted":
             if not self.accepted or self.fallback != "none" or self.no_input_reason is not None:
                 raise ValueError("accepted receipt disposition is inconsistent")
-        elif self.disposition == "no_input":
+        elif self.disposition in ("no_input", "eliminated"):
             if self.accepted or self.fallback != "neutral":
                 raise ValueError("no_input receipt must record a rejected neutral fallback")
-            if self.no_input_reason not in ("missing", "invalid", "timeout", "stale_observation"):
+            allowed = (
+                ("eliminated",)
+                if self.disposition == "eliminated"
+                else ("missing", "invalid", "timeout", "stale_observation", "budget_exhausted")
+            )
+            if self.no_input_reason not in allowed:
                 raise ValueError("no_input receipt requires a recognized no_input_reason")
         else:
             raise ValueError("unsupported receipt disposition")
@@ -571,7 +669,7 @@ class AuthorityEvent:
     kind: str
     summary: str
     participant_ids: Tuple[str, ...] = ()
-    data: Mapping[str, JsonScalar] = field(default_factory=dict)
+    data: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _strict_pattern("event_id", self.event_id, _EVENT_ID)
@@ -587,6 +685,19 @@ class AuthorityEvent:
             raise TypeError("event data must be a mapping")
         for key, value in self.data.items():
             _strict_pattern("event data key", key, _LOWER_ID)
+            if key == "placements" and isinstance(value, list):
+                for group in value:
+                    if not isinstance(group, dict) or set(group) != {
+                        "place", "participant_ids", "tie", "basis"
+                    }:
+                        raise TypeError("event placements must contain typed tie groups")
+                    TrioPlacementGroup(
+                        group["place"],
+                        tuple(group["participant_ids"]),
+                        group["tie"],
+                        group["basis"],
+                    )
+                continue
             if isinstance(value, bool):
                 continue
             if isinstance(value, int):
@@ -630,6 +741,141 @@ class TerminalState:
 
 
 @dataclass(frozen=True)
+class TrioPlacementGroup:
+    """One ordered trio placement, containing an explicit deterministic tie group."""
+
+    place: int
+    participant_ids: Tuple[str, ...]
+    tied: bool
+    basis: str
+
+    def __post_init__(self) -> None:
+        _strict_int("trio place", self.place, 1, 3)
+        _strict_tuple("trio placement participant_ids", self.participant_ids)
+        if not 1 <= len(self.participant_ids) <= 3 or len(set(self.participant_ids)) != len(
+            self.participant_ids
+        ):
+            raise ValueError("trio placement must contain one to three unique participants")
+        for participant_id in self.participant_ids:
+            _strict_pattern("trio placement participant_id", participant_id, _PARTICIPANT_ID)
+        _strict_bool("trio placement tied", self.tied)
+        if self.tied != (len(self.participant_ids) > 1):
+            raise ValueError("trio placement tied flag differs from its tie group")
+        _strict_pattern("trio placement basis", self.basis, _LOWER_ID)
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "place": self.place,
+            "participant_ids": list(self.participant_ids),
+            "tie": self.tied,
+            "basis": self.basis,
+        }
+
+
+@dataclass(frozen=True)
+class TrioParticipantOutcome:
+    participant_id: str
+    outcome: Literal["win", "loss", "draw", "void", "eliminated"]
+    place: int
+    tied: bool
+    eliminated_tick: int | None = None
+
+    def __post_init__(self) -> None:
+        _strict_pattern("trio outcome participant_id", self.participant_id, _PARTICIPANT_ID)
+        if self.outcome not in ("win", "loss", "draw", "void", "eliminated"):
+            raise ValueError("trio participant outcome is unsupported")
+        _strict_int("trio outcome place", self.place, 1, 3)
+        _strict_bool("trio outcome tied", self.tied)
+        if self.eliminated_tick is not None:
+            _strict_int("trio outcome eliminated_tick", self.eliminated_tick, 0, _EXACT_INTEGER_MAX)
+        if (self.outcome == "eliminated") != (self.eliminated_tick is not None):
+            raise ValueError("trio eliminated outcome and tick are inconsistent")
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "participant_id": self.participant_id,
+            "outcome": self.outcome,
+            "place": self.place,
+            "tied": self.tied,
+            "eliminated_tick": self.eliminated_tick,
+        }
+
+
+@dataclass(frozen=True)
+class TrioResult:
+    """Canonical terminal trio result independent of event arrival order."""
+
+    task_id: Literal["trio-relay-v0", "trio-free-for-all-v0"]
+    outcome: Literal["win", "draw", "void"]
+    reason: str
+    winner_id: str | None
+    placements: Tuple[TrioPlacementGroup, ...]
+    participant_outcomes: Mapping[str, TrioParticipantOutcome]
+    schema_version: Literal["llm-controller/trio-result/1.0.0"] = (
+        "llm-controller/trio-result/1.0.0"
+    )
+
+    def __post_init__(self) -> None:
+        if self.task_id not in _V3_TASKS:
+            raise ValueError("trio result task is unsupported")
+        if self.outcome not in ("win", "draw", "void"):
+            raise ValueError("trio result outcome is unsupported")
+        _strict_pattern("trio result reason", self.reason, _LOWER_ID)
+        if self.winner_id is not None:
+            _strict_pattern("trio result winner_id", self.winner_id, _PARTICIPANT_ID)
+        if (self.outcome == "win") != (self.winner_id is not None):
+            raise ValueError("trio winner and terminal outcome are inconsistent")
+        _strict_tuple("trio placements", self.placements)
+        if not 1 <= len(self.placements) <= 3 or any(
+            not isinstance(value, TrioPlacementGroup) for value in self.placements
+        ):
+            raise ValueError("trio placements are invalid")
+        expected_place = 1
+        ordered_participants: list[str] = []
+        placement_by_participant: dict[str, TrioPlacementGroup] = {}
+        for group in self.placements:
+            if group.place != expected_place:
+                raise ValueError("trio placements are not contiguous ordered tie groups")
+            expected_place += len(group.participant_ids)
+            for participant_id in group.participant_ids:
+                if participant_id in placement_by_participant:
+                    raise ValueError("trio participant appears in more than one placement")
+                placement_by_participant[participant_id] = group
+                ordered_participants.append(participant_id)
+        expected_ids = {"participant_0", "participant_1", "participant_2"}
+        if set(ordered_participants) != expected_ids or len(ordered_participants) != 3:
+            raise ValueError("trio placements must cover the canonical three participants")
+        if not isinstance(self.participant_outcomes, Mapping) or set(
+            self.participant_outcomes
+        ) != expected_ids:
+            raise ValueError("trio participant outcomes must cover exactly three participants")
+        for participant_id, participant_outcome in self.participant_outcomes.items():
+            if not isinstance(participant_outcome, TrioParticipantOutcome) \
+                    or participant_outcome.participant_id != participant_id:
+                raise ValueError("trio participant outcome identity differs")
+            placement = placement_by_participant[participant_id]
+            if participant_outcome.place != placement.place \
+                    or participant_outcome.tied != placement.tied:
+                raise ValueError("trio participant outcome differs from its placement")
+        if self.winner_id is not None and placement_by_participant[self.winner_id].place != 1:
+            raise ValueError("trio winner must occupy first place")
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "task_id": self.task_id,
+            "outcome": self.outcome,
+            "reason": self.reason,
+            "winner_id": self.winner_id,
+            "placements": [value.as_dict() for value in self.placements],
+            "participant_outcomes": {
+                participant_id: self.participant_outcomes[participant_id].as_dict()
+                for participant_id in ("participant_0", "participant_1", "participant_2")
+            },
+        }
+
+
+@dataclass(frozen=True)
 class MultiParticipantStepResult:
     """One joint authority window and participant-scoped results from its boundary."""
 
@@ -638,6 +884,9 @@ class MultiParticipantStepResult:
     public_events: Tuple[AuthorityEvent, ...]
     state_hash: str
     terminal: TerminalState
+    placements: Tuple[TrioPlacementGroup, ...] = ()
+    trio_result: TrioResult | None = None
+    include_trio_fields: bool = field(default=False, repr=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.observations, Mapping) or not self.observations:
@@ -662,9 +911,22 @@ class MultiParticipantStepResult:
             raise ValueError("state_hash must be lowercase SHA-256")
         if not isinstance(self.terminal, TerminalState):
             raise TypeError("terminal must be TerminalState")
+        _strict_tuple("result placements", self.placements)
+        if any(not isinstance(value, TrioPlacementGroup) for value in self.placements):
+            raise TypeError("result placements must contain TrioPlacementGroup values")
+        if self.trio_result is not None and not isinstance(self.trio_result, TrioResult):
+            raise TypeError("trio_result must be TrioResult or None")
+        _strict_bool("include_trio_fields", self.include_trio_fields)
+        if not self.include_trio_fields and (self.placements or self.trio_result is not None):
+            raise ValueError("trio fields require the versioned trio result surface")
+        if self.include_trio_fields:
+            if self.terminal.ended != (self.trio_result is not None):
+                raise ValueError("terminal trio step and typed trio result are inconsistent")
+            if self.trio_result is not None and self.trio_result.placements != self.placements:
+                raise ValueError("step placements differ from the typed trio result")
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        value: Dict[str, Any] = {
             "observations": {
                 participant_id: dict(observation)
                 for participant_id, observation in self.observations.items()
@@ -677,6 +939,12 @@ class MultiParticipantStepResult:
             "state_hash": self.state_hash,
             "terminal": self.terminal.as_dict(),
         }
+        if self.include_trio_fields:
+            value["placements"] = [placement.as_dict() for placement in self.placements]
+            value["trio_result"] = (
+                None if self.trio_result is None else self.trio_result.as_dict()
+            )
+        return value
 
 
 @runtime_checkable

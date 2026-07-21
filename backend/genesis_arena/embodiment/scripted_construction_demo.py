@@ -38,12 +38,15 @@ class ScriptedConstructionDemoProvider:
 
     provider_name = SCRIPTED_CONSTRUCTION_PROVIDER
 
+    def __init__(self, *, showcase: bool = False) -> None:
+        self._showcase = showcase
+
     async def request(self, request: ProviderRequest) -> ProviderCallResult:
         try:
             observation = strict_json_loads(request.observation_json)
             if not isinstance(observation, Mapping):
                 raise ValueError("observation is not an object")
-            task = _next_task(observation)
+            task = _next_task(observation, showcase=self._showcase)
         except (TypeError, ValueError, KeyError):
             # The ordinary live runner records this through its normal neutral-window policy.
             from .providers.contracts import ProviderFailureKind
@@ -79,7 +82,7 @@ def demo_task_timeout_ticks(task: str, observation: Mapping[str, Any]) -> int:
     return max(1, DEMO_BUILD_START_TICK - tick)
 
 
-def _next_task(observation: Mapping[str, Any]) -> str:
+def _next_task(observation: Mapping[str, Any], *, showcase: bool = False) -> str:
     entities = observation.get("visible_entities")
     if not isinstance(entities, list):
         raise ValueError("visible entities are absent")
@@ -114,7 +117,9 @@ def _next_task(observation: Mapping[str, Any]) -> str:
         return "deliver_materials"
     if states.get("v_resource_1") == "available":
         return "gather_materials"
-    if states.get("v_build_pad_1") == "ready" and tick >= DEMO_BUILD_START_TICK:
+    if states.get("v_build_pad_1") == "ready" and (
+        not showcase or tick >= DEMO_BUILD_START_TICK
+    ):
         return "build_barricade"
     return "wait"
 

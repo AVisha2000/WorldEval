@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/construction-task-plan.v1.schema.json",
+  "title": "WorldArena Construction task plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "episode_id", "observation_seq", "task_id", "intent_label", "memory_update"],
+  "properties": {
+    "protocol_version": {"const": "llm-controller/0.2.0"},
+    "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "task_id": {"enum": ["gather_materials", "deliver_materials", "build_barricade", "wait"]},
+    "intent_label": {"type": "string", "maxLength": 160},
+    "memory_update": {"type": "string", "maxLength": 2048}
+  }
+}

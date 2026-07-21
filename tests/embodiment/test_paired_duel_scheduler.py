@@ -30,7 +30,14 @@ from genesis_arena.embodiment.duel import (
     aggregate_verified_pair,
     run_paired_duel_with_reruns,
 )
-from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
+from genesis_arena.embodiment.duel.demo_provider import build_demo_duel_provider
+from genesis_arena.embodiment.duel.live_runtime import build_paired_duel_plan
+from genesis_arena.embodiment.duel.service import DuelSeriesSpec
+from genesis_arena.embodiment.protocol import (
+    EmbodimentProtocolPackage,
+    canonical_json_bytes,
+    strict_json_loads,
+)
 from genesis_arena.embodiment.providers.contracts import ProviderCallResult, ProviderTelemetry
 from genesis_arena.embodiment.series import ModelLock, SeriesLock
 
@@ -147,11 +154,12 @@ def _action(request, entrant_id: str) -> bytes:
 
 
 class _Provider:
-    def __init__(self, entrant, harness, *, invalid=False, delay=0.0):
+    def __init__(self, entrant, harness, *, invalid=False, stale=False, delay=0.0):
         self.provider_name = entrant.provider
         self.entrant = entrant
         self.harness = harness
         self.invalid = invalid
+        self.stale = stale
         self.delay = delay
         self.requests = []
         self.closed = False
@@ -168,6 +176,10 @@ class _Provider:
         if self.delay:
             await asyncio.sleep(self.delay)
         output = b'{"invalid":true}' if self.invalid else _action(request, self.entrant.entrant_id)
+        if self.stale:
+            value = strict_json_loads(output)
+            value["observation_seq"] = request.observation_seq + 1
+            output = canonical_json_bytes(value)
         return ProviderCallResult.success(output, ProviderTelemetry(latency_ms=1))
 
     async def aclose(self):
@@ -246,8 +258,9 @@ class _Session:
 
 
 class _Harness:
-    def __init__(self, *, invalid=(), delays=None, verification=None, windows=2):
+    def __init__(self, *, invalid=(), stale=(), delays=None, verification=None, windows=2):
         self.invalid = set(invalid)
+        self.stale = set(stale)
         self.delays = delays or {}
         self.verification = verification or self._verified
         self.expected_windows = windows
@@ -263,6 +276,7 @@ class _Harness:
             entrant,
             self,
             invalid=(plan.leg_index, entrant.entrant_id) in self.invalid,
+            stale=(plan.leg_index, entrant.entrant_id) in self.stale,
             delay=self.delays.get((plan.leg_index, entrant.entrant_id), 0.0),
         )
         self.providers.append(provider)
@@ -504,6 +518,77 @@ async def test_timed_out_participant_is_neutral_and_pair_still_advances():
     assert failed.no_input_reason == "timeout"
     assert harness.sessions[0].windows[0].duration_ticks == 10
     assert result.legs[0].provider_failures == 1
+
+
+@pytest.mark.asyncio
+async def test_stale_participant_action_is_neutral_and_joint_time_still_advances():
+    plan = _plan()
+    harness = _Harness(stale={(0, "model_b")}, windows=1)
+    result = await _scheduler(plan, harness).run()
+
+    first = harness.sessions[0].windows[0]
+    stale = first.decisions["participant_1"]
+    assert stale.disposition == "no_input"
+    assert stale.fallback == "neutral"
+    assert stale.no_input_reason == "invalid"
+    assert first.start_tick == 0
+    assert first.duration_ticks == 10
+    assert result.legs[0].provider_failures == 1
+
+
+@pytest.mark.asyncio
+async def test_demo_budget_failure_is_neutral_and_cannot_stall_joint_time():
+    package = _package()
+    spec = DuelSeriesSpec(
+        series_id="series_demo_budget",
+        entrants=(
+            DuelEntrant("model_a", "demo", "duelist-alpha-v1"),
+            DuelEntrant("model_b", "demo", "duelist-bravo-v1"),
+        ),
+        seed=41,
+        schedule_nonce="demo-budget-0",
+        max_live_provider_calls=1,
+    )
+    plan = build_paired_duel_plan(
+        spec=spec,
+        repository_root=ROOT,
+        godot_project_path=ROOT / "godot",
+        protocol_package=package,
+        provider_timeout_s=0.2,
+    )
+    harness = _Harness(windows=2)
+
+    async def provider_factory(entrant, leg):
+        assignment = next(
+            value for value in leg.assignments if value.entrant_id == entrant.entrant_id
+        )
+        return build_demo_duel_provider(
+            model=entrant.model,
+            participant_id=assignment.participant_id,
+            seed=leg.seed,
+            decision_budget=1,
+        )
+
+    scheduler = PairedDuelScheduler(
+        plan=plan,
+        session_factory=harness.session_factory,
+        provider_factory=provider_factory,
+        protocol_package=package,
+    )
+    result = await asyncio.wait_for(scheduler.run(), timeout=2)
+
+    assert result.status == "complete"
+    assert all(leg.windows == 2 and leg.provider_failures == 2 for leg in result.legs)
+    for session in harness.sessions:
+        second = session.windows[1]
+        assert second.start_tick == 10
+        assert second.duration_ticks == 10
+        assert all(
+            decision.disposition == "no_input"
+            and decision.fallback == "neutral"
+            and decision.no_input_reason == "invalid"
+            for decision in second.decisions.values()
+        )
 
 
 @pytest.mark.asyncio

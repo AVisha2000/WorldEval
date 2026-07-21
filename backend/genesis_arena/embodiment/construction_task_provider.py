@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Callable, Mapping
 
+from .demo_provider import DemoPolicyLock
 from .protocol import EmbodimentProtocolPackage, canonical_json_bytes, strict_json_loads
 from .providers.contracts import (
+    InMemoryProviderAuditLog,
     ProviderAdapter,
     ProviderCallResult,
     ProviderFailureKind,
@@ -63,6 +65,20 @@ class ConstructionTaskProvider:
         """
 
         return self._last_request_was_continuation
+
+    @property
+    def policy_lock(self) -> DemoPolicyLock | None:
+        """Expose only an immutable inner Demo lock for run-configuration evidence."""
+
+        value = getattr(self._provider, "policy_lock", None)
+        return value if isinstance(value, DemoPolicyLock) else None
+
+    @property
+    def audit_log(self) -> InMemoryProviderAuditLog | None:
+        """Expose the inner adapter audit log without copying or rewriting its request."""
+
+        value = getattr(self._provider, "audit_log", None)
+        return value if isinstance(value, InMemoryProviderAuditLog) else None
 
     async def request(self, request: ProviderRequest) -> ProviderCallResult:
         self._last_request_was_continuation = False

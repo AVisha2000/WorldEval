@@ -10,36 +10,36 @@ export type VideoDemo = {
 }
 
 type VideoEnvironment = {
-  VITE_YOUTUBE_MVP_ID?: string
   VITE_YOUTUBE_SOLO_ID?: string
   VITE_YOUTUBE_DUEL_ID?: string
+  VITE_YOUTUBE_TRIO_ID?: string
 }
 
 const YOUTUBE_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/
 
 const DEMO_DEFINITIONS = [
   {
-    id: "mvp",
-    title: "WorldArena MVP overview",
+    id: "trio",
+    title: "Sol, Luna & Terra free-for-all",
     description:
-      "A guided tour of deterministic worlds, agent loops, and verifiable outcomes.",
-    envKey: "VITE_YOUTUBE_MVP_ID",
+      "Three deterministic Demo agents contest cyclic seats with private views, safe evaluation, and verified replay.",
+    envKey: "VITE_YOUTUBE_TRIO_ID",
     accent: "amber",
     featured: true,
   },
   {
     id: "solo",
-    title: "Solo construction curriculum",
+    title: "Solo multi-action showcase",
     description:
-      "One agent turns a structured observation into a sequence of world-changing actions.",
+      "One Demo agent turns, walks, gathers, carries, deposits, and builds under Godot authority.",
     envKey: "VITE_YOUTUBE_SOLO_ID",
     accent: "earth",
   },
   {
     id: "duel",
-    title: "Symmetric two-leg agent duel",
+    title: "Seat-swapped 1v1",
     description:
-      "Seat-balanced matches preserve comparable evidence across both legs.",
+      "Two independent Demo agents play fixed-window games across symmetric, seat-swapped legs.",
     envKey: "VITE_YOUTUBE_DUEL_ID",
     accent: "lunar",
   },

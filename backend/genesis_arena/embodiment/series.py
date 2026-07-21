@@ -82,7 +82,7 @@ class SeriesLock:
     schedule_nonce: str
 
     def __post_init__(self) -> None:
-        if self.protocol_version != "llm-controller/0.1.0":
+        if self.protocol_version not in ("llm-controller/0.1.0", "llm-controller/0.2.0"):
             raise ValueError("unsupported protocol_version")
         for name in (
             "protocol_sha256",

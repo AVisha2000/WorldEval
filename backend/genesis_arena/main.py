@@ -22,13 +22,16 @@ from .duel.match_service import default_duel_match_service
 from .embodiment.api import router as embodiment_router
 from .embodiment.dashboard import mount_built_dashboard
 from .embodiment.duel.live_runtime import default_duel_series_service
+from .embodiment.labyrinth_run import CachedLabyrinthRun
 from .embodiment.live_runtime import default_episode_service
 from .embodiment.presentation.preview_ingress import (
     InternalParticipantPreviewIngress,
     internal_preview_router,
 )
 from .embodiment.readiness import PilotReadinessStore
+from .embodiment.rts_showcase import CachedRtsShowcase
 from .embodiment.transport import ManagedWebSocketEndpoint
+from .embodiment.trio_games.live_runtime import default_trio_series_service
 from .models import Observation, SimulationConfig
 from .orchestrator import Orchestrator
 
@@ -50,6 +53,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embodiment_readiness = PilotReadinessStore(
         settings.embodiment_readiness_path
     )
+    # A checked-in authority-verified replay/video is reused for the prominent judge path.
+    # Starting a dashboard session therefore never spends time or resources re-running the demo.
+    app.state.embodiment_rts_showcase = CachedRtsShowcase.load(REPOSITORY_ROOT)
+    app.state.embodiment_labyrinth_showcase = CachedLabyrinthRun.load(REPOSITORY_ROOT)
     app.state.embodiment_episodes = default_episode_service(
         repository_root=REPOSITORY_ROOT,
         godot_executable=settings.godot_executable,
@@ -68,10 +75,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         gateway_port=settings.port,
         endpoint=app.state.embodiment_gateway,
         provider_timeout_s=settings.decision_timeout_seconds,
+        runs_dir=settings.runs_dir,
+        ffmpeg_executable=settings.ffmpeg_executable,
+        preview_ingress=app.state.embodiment_preview_ingress,
+    )
+    app.state.embodiment_trio_series = default_trio_series_service(
+        repository_root=REPOSITORY_ROOT,
+        godot_executable=settings.godot_executable,
+        godot_project_path=settings.godot_project_path,
+        gateway_port=settings.port,
+        endpoint=app.state.embodiment_gateway,
+        provider_timeout_s=settings.decision_timeout_seconds,
+        runs_dir=settings.runs_dir,
+        ffmpeg_executable=settings.ffmpeg_executable,
+        preview_ingress=app.state.embodiment_preview_ingress,
     )
     try:
         yield
     finally:
+        await app.state.embodiment_trio_series.aclose()
         await app.state.embodiment_series.aclose()
         await app.state.embodiment_episodes.aclose()
         app.state.embodiment_preview_ingress.close()

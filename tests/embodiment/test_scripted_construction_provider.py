@@ -71,7 +71,7 @@ def _request(
 
 @pytest.mark.asyncio
 async def test_scripted_demo_uses_the_strict_task_plan_boundary() -> None:
-    provider = ScriptedConstructionDemoProvider()
+    provider = ScriptedConstructionDemoProvider(showcase=True)
     package = EmbodimentProtocolPackage.from_repository(ROOT)
     cases = (
         (_request(sequence=0, tick=0), "gather_materials"),
@@ -118,7 +118,7 @@ async def test_scripted_demo_uses_the_strict_task_plan_boundary() -> None:
 async def test_scripted_demo_wait_is_replayed_locally_until_the_late_build_phase() -> None:
     package = EmbodimentProtocolPackage.from_repository(ROOT)
     adapter = ConstructionTaskProvider(
-        ScriptedConstructionDemoProvider(),
+        ScriptedConstructionDemoProvider(showcase=True),
         package,
         task_timeout_ticks=demo_task_timeout_ticks,
     )
@@ -146,3 +146,17 @@ async def test_scripted_demo_wait_is_replayed_locally_until_the_late_build_phase
     assert demo_task_timeout_ticks(
         "wait", {"tick": initial_tick}
     ) == DEMO_BUILD_START_TICK - initial_tick
+
+
+@pytest.mark.asyncio
+async def test_ordinary_construction_builds_immediately_without_showcase_staging() -> None:
+    result = await ScriptedConstructionDemoProvider().request(
+        _request(
+            sequence=0,
+            tick=100,
+            resource_state="depleted",
+            pad_state="ready",
+        )
+    )
+    assert result.raw_output is not None
+    assert strict_json_loads(result.raw_output)["task_id"] == "build_barricade"

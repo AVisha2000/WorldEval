@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.3.0/episode-replay.v1.schema.json",
+  "title": "LLM Controller deterministic trio episode replay v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol_version",
+    "protocol_package_sha256",
+    "config",
+    "config_sha256",
+    "initial_observations",
+    "initial_state_hash",
+    "steps",
+    "final_terminal",
+    "final_result",
+    "final_state_hash",
+    "ledger_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "llm-controller/episode-replay/1.0.0"
+    },
+    "protocol_version": {
+      "const": "llm-controller/0.3.0"
+    },
+    "protocol_package_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "config": {
+      "$ref": "https://worldeval.local/llm-controller/0.3.0/episode-config.v1.schema.json"
+    },
+    "config_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "initial_observations": {
+      "type": "object",
+      "minProperties": 3,
+      "maxProperties": 3,
+      "required": [
+        "participant_0",
+        "participant_1",
+        "participant_2"
+      ],
+      "additionalProperties": {
+        "$ref": "https://worldeval.local/llm-controller/0.3.0/observation.v1.schema.json"
+      }
+    },
+    "initial_state_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 18000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision_window",
+          "result"
+        ],
+        "properties": {
+          "decision_window": {
+            "$ref": "https://worldeval.local/llm-controller/0.3.0/decision-window.v1.schema.json"
+          },
+          "result": {
+            "$ref": "https://worldeval.local/llm-controller/0.3.0/multi-participant-step-result.v1.schema.json"
+          }
+        }
+      }
+    },
+    "final_terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ended",
+        "outcome",
+        "reason"
+      ],
+      "properties": {
+        "ended": {
+          "const": true
+        },
+        "outcome": {
+          "enum": [
+            "win",
+            "draw",
+            "void"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        }
+      }
+    },
+    "final_result": {
+      "$ref": "https://worldeval.local/llm-controller/0.3.0/trio-result.v1.schema.json"
+    },
+    "final_state_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ledger_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

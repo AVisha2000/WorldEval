@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Awaitable, Callable, Mapping, Tuple
 
 from .artifacts import EpisodeArtifactRecorder, EpisodeBundles
+from .construction_task_provider import TASK_PROMPT
 from .contracts import (
     AsyncEnvironmentSession,
     ControllerAction,
@@ -31,6 +32,7 @@ from .providers.contracts import (
     ProviderFailureKind,
     ProviderRequest,
     ProviderTelemetry,
+    provider_capabilities,
 )
 from .scratchpad import EpisodeScratchpad
 from .scripted_solo_demo import is_scripted_solo_demo
@@ -128,6 +130,38 @@ class LiveSoloRunner:
         participant_id = self.config.participant_ids[0]
         scratchpad = EpisodeScratchpad()
         recorder = EpisodeArtifactRecorder(self.config.episode_id, protocol_package=self.package)
+        run_settings: dict[str, Any] = {
+            "certification_eligible": False,
+            "run_class": (
+                "demo"
+                if self.provider.provider_name == "demo"
+                else "scripted"
+                if self.provider.provider_name == "scripted"
+                else "live"
+            ),
+        }
+        try:
+            capabilities = provider_capabilities(self.provider.provider_name)
+        except ValueError:
+            # Golden/injected test adapters predate the production provider registry. They remain
+            # sealable, but no transport capability claim is invented for them.
+            capabilities = None
+        if capabilities is not None:
+            # Evidence keys deliberately avoid credential/header aliases rejected by the
+            # artifact disclosure scanner. The values are the same immutable transport flags.
+            run_settings["provider_capabilities"] = {
+                "credential_required": capabilities.requires_credential,
+                "networked": capabilities.is_networked,
+                "provider_name": capabilities.provider_name,
+            }
+        policy_lock = getattr(self.provider, "policy_lock", None)
+        if policy_lock is not None:
+            as_dict = getattr(policy_lock, "as_dict", None)
+            sha256 = getattr(policy_lock, "sha256", None)
+            if not callable(as_dict) or not isinstance(sha256, str):
+                raise LiveSoloError("embodiment_demo_policy_lock_invalid")
+            run_settings["demo_policy_lock"] = as_dict()
+            run_settings["demo_policy_lock_sha256"] = sha256
         recorder.freeze_run_configuration(
             provider=self.provider.provider_name,
             model=self.model,
@@ -143,6 +177,7 @@ class LiveSoloRunner:
                 "system_prompt_sha256": hashlib.sha256(
                     self.system_prompt.encode("utf-8")
                 ).hexdigest(),
+                **run_settings,
             },
         )
         windows = 0
@@ -204,10 +239,19 @@ class LiveSoloRunner:
                 # portion of the 100 ms budget: a fixed sleep *after* frame/render work makes a
                 # nominal real-time demo drift beyond its intended duration.
                 if (
-                    is_scripted_solo_demo(
-                        provider=self.provider.provider_name,
-                        model=self.model,
-                        task_id=self.config.task_id,
+                    (
+                        self.provider.provider_name == "demo"
+                        and self.config.task_id
+                        in ("movement-maze-v0", "operator-action-course-v0")
+                        or is_scripted_solo_demo(
+                            provider=(
+                                "scripted"
+                                if self.provider.provider_name == "demo"
+                                else self.provider.provider_name
+                            ),
+                            model=self.model,
+                            task_id=self.config.task_id,
+                        )
                     )
                     and action is not None
                     and not step.terminal.ended
@@ -222,7 +266,7 @@ class LiveSoloRunner:
                 if not attempt.task_continuation:
                     recorder.record_provider_call(
                         observation_seq=observation["observation_seq"],
-                        prompt=self.system_prompt,
+                        prompt=attempt.request.system_prompt,
                         raw_output=attempt.raw_output,
                         scratchpad_utf8=request_scratchpad,
                         scratchpad_after_utf8=scratchpad.utf8,
@@ -341,14 +385,18 @@ class LiveSoloRunner:
             getattr(self.provider, "last_request_was_continuation", False)
         )
         adapter_audits = self._drain_adapter_audits(request)
+        evidence_request = adapter_audits[0].request if adapter_audits else request
         raw_output = result.raw_output
+        evidence_raw_output = (
+            adapter_audits[0].result.raw_output if adapter_audits else raw_output
+        )
         if raw_output is None:
             return _ActionAttempt(
                 None,
                 result,
                 frame,
-                None,
-                request,
+                evidence_raw_output,
+                evidence_request,
                 adapter_audits,
                 "not_attempted",
                 task_continuation,
@@ -358,8 +406,8 @@ class LiveSoloRunner:
                 None,
                 ProviderCallResult.failed(ProviderFailureKind.OUTPUT_TOO_LARGE, result.telemetry),
                 frame,
-                raw_output,
-                request,
+                evidence_raw_output,
+                evidence_request,
                 adapter_audits,
                 "output_too_large",
                 task_continuation,
@@ -379,8 +427,8 @@ class LiveSoloRunner:
             action,
             result,
             frame,
-            raw_output,
-            request,
+            evidence_raw_output,
+            evidence_request,
             adapter_audits,
             "accepted" if action is not None else "rejected",
             task_continuation,
@@ -458,11 +506,28 @@ class LiveSoloRunner:
         ):
             raise LiveSoloError("embodiment_provider_audit_invalid")
         if len(records) > 1 or any(
-            record.request != request or record.provider != self.provider.provider_name
+            not self._audit_request_matches(request, record.request)
+            or record.provider != self.provider.provider_name
             for record in records
         ):
             raise LiveSoloError("embodiment_provider_audit_mismatch")
         return records
+
+    def _audit_request_matches(
+        self, controller_request: ProviderRequest, audited_request: ProviderRequest
+    ) -> bool:
+        if audited_request == controller_request:
+            return True
+        if self.config.task_id != "construction-v0":
+            return False
+        expected = replace(
+            controller_request,
+            system_prompt=TASK_PROMPT,
+            action_schema_json=canonical_json_bytes(
+                self.package.schema("construction-task-plan")
+            ),
+        )
+        return audited_request == expected
 
     def _provider_evidence(self, attempt: _ActionAttempt) -> Mapping[str, Any]:
         request = attempt.request

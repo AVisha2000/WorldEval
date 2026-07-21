@@ -40,6 +40,30 @@ function episode(status: EpisodeView["status"] = "running"): EpisodeView {
   }
 }
 
+function series(): EpisodeView {
+  return {
+    kind: "series",
+    episodeId: "series_visible",
+    status: "running",
+    observationSeq: 0,
+    tick: 0,
+    taskLabel: "Symmetric two-leg 1v1",
+    timeline: [],
+  }
+}
+
+function trio(): EpisodeView {
+  return {
+    kind: "trio",
+    episodeId: "trio_visible",
+    status: "running",
+    observationSeq: 0,
+    tick: 0,
+    taskLabel: "Trio Relay",
+    timeline: [],
+  }
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((next) => { resolve = next })
@@ -61,15 +85,26 @@ function frame(blob: Blob): ParticipantFrameView {
 
 describe("participant live preview", () => {
   const drawImage = vi.fn()
+  let rafNow = 0
+  let rafId = 0
 
   beforeEach(() => {
     MockWebSocket.instances = []
+    rafNow = 0
+    rafId = 0
     vi.stubGlobal("WebSocket", MockWebSocket)
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
       { drawImage } as unknown as CanvasRenderingContext2D,
     )
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:canonical-frame")
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    vi.spyOn(performance, "now").mockImplementation(() => rafNow)
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      const id = ++rafId
+      queueMicrotask(() => callback(rafNow += 34))
+      return id
+    })
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined)
   })
 
   afterEach(() => {
@@ -79,14 +114,12 @@ describe("participant live preview", () => {
     vi.unstubAllGlobals()
   })
 
-  it("uses the isolated live-preview route and never lets an older async decode move the view backwards", async () => {
-    const older = new Blob(["older"], { type: "image/png" })
-    const newest = new Blob(["newest"], { type: "image/png" })
-    const olderDecode = deferred<ImageBitmap>()
+  it("uses a depth-one queue and decodes only the newest participant JPEG", async () => {
+    const older = new Blob(["older"], { type: "image/jpeg" })
+    const newest = new Blob(["newest"], { type: "image/jpeg" })
     const newestDecode = deferred<ImageBitmap>()
-    const olderBitmap = imageBitmap(1280, 720)
     const newestBitmap = imageBitmap(1280, 720)
-    const decode = vi.fn((blob: Blob) => blob === older ? olderDecode.promise : newestDecode.promise)
+    const decode = vi.fn(() => newestDecode.promise)
     vi.stubGlobal("createImageBitmap", decode)
 
     const { result } = renderHook(() => useParticipantPreview(episode()))
@@ -105,7 +138,7 @@ describe("participant live preview", () => {
 
     act(() => socket.message(older))
     act(() => socket.message(newest))
-    await waitFor(() => expect(decode).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(decode).toHaveBeenCalledExactlyOnceWith(newest))
 
     await act(async () => {
       newestDecode.resolve(newestBitmap)
@@ -116,18 +149,70 @@ describe("participant live preview", () => {
     expect(canvas).toHaveProperty("height", 720)
     expect(result.current.frameReady).toBe(true)
 
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(newestBitmap, 0, 0)
+    expect(newestBitmap.close).toHaveBeenCalledOnce()
+  })
+
+  it("opens a participant-scoped paired stream and reconnects when seat selection changes", () => {
+    const view = renderHook(
+      ({ participantId }: { participantId: "participant_0" | "participant_1" }) =>
+        useParticipantPreview(series(), participantId),
+      { initialProps: { participantId: "participant_0" as "participant_0" | "participant_1" } },
+    )
+    expect(MockWebSocket.instances[0].url).toBe(
+      `ws://${window.location.host}/api/embodiment/series/series_visible/participants/participant_0/preview-live`,
+    )
+    view.rerender({ participantId: "participant_1" as const })
+    expect(MockWebSocket.instances[0].close).toHaveBeenCalledOnce()
+    expect(MockWebSocket.instances[1].url).toBe(
+      `ws://${window.location.host}/api/embodiment/series/series_visible/participants/participant_1/preview-live`,
+    )
+    expect(view.result.current.frameReady).toBe(false)
+  })
+
+  it("opens the isolated participant 2 trio stream", () => {
+    renderHook(() => useParticipantPreview(trio(), "participant_2"))
+    expect(MockWebSocket.instances[0].url).toBe(
+      `ws://${window.location.host}/api/embodiment/trio-series/trio_visible/participants/participant_2/preview-live`,
+    )
+  })
+
+  it("drops stale frames that arrive while a JPEG decode is busy", async () => {
+    const first = new Blob(["first"], { type: "image/jpeg" })
+    const stale = new Blob(["stale"], { type: "image/jpeg" })
+    const newest = new Blob(["newest"], { type: "image/jpeg" })
+    const firstDecode = deferred<ImageBitmap>()
+    const newestDecode = deferred<ImageBitmap>()
+    const decode = vi.fn((blob: Blob) => blob === first ? firstDecode.promise : newestDecode.promise)
+    vi.stubGlobal("createImageBitmap", decode)
+
+    const { result } = renderHook(() => useParticipantPreview(episode()))
+    result.current.canvasRef.current = document.createElement("canvas")
+    const socket = MockWebSocket.instances[0]
+    act(() => socket.open())
+    act(() => socket.message(first))
+    await waitFor(() => expect(decode).toHaveBeenCalledExactlyOnceWith(first))
+
+    act(() => socket.message(stale))
+    act(() => socket.message(newest))
     await act(async () => {
-      olderDecode.resolve(olderBitmap)
+      firstDecode.resolve(imageBitmap(1280, 720))
       await Promise.resolve()
     })
-    expect(drawImage).toHaveBeenCalledExactlyOnceWith(newestBitmap, 0, 0)
-    expect(olderBitmap.close).toHaveBeenCalledOnce()
-    expect(newestBitmap.close).toHaveBeenCalledOnce()
+    await waitFor(() => expect(decode).toHaveBeenCalledTimes(2))
+    expect(decode.mock.calls[1]?.[0]).toBe(newest)
+    expect(decode.mock.calls.some(([blob]) => blob === stale)).toBe(false)
+
+    await act(async () => {
+      newestDecode.resolve(imageBitmap(1280, 720))
+      await Promise.resolve()
+    })
+    expect(drawImage).toHaveBeenCalledTimes(2)
   })
 
   it("keeps a canonical fallback visible until the first participant-pixel preview is decoded", async () => {
     const fallback = new Blob(["canonical"], { type: "image/png" })
-    const preview = new Blob(["participant-pixels"], { type: "image/png" })
+    const preview = new Blob(["participant-pixels"], { type: "image/jpeg" })
     const bitmap = imageBitmap(1280, 720)
     vi.stubGlobal("createImageBitmap", vi.fn(async () => bitmap))
 
@@ -152,7 +237,7 @@ describe("participant live preview", () => {
 
   it("uses the canonical snapshot after an active stream disconnect, but retains the final live frame", async () => {
     const fallback = new Blob(["canonical"], { type: "image/png" })
-    const preview = new Blob(["participant-pixels"], { type: "image/png" })
+    const preview = new Blob(["participant-pixels"], { type: "image/jpeg" })
     vi.stubGlobal("createImageBitmap", vi.fn(async () => imageBitmap(1280, 720)))
 
     const view = render(

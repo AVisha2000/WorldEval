@@ -1,6 +1,8 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 
+import pytest
 from genesis_arena.embodiment.evaluation import (
     EVALUATION_SCHEMA_VERSION,
     evaluate_paired_duel_replays,
@@ -42,6 +44,53 @@ def _golden_replay(name: str):
         final_state_hash=transcript["terminal_boundary"]["state_hash"],
     )
     return verify_replay_bytes(payload, package=package)
+
+
+def _multi_action_replay() -> dict:
+    participant_id = "participant_0"
+    event_kinds = (
+        "resource_gathered",
+        "material_deposited",
+        "barricade_completed",
+        "episode_succeeded",
+    )
+    end_ticks = (200, 500, 800, 900)
+    steps = []
+    for index, (event_kind, end_tick) in enumerate(zip(event_kinds, end_ticks)):
+        effects = []
+        control = {"look_x": 0, "look_y": 0, "move_x": 0, "move_y": 0, "buttons": {}}
+        if index == 0:
+            effects = [
+                {"kind": "heading_steps", "value": 1},
+                {"kind": "distance_moved_mt", "value": 1_000},
+            ]
+            control.update({"look_x": 1_000, "move_y": 1_000})
+        steps.append(
+            {
+                "decision_window": {
+                    "decisions": {
+                        participant_id: {"action": {"control": control}}
+                    }
+                },
+                "result": {
+                    "receipts": {
+                        participant_id: {
+                            "accepted": True,
+                            "applied_ticks": end_tick - (end_ticks[index - 1] if index else 0),
+                            "codes": ["applied"],
+                            "effects": effects,
+                            "end_tick": end_tick,
+                        }
+                    },
+                    "public_events": [{"kind": event_kind, "tick": end_tick}],
+                },
+            }
+        )
+    return {
+        "config": {"participant_ids": [participant_id]},
+        "final_terminal": {"ended": True, "outcome": "success", "reason": "barricade_built"},
+        "steps": steps,
+    }
 
 
 def test_stage_c_golden_evaluation_is_authority_derived_and_integer_only() -> None:
@@ -105,6 +154,74 @@ def test_stage_c_golden_evaluation_is_authority_derived_and_integer_only() -> No
         "runner_memory_not_in_authority_replay"
     )
     canonical_json_bytes(evaluation)
+
+
+def test_multi_action_evaluation_requires_and_seals_authority_identity() -> None:
+    replay = _multi_action_replay()
+    evaluation = evaluate_solo_replay(
+        replay,
+        replay_verified=True,
+        scenario_id="multi-action-demo-v0",
+        evaluation_profile_id="solo-multi-action-showcase-v1",
+    )
+    assert evaluation["scenario_id"] == "multi-action-demo-v0"
+    assert evaluation["evaluation_profile_id"] == "solo-multi-action-showcase-v1"
+    assert evaluation["metrics"]["completion_tick"]["value"] == 900
+
+
+def test_multi_action_accepts_authoritative_completion_and_success_on_same_step() -> None:
+    replay = _multi_action_replay()
+    barricade = replay["steps"][2]["result"]["public_events"].pop()
+    replay["steps"][3]["result"]["public_events"].insert(0, barricade)
+    evaluation = evaluate_solo_replay(
+        replay,
+        replay_verified=True,
+        scenario_id="multi-action-demo-v0",
+        evaluation_profile_id="solo-multi-action-showcase-v1",
+    )
+    assert evaluation["metrics"]["completion_tick"]["value"] == 900
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("too_short", "too_long", "no_turn", "no_walk", "missing_deposit", "wrong_order", "failure"),
+)
+def test_multi_action_evaluation_rejects_invalid_showcase_claims(mutation: str) -> None:
+    replay = deepcopy(_multi_action_replay())
+    participant_id = "participant_0"
+    if mutation == "too_short":
+        replay["steps"][-1]["result"]["receipts"][participant_id]["end_tick"] = 899
+    elif mutation == "too_long":
+        replay["steps"][-1]["result"]["receipts"][participant_id]["end_tick"] = 1_201
+    elif mutation == "no_turn":
+        replay["steps"][0]["result"]["receipts"][participant_id]["effects"][0]["value"] = 0
+        replay["steps"][0]["decision_window"]["decisions"][participant_id]["action"][
+            "control"
+        ]["look_x"] = 0
+    elif mutation == "no_walk":
+        replay["steps"][0]["result"]["receipts"][participant_id]["effects"][1]["value"] = 0
+        replay["steps"][0]["decision_window"]["decisions"][participant_id]["action"][
+            "control"
+        ]["move_y"] = 0
+    elif mutation == "missing_deposit":
+        replay["steps"][1]["result"]["public_events"] = []
+    elif mutation == "wrong_order":
+        replay["steps"][0]["result"]["public_events"], replay["steps"][1]["result"][
+            "public_events"
+        ] = (
+            replay["steps"][1]["result"]["public_events"],
+            replay["steps"][0]["result"]["public_events"],
+        )
+    else:
+        replay["final_terminal"]["outcome"] = "failure"
+
+    with pytest.raises(ValueError, match="multi-action"):
+        evaluate_solo_replay(
+            replay,
+            replay_verified=True,
+            scenario_id="multi-action-demo-v0",
+            evaluation_profile_id="solo-multi-action-showcase-v1",
+        )
 
 
 def test_paired_duel_evaluation_is_side_normalized_and_marks_missing_metrics() -> None:

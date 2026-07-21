@@ -23,6 +23,9 @@ from .contracts import (
     ParticipantDecision,
     ReceiptEffect,
     TerminalState,
+    TrioParticipantOutcome,
+    TrioPlacementGroup,
+    TrioResult,
 )
 from .duel import (
     DuelCallSettings,
@@ -51,6 +54,8 @@ from .managed_process import (
     MANAGED_AUTHORITY_SCRIPT,
     MANAGED_LAUNCH_SCHEMA_VERSION,
     MAX_MANAGED_LAUNCH_BYTES,
+    V2_MANAGED_AUTHORITY_SCRIPT,
+    V3_MANAGED_AUTHORITY_SCRIPT,
     ManagedLaunchSpec,
     ManagedProcessError,
     ManagedProcessHandle,
@@ -73,6 +78,12 @@ from .protocol import (
     canonical_sha256,
     strict_json_loads,
 )
+from .protocol_registry import (
+    REGISTRY_VERSION,
+    EmbodimentProtocolRegistry,
+    ProtocolRegistryEntry,
+    VersionedEmbodimentProtocolPackage,
+)
 from .replay import (
     MAX_REPLAY_BYTES,
     REPLAY_SCHEMA_VERSION,
@@ -82,6 +93,7 @@ from .replay import (
 )
 from .transport import (
     MAX_TRANSPORT_FRAME_BYTES,
+    SUPPORTED_PROTOCOL_VERSIONS,
     TRANSPORT_SCHEMA_VERSION,
     ZERO_HASH,
     EmbodimentTransportError,
@@ -117,6 +129,7 @@ __all__ = [
     "DuelSeriesService",
     "DuelSeriesSpec",
     "EmbodimentProtocolPackage",
+    "EmbodimentProtocolRegistry",
     "EnvironmentAdapter",
     "EpisodeConfig",
     "Event",
@@ -127,9 +140,12 @@ __all__ = [
     "MANAGED_AUTHORITY_SCRIPT",
     "MANAGED_LAUNCH_SCHEMA_VERSION",
     "MAX_MANAGED_LAUNCH_BYTES",
+    "V2_MANAGED_AUTHORITY_SCRIPT",
+    "V3_MANAGED_AUTHORITY_SCRIPT",
     "MAX_GOLDEN_BYTES",
     "MAX_REPLAY_BYTES",
     "MAX_TRANSPORT_FRAME_BYTES",
+    "SUPPORTED_PROTOCOL_VERSIONS",
     "ManagedLaunchSpec",
     "ManagedProcessError",
     "ManagedProcessHandle",
@@ -145,6 +161,8 @@ __all__ = [
     "PairedDuelResult",
     "PairedDuelScheduler",
     "ProtocolValidationError",
+    "ProtocolRegistryEntry",
+    "REGISTRY_VERSION",
     "ReceiptEffect",
     "REPLAY_SCHEMA_VERSION",
     "ReplayLedger",
@@ -152,6 +170,9 @@ __all__ = [
     "SingleAttachmentRegistry",
     "SeatAssignment",
     "TerminalState",
+    "TrioParticipantOutcome",
+    "TrioPlacementGroup",
+    "TrioResult",
     "TRANSPORT_SCHEMA_VERSION",
     "TransportFrame",
     "TransportMessageType",
@@ -159,6 +180,7 @@ __all__ = [
     "TransportState",
     "WebSocketLike",
     "VerifiedManagedDuelSession",
+    "VersionedEmbodimentProtocolPackage",
     "ZERO_HASH",
     "EmbodimentTransportError",
     "canonical_hmac_sha256",

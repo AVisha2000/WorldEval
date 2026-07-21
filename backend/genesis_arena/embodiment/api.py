@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Mapping
 
 from fastapi import (
@@ -16,22 +17,33 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 
+from .demo_scenarios import demo_scenario
 from .duel.service import (
     DuelSeriesEvidenceNotReadyError,
     DuelSeriesNotFoundError,
     DuelSeriesService,
 )
 from .episode_service import (
+    DEMO_PROVIDER,
+    EpisodeEvaluationNotReadyError,
     EpisodeNotFoundError,
     EpisodeReplayNotReadyError,
     EpisodeResultNotReadyError,
     EpisodeService,
 )
+from .labyrinth_run import CachedLabyrinthRun
 from .readiness import PilotReadinessStore
+from .rts_showcase import CachedRtsShowcase
 from .scripted_construction_demo import (
     SCRIPTED_CONSTRUCTION_PROVIDER,
 )
 from .scripted_solo_demo import is_scripted_solo_demo
+from .trio_games.common import TRIO_PARTICIPANT_IDS
+from .trio_games.service import (
+    TrioSeriesNotFoundError,
+    TrioSeriesNotReadyError,
+    TrioSeriesService,
+)
 
 router = APIRouter(tags=["LLM Controller"])
 _BODY = Body(...)
@@ -43,6 +55,7 @@ _CREATE_FIELDS = frozenset(
         "observation_profile",
         "provider",
         "seed",
+        "scenario_id",
         "task_id",
     }
 )
@@ -62,11 +75,84 @@ def _series_service(request: Request) -> DuelSeriesService:
     return service
 
 
+def _trio_service(request: Request | WebSocket) -> TrioSeriesService:
+    service = getattr(request.app.state, "embodiment_trio_series", None)
+    if not isinstance(service, TrioSeriesService):
+        raise RuntimeError("Embodiment trio series service is not configured")
+    return service
+
+
 def _readiness(request: Request) -> PilotReadinessStore:
     store = getattr(request.app.state, "embodiment_readiness", None)
     if not isinstance(store, PilotReadinessStore):
         raise RuntimeError("Embodiment readiness store is not configured")
     return store
+
+
+def _rts_showcase(request: Request) -> CachedRtsShowcase:
+    showcase = getattr(request.app.state, "embodiment_rts_showcase", None)
+    if not isinstance(showcase, CachedRtsShowcase):
+        raise RuntimeError("RTS showcase is not configured")
+    return showcase
+
+
+def _labyrinth_showcase(request: Request) -> CachedLabyrinthRun:
+    showcase = getattr(request.app.state, "embodiment_labyrinth_showcase", None)
+    if not isinstance(showcase, CachedLabyrinthRun):
+        raise RuntimeError("Labyrinth Run showcase is not configured")
+    return showcase
+
+
+@router.get("/api/embodiment/showcases/rts-skirmish-v0")
+async def get_rts_showcase(request: Request, response: Response) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return _rts_showcase(request).public_view()
+
+
+@router.get("/api/embodiment/showcases/rts-skirmish-v0/evaluation")
+async def get_rts_showcase_evaluation(request: Request, response: Response) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return _rts_showcase(request).public_evaluation()
+
+
+@router.get("/api/embodiment/showcases/rts-skirmish-v0/video")
+async def get_rts_showcase_video(request: Request) -> FileResponse:
+    return FileResponse(
+        _rts_showcase(request).video_path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/api/embodiment/showcases/trio-maze-race-v0")
+async def get_labyrinth_showcase(request: Request, response: Response) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return _labyrinth_showcase(request).public_view()
+
+
+@router.get("/api/embodiment/showcases/trio-maze-race-v0/evaluation")
+async def get_labyrinth_showcase_evaluation(
+    request: Request, response: Response
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return _labyrinth_showcase(request).public_evaluation()
+
+
+@router.get("/api/embodiment/showcases/trio-maze-race-v0/video")
+async def get_labyrinth_showcase_video(request: Request) -> FileResponse:
+    return FileResponse(
+        _labyrinth_showcase(request).video_path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/api/embodiment/certification/readiness")
@@ -145,7 +231,7 @@ async def stream_episode_preview(websocket: WebSocket, episode_id: str) -> None:
             await websocket.send_bytes(initial.png)
         while True:
             await websocket.send_bytes((await queue.get()).png)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
         await _service(websocket).unsubscribe_preview(episode_id, token)
@@ -153,7 +239,7 @@ async def stream_episode_preview(websocket: WebSocket, episode_id: str) -> None:
 
 @router.websocket("/api/embodiment/episodes/{episode_id}/preview-live")
 async def stream_live_episode_preview(websocket: WebSocket, episode_id: str) -> None:
-    """Direct Godot presentation pixels only; canonical snapshot/replay traffic stays separate."""
+    """Direct Godot JPEG pixels only; canonical PNG snapshot/replay traffic stays separate."""
 
     try:
         token, queue, initial = await _service(websocket).live_preview_subscription(episode_id)
@@ -163,13 +249,94 @@ async def stream_live_episode_preview(websocket: WebSocket, episode_id: str) -> 
     await websocket.accept()
     try:
         if initial is not None:
-            await websocket.send_bytes(initial.png)
+            await websocket.send_bytes(initial.jpeg)
         while True:
-            await websocket.send_bytes((await queue.get()).png)
-    except WebSocketDisconnect:
+            await websocket.send_bytes((await queue.get()).jpeg)
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
         await _service(websocket).unsubscribe_live_preview(episode_id, token)
+
+
+@router.websocket(
+    "/api/embodiment/series/{series_id}/participants/{participant_id}/preview-live"
+)
+async def stream_live_series_participant_preview(
+    websocket: WebSocket, series_id: str, participant_id: str
+) -> None:
+    """Selected participant JPEG pixels only, with a newest-frame queue depth of one."""
+
+    try:
+        token, queue, initial = await _series_service(websocket).live_preview_subscription(
+            series_id, participant_id
+        )
+    except (DuelSeriesNotFoundError, ValueError):
+        await websocket.close(code=4404)
+        return
+    await websocket.accept()
+    try:
+        if initial is not None:
+            await websocket.send_bytes(initial.jpeg)
+        while True:
+            await websocket.send_bytes((await queue.get()).jpeg)
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        pass
+    finally:
+        await _series_service(websocket).unsubscribe_live_preview(
+            series_id, participant_id, token
+        )
+
+
+@router.websocket("/api/embodiment/series/{series_id}/broadcast/preview-live")
+async def stream_live_series_broadcast_preview(websocket: WebSocket, series_id: str) -> None:
+    """Public RTS presentation JPEGs only; this route never returns a player observation."""
+
+    try:
+        token, queue, initial = (
+            await _series_service(websocket).live_broadcast_preview_subscription(series_id)
+        )
+    except (DuelSeriesNotFoundError, ValueError):
+        await websocket.close(code=4404)
+        return
+    await websocket.accept()
+    try:
+        if initial is not None:
+            await websocket.send_bytes(initial.jpeg)
+        while True:
+            await websocket.send_bytes((await queue.get()).jpeg)
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        pass
+    finally:
+        await _series_service(websocket).unsubscribe_live_broadcast_preview(series_id, token)
+
+
+@router.websocket(
+    "/api/embodiment/trio-series/{series_id}/participants/{participant_id}/preview-live"
+)
+async def stream_live_trio_participant_preview(
+    websocket: WebSocket, series_id: str, participant_id: str
+) -> None:
+    """Selected trio participant JPEG pixels only, never spectator or opponent-private data."""
+
+    try:
+        token, queue, initial = await _trio_service(websocket).live_preview_subscription(
+            series_id, participant_id
+        )
+    except (TrioSeriesNotFoundError, ValueError):
+        await websocket.close(code=4404)
+        return
+    await websocket.accept()
+    try:
+        if initial is not None:
+            await websocket.send_bytes(initial.jpeg)
+        while True:
+            await websocket.send_bytes((await queue.get()).jpeg)
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        pass
+    finally:
+        await _trio_service(websocket).unsubscribe_live_preview(
+            series_id, participant_id, token
+        )
 
 
 @router.get("/api/embodiment/episodes/{episode_id}/result")
@@ -208,6 +375,25 @@ async def get_episode_replay(request: Request, episode_id: str) -> Response:
     )
 
 
+@router.get("/api/embodiment/episodes/{episode_id}/evaluation")
+async def get_episode_evaluation(
+    request: Request, response: Response, episode_id: str
+) -> Mapping[str, Any]:
+    """Return only the hash-bound projection derived from sealed public evidence."""
+
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _service(request).evaluation(episode_id)
+    except EpisodeNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_episode_not_found"}
+        ) from None
+    except EpisodeEvaluationNotReadyError:
+        raise HTTPException(
+            status_code=409, detail={"code": "embodiment_evaluation_not_ready"}
+        ) from None
+
+
 @router.get("/api/embodiment/replays")
 async def list_saved_replays(
     request: Request, response: Response, limit: int = Query(default=50, ge=1, le=100)
@@ -228,6 +414,24 @@ async def get_saved_replay(
     if replay is None:
         raise HTTPException(status_code=404, detail={"code": "embodiment_saved_replay_not_found"})
     return replay.public_dict()
+
+
+@router.get("/api/embodiment/replays/{replay_id}/evaluation")
+async def get_saved_replay_evaluation(
+    request: Request, response: Response, replay_id: str
+) -> Mapping[str, Any]:
+    """Load the canonical persisted public evaluation without opening protected evidence."""
+
+    response.headers["Cache-Control"] = "no-store"
+    replay = await _service(request).saved_replay(replay_id)
+    if replay is None:
+        raise HTTPException(status_code=404, detail={"code": "embodiment_saved_replay_not_found"})
+    evaluation = await _service(request).saved_replay_evaluation(replay_id)
+    if evaluation is None:
+        raise HTTPException(
+            status_code=409, detail={"code": "embodiment_saved_evaluation_unavailable"}
+        )
+    return evaluation
 
 
 @router.api_route("/api/embodiment/replays/{replay_id}/video", methods=["GET", "HEAD"])
@@ -342,6 +546,134 @@ async def get_series_replay(request: Request, series_id: str) -> Response:
     )
 
 
+@router.get("/api/embodiment/series/{series_id}/timeline")
+async def get_series_timeline(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _series_service(request).timeline(series_id)
+    except DuelSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_series_not_found"}
+        ) from None
+    except DuelSeriesEvidenceNotReadyError:
+        raise HTTPException(
+            status_code=409, detail={"code": "embodiment_series_timeline_not_ready"}
+        ) from None
+
+
+@router.get("/api/embodiment/series/{series_id}/evaluation")
+async def get_series_evaluation(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _series_service(request).evaluation(series_id)
+    except DuelSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_series_not_found"}
+        ) from None
+    except DuelSeriesEvidenceNotReadyError:
+        raise HTTPException(
+            status_code=409, detail={"code": "embodiment_series_evaluation_not_ready"}
+        ) from None
+
+
+@router.get("/api/embodiment/series/{series_id}/archive")
+async def get_series_archive(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    """Return only durable public-evidence and honest native-playback availability."""
+
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _series_service(request).archive_status(series_id)
+    except DuelSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_series_not_found"}
+        ) from None
+
+
+@router.get("/api/embodiment/series/{series_id}/participants/{participant_id}/frame")
+async def get_series_participant_frame(
+    request: Request, series_id: str, participant_id: str
+) -> Response:
+    """Return one selected participant's sanitized pixels; never substitute spectator view."""
+
+    try:
+        state, snapshot = await _series_service(request).participant_frame(
+            series_id, participant_id
+        )
+    except DuelSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "embodiment_series_not_found"},
+            headers={"Cache-Control": "no-store"},
+        ) from None
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "embodiment_series_participant_not_found"},
+            headers={"Cache-Control": "no-store"},
+        ) from None
+    headers = {
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-State": state,
+    }
+    if snapshot is None:
+        return Response(status_code=204, headers=headers)
+    headers.update(
+        {
+            "X-Content-SHA256": snapshot.sha256,
+            "X-Leg-Index": str(snapshot.leg_index),
+            "X-Observation-Seq": str(snapshot.observation_seq),
+            "X-Participant-ID": snapshot.participant_id,
+        }
+    )
+    return Response(content=snapshot.png, media_type="image/png", headers=headers)
+
+
+@router.get(
+    "/api/embodiment/series/{series_id}/legs/{leg_index}/participants/{participant_id}/video"
+)
+async def get_series_participant_video(
+    request: Request, series_id: str, leg_index: int, participant_id: str
+) -> FileResponse:
+    if leg_index not in (0, 1) or participant_id not in ("participant_0", "participant_1"):
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "embodiment_series_native_replay_not_found"},
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        path = await _series_service(request).native_video_path(
+            series_id, leg_index, participant_id
+        )
+    except DuelSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "embodiment_series_not_found"},
+            headers={"Cache-Control": "no-store"},
+        ) from None
+    if path is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "embodiment_series_native_replay_not_found"},
+            headers={"Cache-Control": "no-store"},
+        )
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": "inline",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.post("/api/embodiment/series/{series_id}/cancel")
 async def cancel_series(request: Request, response: Response, series_id: str) -> Mapping[str, Any]:
     response.headers["Cache-Control"] = "no-store"
@@ -350,6 +682,183 @@ async def cancel_series(request: Request, response: Response, series_id: str) ->
     except DuelSeriesNotFoundError:
         raise HTTPException(
             status_code=404, detail={"code": "embodiment_series_not_found"}
+        ) from None
+
+
+@router.post("/api/embodiment/trio-series", status_code=202)
+async def create_trio_series(
+    request: Request, response: Response, payload: Any = _BODY
+) -> Mapping[str, Any]:
+    try:
+        created = await _trio_service(request).create(**_validate_trio_series_payload(payload))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422, detail={"code": "invalid_embodiment_trio_series_request"}
+        ) from None
+    response.headers["Cache-Control"] = "no-store"
+    return created
+
+
+@router.get("/api/embodiment/trio-series/{series_id}")
+async def get_trio_series(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _trio_service(request).status(series_id)
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+
+
+async def _trio_projection(
+    request: Request, response: Response, series_id: str, name: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        method = getattr(_trio_service(request), name)
+        return await method(series_id)
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+    except TrioSeriesNotReadyError:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": f"embodiment_trio_series_{name}_not_ready"},
+        ) from None
+
+
+@router.get("/api/embodiment/trio-series/{series_id}/result")
+async def get_trio_series_result(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    return await _trio_projection(request, response, series_id, "result")
+
+
+@router.get("/api/embodiment/trio-series/{series_id}/evaluation")
+async def get_trio_series_evaluation(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    return await _trio_projection(request, response, series_id, "evaluation")
+
+
+@router.get("/api/embodiment/trio-series/{series_id}/timeline")
+async def get_trio_series_timeline(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    return await _trio_projection(request, response, series_id, "timeline")
+
+
+@router.get("/api/embodiment/trio-series/{series_id}/replay")
+async def get_trio_series_replay(request: Request, series_id: str) -> Response:
+    try:
+        bundle = await _trio_service(request).replay(series_id)
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+    except TrioSeriesNotReadyError:
+        raise HTTPException(
+            status_code=409, detail={"code": "embodiment_trio_series_replay_not_ready"}
+        ) from None
+    return Response(
+        bundle.bundle_bytes,
+        media_type="application/json",
+        headers={"Cache-Control": "no-store", "X-Content-SHA256": bundle.content_sha256},
+    )
+
+
+@router.get("/api/embodiment/trio-series/{series_id}/archive")
+async def get_trio_series_archive(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _trio_service(request).archive_status(series_id)
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+
+
+@router.get(
+    "/api/embodiment/trio-series/{series_id}/participants/{participant_id}/frame"
+)
+async def get_trio_participant_frame(
+    request: Request, series_id: str, participant_id: str
+) -> Response:
+    try:
+        state, snapshot = await _trio_service(request).participant_frame(
+            series_id, participant_id
+        )
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+    except ValueError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_participant_not_found"}
+        ) from None
+    headers = {
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-State": state,
+    }
+    if snapshot is None:
+        return Response(status_code=204, headers=headers)
+    headers.update(
+        {
+            "X-Content-SHA256": snapshot.sha256,
+            "X-Leg-Index": str(snapshot.leg_index),
+            "X-Observation-Seq": str(snapshot.observation_seq),
+            "X-Participant-ID": snapshot.participant_id,
+        }
+    )
+    return Response(snapshot.png, media_type="image/png", headers=headers)
+
+
+@router.get(
+    "/api/embodiment/trio-series/{series_id}/legs/{leg_index}/participants/"
+    "{participant_id}/video"
+)
+async def get_trio_participant_video(
+    request: Request, series_id: str, leg_index: int, participant_id: str
+) -> FileResponse:
+    if leg_index not in (0, 1, 2) or participant_id not in TRIO_PARTICIPANT_IDS:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_native_replay_not_found"}
+        )
+    try:
+        path = await _trio_service(request).native_video_path(
+            series_id, leg_index, participant_id
+        )
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
+        ) from None
+    if path is None:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_native_replay_not_found"}
+        )
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.post("/api/embodiment/trio-series/{series_id}/cancel")
+async def cancel_trio_series(
+    request: Request, response: Response, series_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        return await _trio_service(request).cancel(series_id)
+    except TrioSeriesNotFoundError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_trio_series_not_found"}
         ) from None
 
 
@@ -368,13 +877,35 @@ def _validate_create_payload(payload: Any) -> dict[str, Any]:
     if isinstance(maximum, bool) or not isinstance(maximum, int):
         raise invalid
     provider = payload["provider"]
-    if provider == SCRIPTED_CONSTRUCTION_PROVIDER:
-        if "api_key" in payload or not is_scripted_solo_demo(
-            provider=provider, model=payload["model"], task_id=payload["task_id"]
+    if provider in (SCRIPTED_CONSTRUCTION_PROVIDER, DEMO_PROVIDER):
+        if "api_key" in payload:
+            raise invalid
+        scenario_id = payload.get("scenario_id")
+        if provider == DEMO_PROVIDER:
+            if scenario_id is None:
+                scenario_id = payload["task_id"]
+            if not isinstance(scenario_id, str) or not scenario_id:
+                raise invalid
+            try:
+                scenario = demo_scenario(scenario_id)
+            except (TypeError, ValueError):
+                raise invalid from None
+            if (
+                scenario.authority_task_id != payload["task_id"]
+                or scenario.provider_model != payload["model"]
+            ):
+                raise invalid
+        elif scenario_id is not None or not is_scripted_solo_demo(
+            provider=SCRIPTED_CONSTRUCTION_PROVIDER,
+            model=payload["model"],
+            task_id=payload["task_id"],
         ):
             raise invalid
         api_key: str | None = None
     else:
+        if "scenario_id" in payload:
+            raise invalid
+        scenario_id = None
         api_key = payload.get("api_key")
         if not isinstance(api_key, str) or not api_key:
             raise invalid
@@ -385,6 +916,7 @@ def _validate_create_payload(payload: Any) -> dict[str, Any]:
         "observation_profile": payload.get("observation_profile", "hybrid-visible-v1"),
         "provider": provider,
         "seed": payload["seed"],
+        "scenario_id": scenario_id,
         "task_id": payload["task_id"],
     }
 
@@ -393,7 +925,7 @@ def _validate_series_payload(payload: Any) -> dict[str, Any]:
     if (
         not isinstance(payload, dict)
         or not {"entrants", "seed"} <= set(payload)
-        or not set(payload) <= {"entrants", "seed", "max_live_provider_calls"}
+        or not set(payload) <= {"entrants", "seed", "max_live_provider_calls", "task_id"}
     ):
         raise ValueError("invalid series payload")
     entrants = payload["entrants"]
@@ -405,7 +937,7 @@ def _validate_series_payload(payload: Any) -> dict[str, Any]:
             raise ValueError("invalid series entrant")
         expected = (
             {"provider", "model"}
-            if entrant.get("provider") == "scripted"
+            if entrant.get("provider") in ("scripted", "demo")
             else {"provider", "model", "api_key"}
         )
         if set(entrant) != expected:
@@ -415,6 +947,30 @@ def _validate_series_payload(payload: Any) -> dict[str, Any]:
         "entrants": (normalized[0], normalized[1]),
         "seed": payload["seed"],
         "max_live_provider_calls": payload.get("max_live_provider_calls", 2160),
+        "task_id": payload.get("task_id", "central-relay-v0"),
+    }
+
+
+def _validate_trio_series_payload(payload: Any) -> dict[str, Any]:
+    if (
+        not isinstance(payload, dict)
+        or not {"entrants", "seed", "task_id"} <= set(payload)
+        or not set(payload) <= {"entrants", "seed", "task_id", "max_provider_calls"}
+    ):
+        raise ValueError("invalid trio series payload")
+    entrants = payload["entrants"]
+    if not isinstance(entrants, list) or len(entrants) != 3:
+        raise ValueError("invalid trio entrants")
+    normalized = []
+    for entrant in entrants:
+        if not isinstance(entrant, dict) or set(entrant) != {"provider", "model"}:
+            raise ValueError("invalid trio entrant")
+        normalized.append(dict(entrant))
+    return {
+        "entrants": (normalized[0], normalized[1], normalized[2]),
+        "seed": payload["seed"],
+        "task_id": payload["task_id"],
+        "max_provider_calls": payload.get("max_provider_calls", 1080),
     }
 
 

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/0.2.0/episode-config.v1.schema.json",
+  "title": "LLM Controller episode configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "episode_id", "mode", "task_id", "seed", "observation_profile", "timing_track", "maximum_episode_ticks", "participant_ids"],
+  "properties": {
+    "protocol_version": {"const": "llm-controller/0.2.0"},
+    "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+    "mode": {"enum": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+    "task_id": {"enum": ["orientation-v0", "interaction-v0", "construction-v0", "neutral-encounter-v0", "central-relay-v0", "movement-maze-v0", "operator-action-course-v0", "duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0", "duo-resource-relay-v0", "rts-skirmish-v0"]},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "observation_profile": {"enum": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]},
+    "timing_track": {"const": "step-locked-v1"},
+    "maximum_episode_ticks": {"type": "integer", "minimum": 1, "maximum": 18000},
+    "participant_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {"type": "string", "pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"mode": {"const": "solo-curriculum-v0"}}, "required": ["mode"]},
+      "then": {"properties": {"participant_ids": {"minItems": 1, "maxItems": 1}}}
+    },
+    {
+      "if": {"properties": {"mode": {"enum": ["scripted-duel-v0", "model-duel-v0"]}}, "required": ["mode"]},
+      "then": {"properties": {"participant_ids": {"minItems": 2, "maxItems": 2}}}
+    },
+    {
+      "if": {"properties": {"task_id": {"enum": ["movement-maze-v0", "operator-action-course-v0"]}}, "required": ["task_id"]},
+      "then": {"properties": {"mode": {"const": "solo-curriculum-v0"}}}
+    },
+    {
+      "if": {"properties": {"task_id": {"enum": ["duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0", "duo-resource-relay-v0", "rts-skirmish-v0"]}}, "required": ["task_id"]},
+      "then": {
+        "properties": {
+          "mode": {"enum": ["scripted-duel-v0", "model-duel-v0"]},
+          "maximum_episode_ticks": {"const": 1200},
+          "participant_ids": {"const": ["participant_0", "participant_1"]}
+        }
+      }
+    }
+  ]
+}
