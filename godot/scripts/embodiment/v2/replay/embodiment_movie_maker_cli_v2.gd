@@ -56,7 +56,7 @@ func _run() -> void:
 	if not dispatcher.configure(replay.config).is_empty():
 		_fail("embodiment_v2_movie_maker_authority_rejected")
 		return
-	var is_rts_skirmish := str(replay.config.task_id) == "rts-skirmish-v0"
+	var is_rts_skirmish := str(replay.config.task_id) in ["rts-skirmish-v0", "rts-skirmish-v1"]
 	_scene = RtsParticipantScene.new() if is_rts_skirmish else ParticipantScene.new()
 	root.add_child(_scene)
 	var scene_configured: bool

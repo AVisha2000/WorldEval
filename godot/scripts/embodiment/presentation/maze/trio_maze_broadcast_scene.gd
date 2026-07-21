@@ -22,6 +22,7 @@ var _beat: Label
 var _event_feed: Label
 var _title_card: Control
 var _winner_card: Control
+var _winner_text: RichTextLabel
 
 
 func _ready() -> void:
@@ -42,6 +43,7 @@ func configure_replay(replay: Dictionary) -> bool:
 	if seen.size() != 3:
 		return false
 	_replay = replay.duplicate(true)
+	_winner_text.text = _winner_card_copy()
 	return apply_race_time(-1000)
 
 
@@ -233,14 +235,26 @@ func _build_hud() -> void:
 	title.text = "[center][font_size=22][color=#8be9fd]WORLDARENA HIGHLIGHT[/color][/font_size]\n[font_size=50][b]LABYRINTH RUN[/b][/font_size]\n[font_size=22]Three agents · the same maze · no shared vision[/font_size][/center]"
 	_title_card.add_child(title)
 	_winner_card = _overlay_card(layer, Vector2(210, 245), Vector2(1020, 410), Color("07111cf7"))
-	var winner := RichTextLabel.new()
-	winner.position = Vector2(48, 34)
-	winner.size = Vector2(924, 350)
-	winner.bbcode_enabled = true
-	winner.fit_content = true
-	winner.text = "[center][font_size=20][color=#8be9fd]VERIFIED RESULT[/color][/font_size]\n[font_size=50][color=#fbbf24][b]SOL WINS[/b][/color][/font_size]\n[font_size=24]44.8 seconds · 64 cells · 93.75% path efficiency[/font_size]\n\n[font_size=20][color=#fbbf24]1  Sol  44.8s[/color]     [color=#34d399]2  Terra  53.6s[/color]     [color=#a78bfa]3  Luna  58.4s[/color]\n\nSol eliminated exhausted branches most efficiently.\nTerra recovered from two wrong branches.\nLuna finished, but travelled the longest route.[/font_size]\n\n[font_size=16][color=#9fb3c8]DETERMINISTIC REPLAY VERIFIED · MAZE-TASK-PLAN-V1[/color][/font_size][/center]"
-	_winner_card.add_child(winner)
+	_winner_text = RichTextLabel.new()
+	_winner_text.position = Vector2(48, 34)
+	_winner_text.size = Vector2(924, 350)
+	_winner_text.bbcode_enabled = true
+	_winner_text.fit_content = true
+	_winner_card.add_child(_winner_text)
 	_winner_card.visible = false
+
+
+func _winner_card_copy() -> String:
+	var winner_id: Variant = _replay.result.get("winner_id")
+	var winner_name := "No winner"
+	for racer: Dictionary in _replay.racers:
+		if racer.participant_id == winner_id:
+			winner_name = str(racer.display_name)
+	var podium := []
+	for racer: Dictionary in _replay.racers:
+		var finish := "DNF" if racer.get("finish_tick") == null else "%.1fs" % (float(racer.finish_tick) / 10.0)
+		podium.append("%s  %s" % [str(racer.display_name), finish])
+	return "[center][font_size=20][color=#8be9fd]VERIFIED LIVE RESULT[/color][/font_size]\n[font_size=50][color=#fbbf24][b]%s[/b][/color][/font_size]\n[font_size=24]%s[/font_size]\n\n[font_size=20]%s[/font_size]\n\n[font_size=16][color=#9fb3c8]DETERMINISTIC REPLAY VERIFIED · MAZE-TASK-PLAN-V1[/color][/font_size][/center]" % ["%s WINS" % winner_name if winner_id != null else "NO FINISHER", str(_replay.result.get("reason", "race complete")).replace("_", " "), "     ".join(podium)]
 
 
 func _update_hud(tick: int) -> void:

@@ -11,29 +11,29 @@ temporary render paths or third-party hosting.
 Workers walk to the pre-existing tree and ore fields, harvest for a visible duration, carry their
 loads home, and unlock the rest of each three-unit faction.
 
-![A Red worker harvesting persistent resources](worldarena-rts-resource-gathering.jpg)
+![A Luna worker harvesting persistent resources](worldarena-rts-resource-gathering.jpg)
 
 ![Both RTS factions spreading across their resource fields](worldarena-rts-economy.jpg)
 
 ### Rally and bridge battle
 
 The same workers become militia, form squads, march toward the bridge, and exchange animated hits
-under public health bars and safe task summaries.
+under public health bars, safe task summaries, and Terra/Luna agent-status panels.
 
-![Blue militia marching toward the bridge](worldarena-rts-squad-march.jpg)
+![Terra militia marching toward the bridge](worldarena-rts-squad-march.jpg)
 
-![Blue and Red militia fighting on the bridge](worldarena-rts-bridge-battle.jpg)
+![Terra and Luna militia fighting on the bridge](worldarena-rts-bridge-battle.jpg)
 
 ### Retreat, siege, and victory
 
-Red's final fighter retreats, the two surviving Blue militia counterattack, and the match ends by
-destroying Red's tower and Town Hall.
+Luna's final fighter retreats, the two surviving Terra militia counterattack, and the match ends by
+destroying Luna's tower and Town Hall.
 
-![Blue pursuing Red toward the stronghold](worldarena-rts-red-retreat.jpg)
+![Terra pursuing Luna toward the stronghold](worldarena-rts-red-retreat.jpg)
 
-![Two Blue survivors attacking the Red Town Hall](worldarena-rts-town-hall-assault.jpg)
+![Two Terra survivors attacking Luna's Town Hall](worldarena-rts-town-hall-assault.jpg)
 
-![Two Blue survivors celebrating the deterministic victory](worldarena-rts-blue-victory.jpg)
+![Two Terra survivors celebrating the deterministic victory](worldarena-rts-blue-victory.jpg)
 
 ## Labyrinth Run
 

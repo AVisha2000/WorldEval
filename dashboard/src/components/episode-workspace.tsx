@@ -6,7 +6,8 @@ import {
   SquareIcon,
 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { RefObject } from "react"
 import { participantTeam, participantTeams, TEAM_COLOURS } from "@/lib/participant-team"
 import type {
   ControllerMode,
@@ -460,7 +461,26 @@ function EvaluationView({ episode }: { episode?: EpisodeView }) {
     : <SoloEvaluationView episode={episode} />
 }
 
+const REPLAY_SPEEDS = [1, 4, 8] as const
+
+export function ReplaySpeedControls({
+  videoRef,
+}: {
+  videoRef: RefObject<HTMLVideoElement | null>
+}) {
+  const [speed, setSpeed] = useState<number>(1)
+  const selectSpeed = (next: number) => {
+    if (videoRef.current) videoRef.current.playbackRate = next
+    setSpeed(next)
+  }
+  return <div className="participant-selector" role="group" aria-label="Replay playback speed">
+    <span className="section-title">Playback</span>
+    {REPLAY_SPEEDS.map((value) => <Button key={value} size="sm" variant={speed === value ? "default" : "outline"} onClick={() => selectSpeed(value)}>{value}×</Button>)}
+  </div>
+}
+
 function ReplayPlayer({ replay }: { replay: SavedReplaySummary }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [playbackState, setPlaybackState] = useState<"loading" | "ready" | "error">(
     "loading"
   )
@@ -475,6 +495,7 @@ function ReplayPlayer({ replay }: { replay: SavedReplaySummary }) {
         <span>{replay.outcome}</span>
       </div>
       <video
+        ref={videoRef}
         className="saved-replay-video"
         aria-label="Saved replay video"
         controls
@@ -486,6 +507,7 @@ function ReplayPlayer({ replay }: { replay: SavedReplaySummary }) {
         <source src={savedReplayVideoUrl(replay.replayId)} type={replay.video.mimeType} />
         Your browser cannot play this saved replay video.
       </video>
+      <ReplaySpeedControls videoRef={videoRef} />
       {playbackState === "loading" ? (
         <p className="saved-replay-status" aria-live="polite">
           Loading native replay…
@@ -714,6 +736,7 @@ function SeriesNativeReplayPlayer({
   selected: string
   onSelect: (identity: string) => void
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
   const artifact = artifacts.find((value) => `${value.legIndex}:${value.participantId}` === selected) ?? artifacts[0]
   if (!artifact) return null
   const identity = `${artifact.legIndex}:${artifact.participantId}`
@@ -725,10 +748,11 @@ function SeriesNativeReplayPlayer({
         return <Button key={valueIdentity} size="sm" variant={valueIdentity === identity ? "default" : "outline"} onClick={() => onSelect(valueIdentity)}>Leg {value.legIndex + 1} · P{value.participantId.replace("participant_", "")}</Button>
       })}
     </div>
-    <video key={identity} className="saved-replay-video" aria-label="Participant native replay" controls playsInline preload="metadata">
+    <video ref={videoRef} key={identity} className="saved-replay-video" aria-label="Participant native replay" controls playsInline preload="metadata">
       <source src={seriesParticipantVideoUrl(seriesId, artifact.legIndex, artifact.participantId)} type="video/mp4" />
       Your browser cannot play this participant replay.
     </video>
+    <ReplaySpeedControls videoRef={videoRef} />
     <p className="saved-replay-privacy"><ShieldCheckIcon /> Participant-visible pixels only. Each leg and seat is isolated; no spectator view is rendered.</p>
   </section>
 }

@@ -11,25 +11,25 @@ function response(value: Record<string, unknown>) {
 const cachedRtsShowcase = {
   showcase_id: "rts-skirmish-v0",
   task_id: "rts-skirmish-v0",
-  label: "WorldArena: Mini RTS — Blue vs Red",
+  label: "WorldArena: Mini RTS — Terra vs Luna",
   status: "ready",
   cached: true,
   video: {
     duration_seconds: 150, fps: 30, height: 1080, mime_type: "video/mp4",
     sha256: "b".repeat(64), width: 1920,
   },
-  winner: { team: "Blue Command" },
+  winner: { team: "Terra" },
   completion: { outcome: "win", reason: "town_hall_destroyed", tick: 1190 },
   casualties: [
-    { at_tick: 850, team: "Blue", unit_id: "blue_0" },
-    { at_tick: 880, team: "Red", unit_id: "red_0" },
-    { at_tick: 900, team: "Red", unit_id: "red_1" },
-    { at_tick: 1020, team: "Red", unit_id: "red_2" },
+    { at_tick: 850, team: "Terra", unit_id: "terra_agent_1" },
+    { at_tick: 880, team: "Luna", unit_id: "luna_agent_1" },
+    { at_tick: 900, team: "Luna", unit_id: "luna_agent_2" },
+    { at_tick: 1020, team: "Luna", unit_id: "luna_agent_3" },
   ],
   highlights: [
     { at_seconds: 0, label: "Workers deploy" },
     { at_seconds: 80, label: "Bridge battle" },
-    { at_seconds: 145, label: "Blue victory" },
+    { at_seconds: 145, label: "Terra victory" },
   ],
 }
 
@@ -293,15 +293,16 @@ describe("Controller dashboard", () => {
     vi.stubGlobal("fetch", fetch)
     renderApp()
 
-    expect(screen.getByText(/Blue Command and Red Legion gather, build, arm, and fight/i)).toBeInTheDocument()
+    expect(screen.getByText(/Terra and Luna Demo agents gather, build, arm, and fight/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Run RTS Skirmish" }))
 
-    expect(screen.getByRole("heading", { name: "Blue Command vs Red Legion" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Terra vs Luna" })).toBeInTheDocument()
     expect(screen.getByText(/saved authority-verified demo/i)).toBeInTheDocument()
+    expect(screen.getByText(/credential-free deterministic Demo agents using the structured task path/i)).toBeInTheDocument()
     expect(screen.getByLabelText("Cached RTS skirmish showcase").querySelector("video"))
       .toHaveAttribute("src", "/api/embodiment/showcases/rts-skirmish-v0/video")
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(
-      "/api/embodiment/showcases/rts-skirmish-v0", { cache: "force-cache" }
+      "/api/embodiment/showcases/rts-skirmish-v0", { cache: "no-store" }
     ))
     const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")
     expect(post).toBeUndefined()
@@ -317,7 +318,7 @@ describe("Controller dashboard", () => {
     expect(await screen.findByText("Cinematic timeline")).toBeInTheDocument()
     expect(screen.getByText("Bridge battle")).toBeInTheDocument()
     await user.click(screen.getByRole("tab", { name: "Result" }))
-    expect(screen.getByText("Blue Command wins")).toBeInTheDocument()
+    expect(screen.getByText("Terra wins")).toBeInTheDocument()
     expect(screen.getByText(/Tick 1020/)).toBeInTheDocument()
     await user.click(screen.getByRole("tab", { name: "Evaluation" }))
     expect(await screen.findByText("Verified evaluation")).toBeInTheDocument()

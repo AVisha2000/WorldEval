@@ -15,6 +15,12 @@ from ..duo_games.catalog import (
     build_duo_game_demo_provider,
     duo_game,
 )
+from ..duo_games.rts_skirmish_v1 import (
+    TASK_ID as RTS_SKIRMISH_V1_TASK_ID,
+)
+from ..duo_games.rts_skirmish_v1 import (
+    RtsTaskPlanProvider,
+)
 from ..live_runtime import SYSTEM_PROMPT, provider_adapter
 from ..managed_process import ManagedLaunchSpec, ManagedProcessLauncher
 from ..managed_session import ManagedWorldArenaSession
@@ -47,21 +53,17 @@ _DUO_TASK_SOURCES = {
     "duo-checkpoint-race-v0": Path("scripts/embodiment/duo_games/checkpoint_race_authority.gd"),
     "duo-relay-control-v0": Path("scripts/embodiment/duo_games/relay_control_authority.gd"),
     "duo-spar-v0": Path("scripts/embodiment/duo_games/spar_authority.gd"),
-    "duo-resource-relay-v0": Path(
-        "scripts/embodiment/duo_games/resource_relay_authority.gd"
-    ),
-    "rts-skirmish-v0": Path(
-        "scripts/embodiment/rts_skirmish/rts_skirmish_authority.gd"
-    ),
+    "duo-resource-relay-v0": Path("scripts/embodiment/duo_games/resource_relay_authority.gd"),
+    "rts-skirmish-v0": Path("scripts/embodiment/rts_skirmish/rts_skirmish_authority.gd"),
+    RTS_SKIRMISH_V1_TASK_ID: Path("scripts/embodiment/rts_skirmish/rts_skirmish_v1_authority.gd"),
 }
 _DUO_PROVIDER_SOURCES = {
     "duo-checkpoint-race-v0": Path("backend/genesis_arena/embodiment/duo_games/checkpoint_race.py"),
     "duo-relay-control-v0": Path("backend/genesis_arena/embodiment/duo_games/relay_control.py"),
     "duo-spar-v0": Path("backend/genesis_arena/embodiment/duo_games/spar.py"),
-    "duo-resource-relay-v0": Path(
-        "backend/genesis_arena/embodiment/duo_games/resource_relay.py"
-    ),
+    "duo-resource-relay-v0": Path("backend/genesis_arena/embodiment/duo_games/resource_relay.py"),
     "rts-skirmish-v0": Path("backend/genesis_arena/embodiment/duo_games/rts_skirmish.py"),
+    RTS_SKIRMISH_V1_TASK_ID: Path("backend/genesis_arena/embodiment/duo_games/rts_skirmish_v1.py"),
 }
 _PROVIDER_FACTORY = Path("backend/genesis_arena/embodiment/live_runtime.py")
 _PROVIDER_LOCKS = {
@@ -158,41 +160,41 @@ def build_paired_duel_plan(
         protocol_sha256=protocol_package.package_sha256,
         rules_sha256=_source_lock_sha256(
             project,
-            "duel-rules" if not game.is_additive_game else f"duo-game-rules:{spec.task_id}",
+            "duel-rules" if not game.is_managed_v2 else f"duo-game-rules:{spec.task_id}",
             (_DUEL_AUTHORITY, _ARENA_MAP, _CHECKPOINT_SERIALIZER, _VISIBILITY)
-            if not game.is_additive_game
+            if not game.is_managed_v2
             else (_DUO_GAME_AUTHORITY, _DUO_TASK_SOURCES[spec.task_id]),
         ),
         map_sha256=_source_lock_sha256(
             project,
-            "duel-map" if not game.is_additive_game else f"duo-game-map:{spec.task_id}",
-            (_ARENA_MAP,) if not game.is_additive_game else (_DUO_GAME_AUTHORITY,),
+            "duel-map" if not game.is_managed_v2 else f"duo-game-map:{spec.task_id}",
+            (_ARENA_MAP,) if not game.is_managed_v2 else (_DUO_GAME_AUTHORITY,),
         ),
         body_sha256=_source_lock_sha256(
             project,
-            "duel-body" if not game.is_additive_game else "duo-game-body",
-            (_DUEL_AUTHORITY,) if not game.is_additive_game else (_DUO_GAME_AUTHORITY,),
+            "duel-body" if not game.is_managed_v2 else "duo-game-body",
+            (_DUEL_AUTHORITY,) if not game.is_managed_v2 else (_DUO_GAME_AUTHORITY,),
         ),
         controller_sha256=_source_lock_sha256(
             project,
-            "duel-controller" if not game.is_additive_game else "duo-game-controller",
-            (_DUEL_AUTHORITY,) if not game.is_additive_game else (_DUO_GAME_AUTHORITY,),
+            "duel-controller" if not game.is_managed_v2 else "duo-game-controller",
+            (_DUEL_AUTHORITY,) if not game.is_managed_v2 else (_DUO_GAME_AUTHORITY,),
         ),
         projector_sha256=_source_lock_sha256(
             project,
-            "duel-observation-projector" if not game.is_additive_game else "duo-game-projector",
-            (_DUEL_AUTHORITY, _VISIBILITY) if not game.is_additive_game else (_DUO_GAME_AUTHORITY,),
+            "duel-observation-projector" if not game.is_managed_v2 else "duo-game-projector",
+            (_DUEL_AUTHORITY, _VISIBILITY) if not game.is_managed_v2 else (_DUO_GAME_AUTHORITY,),
         ),
         evaluator_sha256=_source_lock_sha256(
             project,
             (
                 "duel-terminal-evaluator"
-                if not game.is_additive_game
+                if not game.is_managed_v2
                 else f"duo-game-evaluator:{spec.task_id}"
             ),
             (
                 (_DUEL_AUTHORITY,)
-                if not game.is_additive_game
+                if not game.is_managed_v2
                 else (_DUO_GAME_AUTHORITY, _DUO_TASK_SOURCES[spec.task_id])
             ),
         ),
@@ -265,6 +267,7 @@ def default_duel_series_service(
             "duo-spar-v0",
             "duo-resource-relay-v0",
             "rts-skirmish-v0",
+            RTS_SKIRMISH_V1_TASK_ID,
         ),
         certified_modes=(),
         certified_observation_profiles=(),
@@ -335,7 +338,8 @@ def default_duel_series_service(
                 }
             broadcast_preview_ticket = (
                 derive_duel_broadcast_preview_ticket(secret, attachment_ticket=ticket)
-                if preview_ingress is not None and spec.task_id == "rts-skirmish-v0"
+                if preview_ingress is not None
+                and spec.task_id in ("rts-skirmish-v0", RTS_SKIRMISH_V1_TASK_ID)
                 else None
             )
             launch = ManagedLaunchSpec(
@@ -465,7 +469,10 @@ def default_duel_series_service(
             credential = credentials.get(entrant.entrant_id)
             if credential is None:
                 raise ValueError("model entrant credential is unavailable")
-            return provider_adapter(entrant.provider, credential)
+            adapter = provider_adapter(entrant.provider, credential)
+            return (
+                RtsTaskPlanProvider(adapter) if spec.task_id == RTS_SKIRMISH_V1_TASK_ID else adapter
+            )
 
         def scheduler_factory(attempt_plan: PairedDuelPlan) -> PairedDuelScheduler:
             return PairedDuelScheduler(

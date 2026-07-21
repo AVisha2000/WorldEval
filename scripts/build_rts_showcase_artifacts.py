@@ -30,6 +30,11 @@ EXPECTED_CASUALTIES = (
     ("red_2", "Red", 1020),
 )
 _PARTICIPANTS = ("participant_0", "participant_1")
+# Internal unit IDs deliberately retain their Blue/Red world-team prefixes for replay
+# verification.  The sealed public story instead identifies the two deterministic demo
+# agents by their showcase names.
+_PUBLIC_TEAM_NAMES = {"Blue": "Terra", "Red": "Luna"}
+_PUBLIC_UNIT_PREFIXES = {"blue": "terra", "red": "luna"}
 _SUMMARY_FIELDS = frozenset(
     {
         "barracks_built",
@@ -448,39 +453,43 @@ def _metadata(story: Mapping[str, Any]) -> dict[str, Any]:
     blue_survivors = 3 - casualties_by_team["Blue"]
     red_survivors = 3 - casualties_by_team["Red"]
     return {
-        "label": "WorldArena: Mini RTS — Blue vs Red",
-        "winner": {"team": "Blue Command"},
+        "label": "WorldArena: Mini RTS — Terra vs Luna",
+        "winner": {"team": "Terra"},
         "completion": story["completion"],
         "casualties": [
-            {"unit_id": unit_id, "team": team, "at_tick": tick}
+            {
+                "unit_id": _public_unit_id(unit_id),
+                "team": _PUBLIC_TEAM_NAMES[team],
+                "at_tick": tick,
+            }
             for unit_id, team, tick in story["casualties"]
         ],
         "highlights": [
-            {"at_seconds": 0, "label": "Blue and Red workers deploy"},
+            {"at_seconds": 0, "label": "Terra and Luna workers deploy"},
             {"at_seconds": 15, "label": "First workers walk to separate resource nodes"},
             {"at_seconds": 40, "label": "Three workers harvest and return materials"},
             {"at_seconds": 65, "label": "Barracks build and militia arming complete"},
             {"at_seconds": 80, "label": "Three-versus-three bridge battle begins"},
-            {"at_seconds": 100, "label": "Red retreats as Blue pursues"},
-            {"at_seconds": 116, "label": "Blue destroys the Red tower"},
-            {"at_seconds": 132, "label": "Blue attacks the Red Town Hall"},
-            {"at_seconds": 145, "label": "Blue victory celebration"},
+            {"at_seconds": 100, "label": "Luna retreats as Terra pursues"},
+            {"at_seconds": 116, "label": "Terra destroys Luna's tower"},
+            {"at_seconds": 132, "label": "Terra attacks Luna's Town Hall"},
+            {"at_seconds": 145, "label": "Terra victory celebration"},
         ],
         "evaluation_metrics": [
             {
-                "id": "blue_economy",
-                "label": "Blue economy",
+                "id": "terra_economy",
+                "label": "Terra economy",
                 "value": f"{blue['deposits']} deposits · {blue['units_trained']} militia armed",
             },
             {
-                "id": "red_economy",
-                "label": "Red economy",
+                "id": "luna_economy",
+                "label": "Luna economy",
                 "value": f"{red['deposits']} deposits · {red['units_trained']} militia armed",
             },
             {
                 "id": "unit_survival",
                 "label": "Unit survival",
-                "value": f"Blue {blue_survivors} · Red {red_survivors}",
+                "value": f"Terra {blue_survivors} · Luna {red_survivors}",
             },
             {
                 "id": "combat",
@@ -523,6 +532,13 @@ def _known_unit_id(value: Any) -> str:
 
 def _team_for_unit(unit_id: str) -> str:
     return "Blue" if unit_id.startswith("blue_") else "Red"
+
+
+def _public_unit_id(unit_id: str) -> str:
+    """Translate a sealed replay ID into a readable public showcase alias."""
+
+    team, raw_index = unit_id.split("_", 1)
+    return f"{_PUBLIC_UNIT_PREFIXES[team]}_agent_{int(raw_index) + 1}"
 
 
 def _unit_for_participant(value: Any, participant: str) -> str:

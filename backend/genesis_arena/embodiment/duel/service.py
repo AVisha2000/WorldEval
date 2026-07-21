@@ -11,6 +11,7 @@ from typing import Awaitable, Callable, Mapping, Optional, Tuple
 from ..baselines import BASELINE_TIERS
 from ..credentials import SessionCredential
 from ..duo_games.catalog import CENTRAL_RELAY_TASK_ID, duo_game
+from ..duo_games.rts_skirmish_v1 import TASK_ID as RTS_SKIRMISH_V1_TASK_ID
 from ..evaluation_projection import build_paired_duel_leg_evaluation_projection
 from ..protocol import canonical_sha256, strict_json_loads
 from .archive import ArchivedDuelSeries, DuelSeriesArchive, DuelSeriesArchiveError
@@ -187,7 +188,7 @@ class DuelSeriesService:
         if demo_count not in (0, 2):
             raise ValueError("demo series require exactly two demo entrants")
         game = duo_game(task_id)
-        if task_id != CENTRAL_RELAY_TASK_ID and demo_count != 2:
+        if task_id not in (CENTRAL_RELAY_TASK_ID, RTS_SKIRMISH_V1_TASK_ID) and demo_count != 2:
             raise ValueError("additive duo games require exactly two Demo entrants")
         if demo_count == 2 and tuple(entrant.model for entrant in public_entrants) != game.models:
             raise ValueError("Demo entrants must match the selected duo game policy pair")
@@ -455,7 +456,10 @@ class DuelSeriesService:
         """Publish the approved RTS broadcast camera pixels, never a player projection."""
 
         record = await self._record(series_id)
-        if record.spec.task_id != "rts-skirmish-v0" or record.state not in (
+        if record.spec.task_id not in {
+            "rts-skirmish-v0",
+            RTS_SKIRMISH_V1_TASK_ID,
+        } or record.state not in (
             "queued",
             "running",
         ):
@@ -470,13 +474,11 @@ class DuelSeriesService:
         DuelBroadcastPreviewSnapshot | None,
     ]:
         record = await self._record(series_id)
-        if record.spec.task_id != "rts-skirmish-v0":
+        if record.spec.task_id not in {"rts-skirmish-v0", RTS_SKIRMISH_V1_TASK_ID}:
             raise ValueError("broadcast preview is unavailable for this task")
         return record.live_broadcast_preview.subscribe()
 
-    async def unsubscribe_live_broadcast_preview(
-        self, series_id: str, token: int
-    ) -> None:
+    async def unsubscribe_live_broadcast_preview(self, series_id: str, token: int) -> None:
         record = await self._record(series_id)
         record.live_broadcast_preview.unsubscribe(token)
 

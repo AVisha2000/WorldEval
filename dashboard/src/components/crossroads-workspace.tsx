@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import type { CSSProperties } from "react"
 import type {
   CachedCrossroadsEvaluationView,
@@ -5,6 +6,7 @@ import type {
   CrossroadsFactionId,
 } from "@/api"
 import { cachedCrossroadsVideoUrl } from "@/api"
+import { ReplaySpeedControls } from "@/components/episode-workspace"
 
 type Props = {
   evaluation?: CachedCrossroadsEvaluationView
@@ -42,6 +44,7 @@ export function CrossroadsWorkspace({
   showcaseError,
   view,
 }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null)
   return (
     <section
       className="episode-workspace rts-showcase crossroads-showcase"
@@ -78,6 +81,7 @@ export function CrossroadsWorkspace({
       {view === "run" ? (
         <>
           <video
+            ref={videoRef}
             className="rts-showcase-video crossroads-video"
             controls
             autoPlay
@@ -87,6 +91,7 @@ export function CrossroadsWorkspace({
           >
             Your browser cannot play the saved Crossroads Conquest broadcast.
           </video>
+          <ReplaySpeedControls videoRef={videoRef} />
           <p className="muted-copy">
             {showcase
               ? `${showcase.video.durationSeconds}-second authority-verified broadcast · ${showcase.video.width}×${showcase.video.height} · ${showcase.video.fps} FPS · seed ${showcase.authority.seed}`

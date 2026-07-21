@@ -274,7 +274,7 @@ class ManagedProcessLauncher:
         broadcast_ticket = spec.presentation_broadcast_ticket
         if broadcast_ticket is not None and (
             spec.config.get("protocol_version") != "llm-controller/0.2.0"
-            or spec.config.get("task_id") != "rts-skirmish-v0"
+            or spec.config.get("task_id") not in {"rts-skirmish-v0", "rts-skirmish-v1"}
             or _TICKET.fullmatch(broadcast_ticket) is None
         ):
             raise ManagedProcessError("embodiment_bootstrap_input_rejected")

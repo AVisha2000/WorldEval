@@ -220,11 +220,17 @@ def test_builder_emits_safe_canonical_evaluation_and_metadata(
     }
     assert evaluation["replay"]["python_verified"] is True
     assert [item["at_tick"] for item in metadata["casualties"]] == [850, 880, 900, 1020]
-    assert metadata["highlights"][-1] == {"at_seconds": 145, "label": "Blue victory celebration"}
+    assert [item["unit_id"] for item in metadata["casualties"]] == [
+        "terra_agent_1",
+        "luna_agent_1",
+        "luna_agent_2",
+        "luna_agent_3",
+    ]
+    assert metadata["highlights"][-1] == {"at_seconds": 145, "label": "Terra victory celebration"}
     metrics = {item["id"]: item["value"] for item in metadata["evaluation_metrics"]}
-    assert metrics["unit_survival"] == "Blue 2 · Red 0"
-    assert "militia armed" in metrics["red_economy"]
-    assert "survivor" not in metrics["red_economy"]
+    assert metrics["unit_survival"] == "Terra 2 · Luna 0"
+    assert "militia armed" in metrics["luna_economy"]
+    assert "survivor" not in metrics["luna_economy"]
     assert "prompt" not in repr({"evaluation": evaluation, "metadata": metadata}).casefold()
     assert "raw_output" not in repr({"evaluation": evaluation, "metadata": metadata}).casefold()
 

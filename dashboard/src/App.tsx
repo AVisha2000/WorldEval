@@ -24,7 +24,7 @@ import {
 } from "@/api"
 import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { CrossroadsWorkspace } from "@/components/crossroads-workspace"
-import { EpisodeWorkspace } from "@/components/episode-workspace"
+import { EpisodeWorkspace, ReplaySpeedControls } from "@/components/episode-workspace"
 import { SetupPanel } from "@/components/setup-panel"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -57,6 +57,7 @@ function CachedMazeWorkspace({
   showcaseError,
   view,
 }: CachedMazeWorkspaceProps) {
+  const videoRef = useRef<HTMLVideoElement>(null)
   const winner = showcase?.winner.displayName ?? "Sol"
   const participantById = new Map(showcase?.entrants.map((entrant) => [entrant.participantId, entrant]))
   return (
@@ -79,9 +80,10 @@ function CachedMazeWorkspace({
       </div>
       {showcaseError ? <p role="alert" className="error-banner">The saved Labyrinth Run package is unavailable or failed verification.</p> : null}
       {view === "run" ? <>
-        <video className="rts-showcase-video" controls autoPlay muted playsInline src={cachedMazeVideoUrl()}>
+        <video ref={videoRef} className="rts-showcase-video" controls autoPlay muted playsInline src={cachedMazeVideoUrl()}>
           Your browser cannot play the saved Labyrinth Run video.
         </video>
+        <ReplaySpeedControls videoRef={videoRef} />
         <p className="muted-copy">{showcase
           ? `${showcase.video.durationSeconds}-second native Godot broadcast · ${showcase.video.width}×${showcase.video.height} · ${showcase.video.fps} FPS`
           : "Loading verified video metadata…"}</p>
@@ -173,14 +175,15 @@ function CachedRtsWorkspace({
   showcaseError,
   view,
 }: CachedRtsWorkspaceProps) {
-  const winner = showcase?.winner.team ?? "Blue Command"
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const winner = showcase?.winner.team ?? "Terra"
   const completion = showcase?.completion
   return (
     <section className="episode-workspace rts-showcase" aria-label="Cached RTS skirmish showcase">
       <div className="episode-workspace-header">
         <div>
           <p className="eyebrow">Cached deterministic replay</p>
-          <h2>{winner} vs Red Legion</h2>
+          <h2>{winner} vs Luna</h2>
           <p>
             {showcase?.label ?? "WorldArena: Mini RTS"} is a saved authority-verified demo.
             It never starts a provider call or simulation in this dashboard.
@@ -191,13 +194,17 @@ function CachedRtsWorkspace({
       {showcaseError ? <p role="alert" className="error-banner">The saved RTS package is unavailable or failed verification.</p> : null}
       {view === "run" ? (
         <>
-          <video className="rts-showcase-video" controls autoPlay muted playsInline src={cachedRtsVideoUrl()}>
+          <video ref={videoRef} className="rts-showcase-video" controls autoPlay muted playsInline src={cachedRtsVideoUrl()}>
             Your browser cannot play the saved RTS demo video.
           </video>
+          <ReplaySpeedControls videoRef={videoRef} />
           <p className="muted-copy">
             {showcase
               ? `${showcase.video.durationSeconds}-second cached broadcast · ${showcase.video.width}×${showcase.video.height} · ${showcase.video.fps} FPS`
               : "Loading verified video metadata…"}
+          </p>
+          <p className="muted-copy">
+            Terra and Luna are credential-free deterministic Demo agents using the structured task path for later LLM controllers. On-screen labels are safe task summaries, not hidden chain-of-thought, prompts, or raw output.
           </p>
         </>
       ) : null}

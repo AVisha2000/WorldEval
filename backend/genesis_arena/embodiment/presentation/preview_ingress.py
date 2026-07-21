@@ -37,6 +37,7 @@ SUPPORTED_PREVIEW_TASKS = frozenset(
         "duo-spar-v0",
         "duo-resource-relay-v0",
         "rts-skirmish-v0",
+        "rts-skirmish-v1",
         "trio-relay-v0",
         "trio-free-for-all-v0",
     )
@@ -49,6 +50,7 @@ _DUO_PREVIEW_TASKS = frozenset(
         "duo-spar-v0",
         "duo-resource-relay-v0",
         "rts-skirmish-v0",
+        "rts-skirmish-v1",
     )
 )
 _TRIO_PREVIEW_TASKS = frozenset(("trio-relay-v0", "trio-free-for-all-v0"))
@@ -105,7 +107,7 @@ class InternalParticipantPreviewIngress:
         )
         # Broadcast is a separate, explicitly public camera channel restricted to the RTS
         # vertical slice. It is never a valid participant id for a player observation.
-        if task_id == "rts-skirmish-v0":
+        if task_id in {"rts-skirmish-v0", "rts-skirmish-v1"}:
             allowed_participants = (*allowed_participants, "broadcast")
         if participant_id not in allowed_participants:
             raise ValueError("preview registration participant is invalid")

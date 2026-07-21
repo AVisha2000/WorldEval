@@ -64,9 +64,9 @@ describe("cached RTS showcase routes", () => {
     showcase_id: "rts-skirmish-v0", task_id: "rts-skirmish-v0", label: "Mini RTS",
     status: "ready", cached: true,
     video: { duration_seconds: 150, fps: 30, height: 1080, mime_type: "video/mp4", sha256: "a".repeat(64), width: 1920 },
-    winner: { team: "Blue Command" },
+    winner: { team: "Terra" },
     completion: { outcome: "win", reason: "town_hall_destroyed", tick: 1190 },
-    casualties: [{ at_tick: 850, team: "Blue", unit_id: "blue_0" }],
+    casualties: [{ at_tick: 850, team: "Terra", unit_id: "terra_agent_1" }],
     highlights: [{ at_seconds: 0, label: "Workers deploy" }],
     raw_output: "must not survive",
   }
@@ -82,13 +82,13 @@ describe("cached RTS showcase routes", () => {
   }
 
   it("reads only safe cached metadata and has no browser replay route", async () => {
-    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const fetch = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const route = String(input)
       return response(route.endsWith("/evaluation") ? evaluation : showcase)
     })
     vi.stubGlobal("fetch", fetch)
     await expect(getCachedRtsShowcase()).resolves.toMatchObject({
-      label: "Mini RTS", video: { durationSeconds: 150 }, casualties: [{ unitId: "blue_0" }],
+      label: "Mini RTS", video: { durationSeconds: 150 }, casualties: [{ unitId: "terra_agent_1" }],
     })
     await expect(getCachedRtsEvaluation()).resolves.toMatchObject({
       metrics: [{ id: "economy" }], verification: { state: "verified" },
@@ -97,6 +97,10 @@ describe("cached RTS showcase routes", () => {
     expect(fetch.mock.calls.map(([route]) => String(route))).toEqual([
       "/api/embodiment/showcases/rts-skirmish-v0",
       "/api/embodiment/showcases/rts-skirmish-v0/evaluation",
+    ])
+    expect(fetch.mock.calls.map(([, init]) => init)).toEqual([
+      { cache: "no-store" },
+      { cache: "no-store" },
     ])
   })
 

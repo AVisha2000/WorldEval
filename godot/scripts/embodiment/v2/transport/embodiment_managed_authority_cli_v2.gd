@@ -76,7 +76,7 @@ func _bootstrap() -> void:
 		_scrub_variant(launch)
 		_fail("embodiment_v2_environment_rejected")
 		return
-	var is_rts_skirmish := str(launch.config.task_id) == "rts-skirmish-v0"
+	var is_rts_skirmish := str(launch.config.task_id) in ["rts-skirmish-v0", "rts-skirmish-v1"]
 	var frame_adapter = null
 	if hybrid:
 		for participant_id: String in launch.config.participant_ids:
@@ -314,7 +314,7 @@ static func _presentation_entrant_ids(value: Variant) -> Dictionary:
 
 
 static func _broadcast_ticket(value: Variant, task_id: String) -> String:
-	if task_id != "rts-skirmish-v0":
+	if task_id not in ["rts-skirmish-v0", "rts-skirmish-v1"]:
 		return ""
 	if not value is String or value.length() != 43:
 		return ""

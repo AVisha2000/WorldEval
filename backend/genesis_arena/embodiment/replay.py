@@ -32,8 +32,11 @@ _EPISODE = re.compile(r"^ep_[A-Za-z0-9._-]{1,120}$")
 # extension here (rather than changing an old protocol package) preserves every existing
 # replay format and makes accidental disclosure through generic replay consumers less likely.
 RTS_TASK_PLAN_EVIDENCE_FIELD = "rts_task_plan_evidence"
-_RTS_TASK_ID = "rts-skirmish-v0"
-_RTS_PLAN_PROTOCOL = "rts-task-plan-v1"
+_RTS_TASK_IDS = frozenset(("rts-skirmish-v0", "rts-skirmish-v1"))
+_RTS_PLAN_PROTOCOLS = {
+    "rts-skirmish-v0": "rts-task-plan-v1",
+    "rts-skirmish-v1": "rts-task-plan-v2",
+}
 _RTS_PLAN_FIELDS = frozenset(
     {"protocol", "episode_id", "observation_seq", "intent_label", "memory_update", "assignments"}
 )
@@ -43,6 +46,7 @@ _RTS_TASKS = frozenset(
         "gather",
         "return_material",
         "build",
+        "train",
         "arm",
         "rally",
         "attack_unit",
@@ -221,7 +225,7 @@ def verify_replay_bytes(
         # payloads into an otherwise frozen envelope.
         if (
             not isinstance(value.get("config"), dict)
-            or value["config"].get("task_id") != _RTS_TASK_ID
+            or value["config"].get("task_id") not in _RTS_TASK_IDS
         ):
             raise ReplayValidationError("RTS task-plan evidence is not permitted for this task")
         required.add(RTS_TASK_PLAN_EVIDENCE_FIELD)
@@ -392,6 +396,7 @@ def _verify_replay_semantics(replay: Mapping[str, Any]) -> None:
                 receipt=receipts[participant_id],
                 decision=window["decisions"][participant_id],
                 participant_id=participant_id,
+                task_id=config["task_id"],
                 episode_id=episode_id,
                 observation_seq=index,
                 start_tick=previous_tick,
@@ -437,7 +442,7 @@ def _verify_rts_task_plan_evidence(replay: Mapping[str, Any]) -> None:
     steps = replay["steps"]
     participants = config.get("participant_ids")
     if (
-        config.get("task_id") != _RTS_TASK_ID
+        config.get("task_id") not in _RTS_TASK_IDS
         or config.get("mode") != "model-duel-v0"
         or not isinstance(participants, list)
         or participants != ["participant_0", "participant_1"]
@@ -481,6 +486,7 @@ def _verify_rts_task_plan_evidence(replay: Mapping[str, Any]) -> None:
             _verify_rts_task_plan(
                 task_window["plans"][participant_id],
                 participant_id=participant_id,
+                task_id=config["task_id"],
                 episode_id=episode_id,
                 observation_seq=index,
                 ordinary_decision=ordinary["decisions"][participant_id],
@@ -491,6 +497,7 @@ def _verify_rts_task_plan(
     plan: Any,
     *,
     participant_id: str,
+    task_id: str,
     episode_id: str,
     observation_seq: int,
     ordinary_decision: Any,
@@ -507,7 +514,7 @@ def _verify_rts_task_plan(
     if not isinstance(plan, dict) or set(plan) != _RTS_PLAN_FIELDS:
         raise ReplayValidationError("RTS task plan fields differ")
     if (
-        plan.get("protocol") != _RTS_PLAN_PROTOCOL
+        plan.get("protocol") != _RTS_PLAN_PROTOCOLS.get(task_id)
         or plan.get("episode_id") != episode_id
         or not _is_int(plan.get("observation_seq"), observation_seq)
         or not _is_utf8_bounded_text(plan.get("intent_label"), _RTS_MAX_INTENT_BYTES)
@@ -629,6 +636,7 @@ def _verify_receipt(
     receipt: Any,
     decision: Any,
     participant_id: str,
+    task_id: str,
     episode_id: str,
     observation_seq: int,
     start_tick: int,

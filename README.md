@@ -78,11 +78,16 @@ the failure of any particular model.
 ## Run the Mini RTS Demo
 
 **WorldArena: Mini RTS** is the golden demo path: a compact, deterministic `rts-skirmish-v0`
-where Blue and Red begin with one worker, harvest persistent wood and ore nodes, return loads,
+where credential-free deterministic Demo agents Terra and Luna begin with one worker, harvest persistent wood and ore nodes, return loads,
 unlock and arm the same three workers as militia, then fight at the bridge. The locked cinematic
-story ends with Blue pursuing the final Red fighter, destroying Red's tower and Town Hall, and
+story ends with Terra pursuing Luna's final fighter, destroying Luna's tower and Town Hall, and
 celebrating a deterministic victory. Godot remains the movement, combat, scoring, and replay
 authority.
+
+Terra and Luna use the same structured task path intended for later LLM controllers. The in-world
+task labels are short, safe deterministic milestone summaries from the sealed Demo policy (for
+example, “Harvest Tree” or “Hold the bridge”), not hidden chain-of-thought, prompts, raw output,
+or hidden state.
 
 [Watch the 150-second native gameplay capture](godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
 
@@ -90,13 +95,13 @@ authority.
 
 *Opening economy — first-class workers fan out to persistent resources before returning their loads.*
 
-![Blue and Red militia fighting on the central bridge](docs/screenshots/worldarena-rts-bridge-battle.jpg)
+![Terra and Luna militia fighting on the central bridge](docs/screenshots/worldarena-rts-bridge-battle.jpg)
 
-*Bridge battle — animated Blue and Red Y Bots exchange attacks while the public HUD tracks health and objectives.*
+*Bridge battle — animated Terra and Luna Y Bots exchange attacks while the public HUD tracks health and objectives.*
 
-![Two surviving Blue militia celebrating after the Red Town Hall falls](docs/screenshots/worldarena-rts-blue-victory.jpg)
+![Two surviving Terra militia celebrating after Luna's Town Hall falls](docs/screenshots/worldarena-rts-blue-victory.jpg)
 
-*Deterministic finish — two Blue survivors stand in the destroyed Red stronghold as the victory HUD closes the replay.*
+*Deterministic finish — two Terra survivors stand in Luna's destroyed stronghold as the victory HUD closes the replay.*
 
 Start the local Controller Lab and choose **Run RTS Skirmish** under **Pre-run saves**. The public
 tactical broadcast is for the audience only; it is explicitly separate from each agent’s

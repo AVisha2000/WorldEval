@@ -111,7 +111,7 @@ static func _exact_fields(value: Variant, fields: Array) -> bool:
 
 
 static func _rts_evidence_shape_valid(evidence: Variant, config: Dictionary, steps: Array) -> bool:
-	if config.get("task_id") != "rts-skirmish-v0" or not evidence is Array \
+	if config.get("task_id") not in ["rts-skirmish-v0", "rts-skirmish-v1"] or not evidence is Array \
 		or evidence.size() != steps.size():
 		return false
 	for index: int in evidence.size():

@@ -65,7 +65,11 @@ func close() -> void:
 
 
 func _ready() -> void:
-	set_process(false)
+	# A managed authority configures and connects this client in the same frame that it is
+	# attached to the tree.  Do not undo the polling enabled by connect_once() when Godot
+	# delivers this deferred ready callback afterwards.
+	if _state == "unconfigured":
+		set_process(false)
 
 
 func _process(_delta: float) -> void:

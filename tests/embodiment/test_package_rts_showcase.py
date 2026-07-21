@@ -17,17 +17,17 @@ def _sha256(value: bytes) -> str:
 
 def _metadata() -> dict[str, object]:
     return {
-        "label": "WorldArena: Mini RTS — Blue vs Red",
-        "winner": {"team": "Blue Command"},
+        "label": "WorldArena: Mini RTS — Terra vs Luna",
+        "winner": {"team": "Terra"},
         "completion": {"outcome": "win", "reason": "town_hall_destroyed", "tick": 1190},
         "casualties": [
-            {"at_tick": 850, "team": "Blue", "unit_id": "blue_0"},
-            {"at_tick": 880, "team": "Red", "unit_id": "red_0"},
+            {"at_tick": 850, "team": "Terra", "unit_id": "terra_agent_1"},
+            {"at_tick": 880, "team": "Luna", "unit_id": "luna_agent_1"},
         ],
         "highlights": [
             {"at_seconds": 0, "label": "Workers deploy"},
             {"at_seconds": 80, "label": "Bridge battle"},
-            {"at_seconds": 145, "label": "Blue victory"},
+            {"at_seconds": 145, "label": "Terra victory"},
         ],
         "evaluation_metrics": [
             {"id": "economy", "label": "Economy", "value": "Three workers gather resources"},

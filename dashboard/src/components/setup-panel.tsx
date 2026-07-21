@@ -124,7 +124,7 @@ function DemoLibrary({
       <article className="saved-demo saved-demo--rts">
         <div className="saved-demo-path"><ArchiveIcon /><code>/saves/mini-rts-skirmish.mp4</code></div>
         <h3>Mini RTS Skirmish</h3>
-        <p>Blue Command and Red Legion gather, build, arm, and fight through the verified deterministic broadcast.</p>
+        <p>Terra and Luna Demo agents gather, build, arm, and fight through the verified deterministic broadcast.</p>
         <Button type="button" size="lg" disabled={pending} onClick={onRtsQuickStart} className="saved-demo-action saved-demo-action--rts">
           <PlayIcon data-icon="inline-start" />Run RTS Skirmish
         </Button>
@@ -177,7 +177,15 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
     apiKey: "",
     opponentApiKey: "",
   })
-  const selectLiveProvider = () => onChange({ ...setup, controllerMode: "live_provider" })
+  const selectLiveProvider = () => onChange({
+    ...setup,
+    controllerMode: "live_provider",
+    mode: "trio",
+    model: "gpt-5.6-sol",
+    opponentProvider: "openai",
+    opponentModel: "gpt-5.6-terra",
+    thirdModel: "gpt-5.6-luna",
+  })
   const setProvider = (provider: Provider) => onChange({ ...setup, provider, model: PROVIDER_MODELS[provider] })
   const setOpponentProvider = (opponentProvider: OpponentProvider) => onChange({
     ...setup,
@@ -255,11 +263,16 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
           <Field><FieldLabel>Authority timing</FieldLabel><Input value={(setup.duoTaskId ?? "central-relay-v0") === "central-relay-v0" ? "Central Relay · relay hold or knockout" : `${DEMO_DUO_GAMES[setup.duoTaskId ?? "central-relay-v0"].displayLabel} · fixed 10-tick windows`} readOnly aria-label="Demo duel task" /><FieldDescription>Two seat-swapped legs use fixed 10-tick joint windows. Invalid input becomes recorded neutral progress for only that seat and cannot stall time.</FieldDescription></Field>
         </>}
       </> : <>
-        <Field><FieldLabel htmlFor="run-mode">Workflow</FieldLabel><Select value={setup.mode} onValueChange={(value) => onChange({ ...setup, mode: value as "solo" | "duel" })}><SelectTrigger id="run-mode" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="solo">Hybrid solo curriculum</SelectItem><SelectItem value="duel">Symmetric two-leg 1v1</SelectItem></SelectGroup></SelectContent></Select></Field>
+        <Field><FieldLabel htmlFor="run-mode">Live game</FieldLabel><Select value={setup.mode} onValueChange={(value) => onChange({ ...setup, mode: value as "solo" | "duel" | "trio" })}><SelectTrigger id="run-mode" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="trio">Labyrinth Run · 3-way maze</SelectItem><SelectItem value="duel">Mini RTS Skirmish · 1v1</SelectItem><SelectItem value="solo">Hybrid solo curriculum</SelectItem></SelectGroup></SelectContent></Select><FieldDescription>Each choice starts a fresh live authority run; saved showcase files are not reused.</FieldDescription></Field>
         <Field><FieldLabel htmlFor="provider">Provider</FieldLabel><Select value={setup.provider} onValueChange={(value) => setProvider(value as Provider)}><SelectTrigger id="provider" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="openai">OpenAI</SelectItem><SelectItem value="anthropic">Anthropic</SelectItem><SelectItem value="gemini">Gemini</SelectItem></SelectGroup></SelectContent></Select></Field>
         {modelField("model", "Model", setup.provider, setup.model, (model) => onChange({ ...setup, model }))}
         <Field><FieldLabel htmlFor="api-key">API key</FieldLabel><Input id="api-key" type="password" autoComplete="off" value={setup.apiKey} onChange={(event) => onChange({ ...setup, apiKey: event.target.value })} /><FieldDescription className="credential-note"><KeyRoundIcon /> Held in backend memory for this session only</FieldDescription></Field>
-        {setup.mode === "solo" ? taskField() : <>
+        {setup.mode === "solo" ? taskField() : setup.mode === "trio" ? <>
+          {modelField("model", "Sol model", setup.provider, setup.model, (model) => onChange({ ...setup, model }))}
+          {modelField("opponent-model", "Terra model", setup.provider, setup.opponentModel, (opponentModel) => onChange({ ...setup, opponentModel }))}
+          {modelField("third-model", "Luna model", setup.provider, setup.thirdModel ?? "gpt-5.6-luna", (thirdModel) => onChange({ ...setup, thirdModel }))}
+          <Field><FieldLabel>Live-call safety limit</FieldLabel><FieldDescription>One shared provider key is used for all three slots; the race stops before 180 provider calls.</FieldDescription></Field>
+        </> : <>
           <Field><FieldLabel htmlFor="opponent-provider">Opponent controller</FieldLabel><Select value={setup.opponentProvider} onValueChange={(value) => setOpponentProvider(value as OpponentProvider)}><SelectTrigger id="opponent-provider" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="scripted">Scripted baseline</SelectItem><SelectItem value="openai">OpenAI</SelectItem><SelectItem value="anthropic">Anthropic</SelectItem><SelectItem value="gemini">Gemini</SelectItem></SelectGroup></SelectContent></Select></Field>
           {setup.opponentProvider === "scripted" ? <Field><FieldLabel htmlFor="opponent-model">Scripted tier</FieldLabel><Select value={setup.opponentModel} onValueChange={(opponentModel) => opponentModel && onChange({ ...setup, opponentModel })}><SelectTrigger id="opponent-model" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="scout-v1">Scout</SelectItem><SelectItem value="balanced-v1">Balanced</SelectItem><SelectItem value="challenger-v1">Challenger</SelectItem></SelectGroup></SelectContent></Select><FieldDescription>Deterministic and credential-free; consumes only participant-visible observations.</FieldDescription></Field> : <>
             {modelField("opponent-model", "Opponent model", setup.opponentProvider, setup.opponentModel, (opponentModel) => onChange({ ...setup, opponentModel }))}
@@ -270,6 +283,6 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
       </>}
       <Field><FieldLabel htmlFor="seed">Seed</FieldLabel><Input id="seed" inputMode="numeric" value={setup.seed} onChange={(event) => onChange({ ...setup, seed: Number(event.target.value) || 0 })} /><FieldDescription>Integer seed for deterministic authority.</FieldDescription></Field>
     </FieldGroup>
-    <Button size="lg" disabled={pending || (!isScriptedDemo && (!setup.apiKey || (setup.mode === "duel" && setup.opponentProvider !== "scripted" && !setup.opponentApiKey)))} onClick={onSubmit} className="start-button"><PlayIcon data-icon="inline-start" />{pending ? "Starting…" : isScriptedDemo && setup.mode === "trio" ? "Run selected trio demo" : isScriptedDemo && setup.mode === "duel" ? "Run selected duo demo" : isScriptedDemo ? "Run selected solo demo" : setup.mode === "duel" ? "Start live two-leg game" : "Start live game"}</Button>
+    <Button size="lg" disabled={pending || (!isScriptedDemo && !setup.apiKey)} onClick={onSubmit} className="start-button"><PlayIcon data-icon="inline-start" />{pending ? "Starting…" : isScriptedDemo && setup.mode === "trio" ? "Run selected trio demo" : isScriptedDemo && setup.mode === "duel" ? "Run selected duo demo" : isScriptedDemo ? "Run selected solo demo" : setup.mode === "trio" ? "Start live Labyrinth Run" : setup.mode === "duel" ? "Start live two-leg RTS Skirmish" : "Start live game"}</Button>
   </aside>
 }

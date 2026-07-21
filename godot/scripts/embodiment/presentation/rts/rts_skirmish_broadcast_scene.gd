@@ -11,9 +11,35 @@ const BarracksModel := preload("res://assets/external/quaternius_medieval_villag
 const TowerModel := preload("res://assets/external/quaternius_medieval_village/buildings_fbx/Bell_Tower.fbx")
 const GRASS_TEXTURE := preload("res://assets/terrain/frontier/frontier-grass-v1.png")
 const WATER_TEXTURE := preload("res://assets/terrain/frontier/frontier-water-v1.png")
-const TEAM_COLOURS := {"participant_0": Color("39a9ff"), "participant_1": Color("f05262")}
-const TEAM_NAMES := {"participant_0": "BLUE COMMAND", "participant_1": "RED LEGION"}
+const TEAM_COLOURS := {"participant_0": Color("34d399"), "participant_1": Color("a78bfa")}
+# Public broadcast names deliberately differ from the authority's stable participant ids and
+# blue/red internal map keys.  This is presentation-only branding; deterministic authority,
+# task ids, replay evidence, and participant filtering remain unchanged.
+const TEAM_NAMES := {"participant_0": "TERRA", "participant_1": "LUNA"}
 const PUBLIC_TASK := "rts-skirmish-v0"
+const SAFE_EVENT_LABELS := {
+	"material_deposited": "Materials deposited",
+	"rts_material_deposited": "Materials deposited",
+	"unit_spawned": "New worker deployed",
+	"rts_unit_spawned": "New worker deployed",
+	"structure_completed": "Base structure completed",
+	"rts_structure_completed": "Base structure completed",
+	"unit_armed": "Militia armed",
+	"rts_unit_armed": "Militia armed",
+	"unit_lost": "Unit defeated",
+	"rts_unit_lost": "Unit defeated",
+	"rts_unit_hit": "Unit under attack",
+	"rts_construction_started": "Construction started",
+	"rts_construction_failed": "Construction delayed",
+	"rts_structure_built": "Base structure completed",
+	"rts_structure_damaged": "Structure under attack",
+	"rts_structure_destroyed": "Structure destroyed",
+	"rts_material_gathered": "Resources gathered",
+	"rts_skirmish_completed": "Victory secured",
+	"tower_destroyed": "Tower destroyed",
+	"town_hall_destroyed": "Town Hall destroyed",
+	"victory": "Victory secured",
+}
 const LEGACY_FORMATION_OFFSETS := [Vector3(-0.62, 0.0, 0.34), Vector3(0.62, 0.0, 0.34), Vector3(0.0, 0.0, -0.62), Vector3(-0.8, 0.0, -0.46)]
 const DEFEAT_PRESENTATION_SECONDS := 1.1
 ## Authority snapshots are 10 ticks apart. At the RTS showcase speed (80 mt/tick), an
@@ -41,6 +67,7 @@ var _outro_elapsed_seconds := 0.0
 var _snapshot := {"participant_id": "broadcast", "task_id": PUBLIC_TASK, "observation_seq": -1}
 var _hud: RichTextLabel
 var _beat: Label
+var _agent_task_boards := {}
 
 
 func _ready() -> void:
@@ -137,7 +164,7 @@ func begin_cinematic_outro() -> void:
 	_build()
 	_outro_active = true
 	_outro_elapsed_seconds = 0.0
-	_beat.text = "VICTORY • TWO BLUE SURVIVORS STAND"
+	_beat.text = "VICTORY • TWO TERRA SURVIVORS STAND"
 
 
 func _build() -> void:
@@ -258,6 +285,26 @@ func _build_hud() -> void:
 	_beat.add_theme_font_size_override("font_size", 16)
 	_beat.modulate = Color("f7cf75")
 	panel.add_child(_beat)
+	_build_agent_task_board(layer, "participant_0", Vector2(20.0, 158.0))
+	_build_agent_task_board(layer, "participant_1", Vector2(1375.0, 158.0))
+
+
+func _build_agent_task_board(layer: CanvasLayer, participant_id: String, position: Vector2) -> void:
+	var panel := ColorRect.new()
+	panel.name = "%sAgentTaskPanel" % TEAM_NAMES[participant_id].capitalize()
+	panel.position = position
+	panel.size = Vector2(525.0, 136.0)
+	panel.color = Color("0b1320d9")
+	layer.add_child(panel)
+	var text := RichTextLabel.new()
+	text.name = "AgentTaskText"
+	text.position = Vector2(14.0, 10.0)
+	text.size = Vector2(497.0, 116.0)
+	text.bbcode_enabled = true
+	text.scroll_active = false
+	text.add_theme_font_size_override("normal_font_size", 16)
+	panel.add_child(text)
+	_agent_task_boards[participant_id] = text
 
 
 func _upsert_commander(participant_id: String, source: Dictionary) -> bool:
@@ -307,12 +354,12 @@ func _upsert_first_class_units(participant_id: String, units: Array, seen: Dicti
 				seen[key] = true
 			continue
 		if actor == null:
-			actor = _new_y_bot(key, participant_id, str(unit.get("role", "WORKER")).to_upper())
+			actor = _new_y_bot(key, participant_id, _safe_role_label(unit.get("role", "worker")))
 			actor.scale = Vector3(0.93, 0.93, 0.93)
 			_root.add_child(actor)
 			_actors[key] = actor
 		actor.set_meta("presentation_unit_id", unit_id)
-		actor.set_meta("presentation_role", str(unit.get("role", "worker")).to_upper())
+		actor.set_meta("presentation_role", _safe_role_label(unit.get("role", "worker")))
 		if not _set_actor(actor, participant_id, unit, Vector3.ZERO):
 			return false
 		seen[key] = true
@@ -342,11 +389,12 @@ func _set_actor(actor: Node3D, participant_id: String, source: Dictionary, offse
 		var health := clampi(int(source.get("health_percent", 100)), 0, 100)
 		var filled := int((health + 19) / 20)
 		var bar := "█".repeat(filled) + "░".repeat(5 - filled)
-		label.text = "%s  %s %d%%" % [str(actor.get_meta("presentation_team", TEAM_NAMES[participant_id])), bar, health] if str(actor.get_meta("presentation_role", "")) == "COMMANDER" else "%s  %s %d%%" % [str(actor.get_meta("presentation_role", "WORKER")), bar, health]
+		label.text = "%s • %s  %s %d%%" % [str(actor.get_meta("presentation_team", TEAM_NAMES[participant_id])), str(actor.get_meta("presentation_role", "WORKER")), bar, health]
 	var bubble := actor.get_node_or_null("Speech") as Label3D
 	if bubble != null:
-		var intent := str(source.get("intent", _intent_for_state(state)))
-		bubble.text = "• %s" % intent
+		# Never display `intent`, memory, prompt, target coordinates, or a provider response.
+		# This bounded task summary is derived solely from public structured unit state.
+		bubble.text = "TASK • %s" % _safe_agent_task_summary(source, state)
 	_set_carrying(actor, str(source.get("carrying", "")))
 	return true
 
@@ -442,7 +490,7 @@ func _new_y_bot(key: String, participant_id: String, role: String) -> Node3D:
 	_tint(actor, TEAM_COLOURS[participant_id])
 	var label := Label3D.new()
 	label.name = "Label"
-	label.text = "%s  █████ 100%%" % [TEAM_NAMES[participant_id]]
+	label.text = "%s • %s  █████ 100%%" % [TEAM_NAMES[participant_id], role]
 	label.position.y = 2.6
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.font_size = 28
@@ -624,7 +672,7 @@ func _start_defeat(actor: Node3D) -> void:
 		actor.call("play_state", &"defeat")
 	var bubble := actor.get_node_or_null("Speech") as Label3D
 	if bubble != null:
-		bubble.text = "• Unit down"
+		bubble.text = "TASK • Unit down"
 
 
 func _advance_defeated_actors(delta: float) -> void:
@@ -727,11 +775,11 @@ func _apply_camera_beat(tick: int) -> void:
 	elif tick < 250:
 		_camera_position = Vector3(-11.5, 12.5, 17.5)
 		_camera_target = Vector3(-6.2, 0.0, 5.6)
-		label = "BLUE BASE • FIRST WORKER HARVESTS"
+		label = "TERRA BASE • FIRST WORKER HARVESTS"
 	elif tick < 400:
 		_camera_position = Vector3(11.5, 12.5, -17.5)
 		_camera_target = Vector3(6.2, 0.0, -5.6)
-		label = "RED BASE • MATCHING THE BLUE ECONOMY"
+		label = "LUNA BASE • MATCHING TERRA'S ECONOMY"
 	elif tick < 600:
 		_camera_position = Vector3(0.0, 24.0, 27.0)
 		_camera_target = Vector3(0.0, 0.0, 0.0)
@@ -751,19 +799,19 @@ func _apply_camera_beat(tick: int) -> void:
 	elif tick < 1030:
 		_camera_position = Vector3(8.5, 9.5, -13.5)
 		_camera_target = Vector3(4.3, 0.7, -4.5)
-		label = "RED RETREATS • BLUE PURSUES"
+		label = "LUNA RETREATS • TERRA PURSUES"
 	elif tick < 1120:
 		_camera_position = Vector3(11.5, 15.5, -18.5)
 		_camera_target = Vector3(5.0, 0.4, -4.5)
-		label = "RED TOWER UNDER SIEGE"
+		label = "LUNA TOWER UNDER SIEGE"
 	elif tick < 1190:
 		_camera_position = Vector3(11.5, 14.5, -17.5)
 		_camera_target = Vector3(5.5, 0.4, -5.0)
-		label = "RED TOWN HALL FALLS • BLUE VICTORY"
+		label = "LUNA TOWN HALL FALLS • TERRA VICTORY"
 	else:
 		_camera_position = Vector3(10.5, 15.0, -18.0)
 		_camera_target = Vector3(5.5, 0.4, -5.0)
-		label = "VICTORY • TWO BLUE SURVIVORS STAND"
+		label = "VICTORY • TWO TERRA SURVIVORS STAND"
 	_beat.text = label
 
 
@@ -780,10 +828,47 @@ func _update_match_hud(sources: Dictionary) -> void:
 	var red_tower := _structure_health(red_own, "tower")
 	var blue_materials := _materials(blue_own)
 	var red_materials := _materials(red_own)
-	var phase := _safe_public_text(str(blue.get("public_phase", blue.get("phase", _phase_for_tick(int(_snapshot.get("tick", 0)))))), 44)
-	var objective := _safe_public_text(str(blue.get("public_objective", blue.get("objective", _objective_for_tick(int(_snapshot.get("tick", 0)))))), 96)
+	# The broadcast derives editorial copy from its public tick, not a text field that could
+	# originate with a provider.  It therefore cannot surface prompt/model text by accident.
+	var phase := _phase_for_tick(int(_snapshot.get("tick", 0)))
+	var objective := _objective_for_tick(int(_snapshot.get("tick", 0)))
 	var event_summary := _safe_recent_event([blue, red])
-	_hud.text = "[color=#39a9ff]BLUE[/color]  Living %d (%s) • Wood %d • Ore %d • Hall %d%% • Tower %d%%     [color=#f05262]RED[/color]  Living %d (%s) • Wood %d • Ore %d • Hall %d%% • Tower %d%%\n[color=#f7cf75]PHASE[/color] %s  [color=#dbe7f5]OBJECTIVE[/color] %s\n[color=#a7f3d0]EVENT[/color] %s" % [blue_units, _unit_roles(blue), blue_materials.x, blue_materials.y, blue_town, blue_tower, red_units, _unit_roles(red), red_materials.x, red_materials.y, red_town, red_tower, phase, objective, event_summary]
+	_hud.text = "[color=#34d399]TERRA[/color]  Living %d (%s) • Wood %d • Ore %d • Hall %d%% • Tower %d%%     [color=#a78bfa]LUNA[/color]  Living %d (%s) • Wood %d • Ore %d • Hall %d%% • Tower %d%%\n[color=#f7cf75]PHASE[/color] %s  [color=#dbe7f5]OBJECTIVE[/color] %s\n[color=#a7f3d0]EVENT[/color] %s" % [blue_units, _unit_roles(blue), blue_materials.x, blue_materials.y, blue_town, blue_tower, red_units, _unit_roles(red), red_materials.x, red_materials.y, red_town, red_tower, phase, objective, event_summary]
+	_update_agent_task_boards({"participant_0": blue, "participant_1": red})
+
+
+func _update_agent_task_boards(sources: Dictionary) -> void:
+	for participant_id: String in ["participant_0", "participant_1"]:
+		var board := _agent_task_boards.get(participant_id) as RichTextLabel
+		var source: Variant = sources.get(participant_id)
+		if board == null or not source is Dictionary:
+			continue
+		var entries_by_slot := {}
+		var units: Variant = (source as Dictionary).get("units", ((source as Dictionary).get("own", {}) as Dictionary).get("units", []))
+		if units is Array:
+			for index: int in (units as Array).size():
+				var raw: Variant = (units as Array)[index]
+				if not raw is Dictionary:
+					continue
+				var unit: Dictionary = raw
+				var unit_id := str(unit.get("unit_id", unit.get("id", "")))
+				var slot := _trailing_index(unit_id)
+				if slot < 0 or slot > 2:
+					slot = index
+				if slot < 0 or slot > 2:
+					continue
+				var role := _safe_role_label(unit.get("role", "worker")).capitalize()
+				var state := str(unit.get("animation_state", unit.get("state", "idle")))
+				var summary := _safe_agent_task_summary(unit, state) if bool(unit.get("alive", true)) else "Unit down"
+				entries_by_slot[slot] = "Agent %d • %s — %s" % [slot + 1, role, summary]
+		var entries: Array[String] = []
+		for slot: int in 3:
+			entries.append(str(entries_by_slot.get(slot, "Agent %d • awaiting spawn" % [slot + 1])))
+		board.text = "[color=#%s]%s AGENTS • PUBLIC TASKS[/color]\n%s" % [_team_hex(participant_id), TEAM_NAMES[participant_id], "\n".join(entries)]
+
+
+func _team_hex(participant_id: String) -> String:
+	return "34d399" if participant_id == "participant_0" else "a78bfa"
 
 
 func _living_units(source: Dictionary) -> int:
@@ -843,9 +928,9 @@ func _objective_for_tick(tick: int) -> String:
 	if tick < 650: return "Complete structures and arm the workers as militia."
 	if tick < 800: return "Rally both squads at the bridge."
 	if tick < 920: return "Break the enemy line at the bridge."
-	if tick < 1030: return "Pursue the final Red fighter."
-	if tick < 1120: return "Destroy Red's defensive tower."
-	return "Destroy the Red Town Hall." if tick < 1190 else "Blue holds the battlefield."
+	if tick < 1030: return "Pursue the final Luna fighter."
+	if tick < 1120: return "Destroy Luna's defensive tower."
+	return "Destroy the Luna Town Hall." if tick < 1190 else "Terra holds the battlefield."
 
 
 func _safe_recent_event(sources: Array) -> String:
@@ -858,9 +943,9 @@ func _safe_recent_event(sources: Array) -> String:
 		var latest: Variant = events[events.size() - 1]
 		if latest is Dictionary:
 			var event: Dictionary = latest
-			var summary := str(event.get("public_summary", event.get("type", "")))
-			if not summary.is_empty():
-				return _safe_public_text(summary, 84)
+			var event_type := str(event.get("type", event.get("kind", ""))).to_lower()
+			if SAFE_EVENT_LABELS.has(event_type):
+				return SAFE_EVENT_LABELS[event_type]
 	return "Awaiting the next public battlefield event."
 
 
@@ -895,6 +980,34 @@ func _animation(state: String) -> String:
 
 func _intent_for_state(state: String) -> String:
 	return {"walk": "Moving to objective", "walking": "Moving to objective", "run": "Rushing to objective", "retreating": "Retreating to base", "gather": "Harvesting", "harvesting": "Harvesting", "build": "Raising barracks", "arming": "Arming militia", "attack": "Attacking", "attacking": "Attacking", "guard": "Holding the line", "hit": "Under attack", "defeat": "Unit defeated", "defeated": "Unit defeated", "celebrate": "Victory"}.get(state, "Assessing the field")
+
+
+func _safe_agent_task_summary(source: Dictionary, state: String) -> String:
+	# This is intentionally an enum-to-copy projection.  It ignores free-form provider-facing
+	# fields such as intent_label, memory_update, prompt, output, and target coordinates.
+	# It is safe for a public broadcast and remains deterministic for a given public snapshot.
+	var task := str(source.get("task", "")).to_lower()
+	match task:
+		"gather", "harvesting", "gathering": return "Harvesting resources"
+		"return_material", "returning": return "Returning materials"
+		"deposit", "depositing": return "Depositing materials"
+		"build", "building": return "Constructing base"
+		"arm", "arming": return "Arming as militia"
+		"rally", "rallying": return "Rallying at bridge"
+		"attack_unit", "attack_structure", "attacking": return "Attacking target"
+		"retreat", "retreating": return "Retreating to base"
+		"hold", "guard": return "Holding position"
+		"turn", "turning": return "Facing objective"
+		"hit": return "Under attack"
+		"defeat", "defeated": return "Unit defeated"
+		"celebrate", "celebrating": return "Celebrating victory"
+		"walking", "walk": return "Moving to task"
+	return _intent_for_state(state)
+
+
+func _safe_role_label(value: Variant) -> String:
+	var role := str(value).to_lower()
+	return "MILITIA" if role == "militia" else "WORKER" if role == "worker" else "AGENT"
 
 
 func _tint(node: Node, colour: Color) -> void:

@@ -133,6 +133,7 @@ export type EpisodeSetup = {
   opponentProvider: OpponentProvider
   opponentModel: string
   opponentApiKey: string
+  thirdModel?: string
   scenarioId: string
   taskId: string
   duoTaskId?: DemoDuoGameId
@@ -562,8 +563,26 @@ export function demoScenario(scenarioId: string) {
 export async function createRun(setup: EpisodeSetup): Promise<EpisodeView> {
   if (setup.mode === "solo") return createEpisode(setup)
   if (setup.mode === "trio") {
-    if (setup.controllerMode !== "scripted_demo")
-      throw new Error("Trio currently requires the credential-free Demo provider")
+    if (setup.controllerMode !== "scripted_demo") {
+      const raw = await checked<Record<string, unknown>>(
+        await fetch("/api/embodiment/maze-races", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            provider: setup.provider,
+            api_key: setup.apiKey,
+            max_provider_calls: 180,
+            entrants: [
+              { display_name: "Sol", model: setup.model },
+              { display_name: "Terra", model: setup.opponentModel },
+              { display_name: "Luna", model: setup.thirdModel ?? "gpt-5.6-luna" },
+            ],
+          }),
+        })
+      )
+      return normalizeLiveMaze(raw)
+    }
     const taskId = setup.trioTaskId ?? "trio-relay-v0"
     const raw = await checked<Record<string, unknown>>(
       await fetch("/api/embodiment/trio-series", {
@@ -582,6 +601,25 @@ export async function createRun(setup: EpisodeSetup): Promise<EpisodeView> {
       })
     )
     return normalizeTrioSeries(raw)
+  }
+  if (setup.controllerMode === "live_provider" && setup.mode === "duel") {
+    const raw = await checked<Record<string, unknown>>(
+      await fetch("/api/embodiment/series", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          seed: setup.seed,
+          max_live_provider_calls: 720,
+          task_id: "rts-skirmish-v1",
+          entrants: [
+            { provider: setup.provider, model: setup.model, api_key: setup.apiKey },
+            { provider: setup.provider, model: setup.opponentModel, api_key: setup.apiKey },
+          ],
+        }),
+      })
+    )
+    return normalizeSeries(raw)
   }
   const isDemoDuel = setup.controllerMode === "scripted_demo"
   if (isDemoDuel) {
@@ -636,8 +674,30 @@ export async function createRun(setup: EpisodeSetup): Promise<EpisodeView> {
   return normalizeSeries(raw)
 }
 
+function normalizeLiveMaze(raw: Record<string, unknown>): EpisodeView {
+  const state = String(raw.state ?? "queued")
+  return {
+    kind: "episode",
+    episodeId: String(raw.episode_id),
+    status: state === "completed" ? "success" : state === "failed" ? "failure" : state === "cancelled" ? "cancelled" : state === "running" ? "running" : "queued",
+    observationSeq: 0,
+    tick: 0,
+    taskId: "trio-maze-race-v1",
+    taskLabel: "Labyrinth Run · live",
+    entrants: Array.isArray(raw.entrants) ? raw.entrants.map((value) => {
+      const entrant = value as Record<string, unknown>
+      return { entrantId: String(entrant.entrant_id), displayName: String(entrant.display_name), model: String(entrant.model) }
+    }) : undefined,
+    failureCode: typeof raw.failure === "string" ? raw.failure : null,
+    replay: { state: "unavailable" },
+    timeline: [],
+  }
+}
+
 export async function cancelRun(episodeId: string): Promise<void> {
-  const route = episodeId.startsWith("trio_")
+  const route = episodeId.startsWith("ep_live_labyrinth_")
+    ? `/api/embodiment/maze-races/${episodeId}/cancel`
+    : episodeId.startsWith("trio_")
     ? `/api/embodiment/trio-series/${episodeId}/cancel`
     : episodeId.startsWith("series_")
     ? `/api/embodiment/series/${episodeId}/cancel`
@@ -648,6 +708,12 @@ export async function cancelRun(episodeId: string): Promise<void> {
 }
 
 export async function getEpisode(episodeId: string): Promise<EpisodeView> {
+  if (episodeId.startsWith("ep_live_labyrinth_")) {
+    const status = await checked<Record<string, unknown>>(
+      await fetch(`/api/embodiment/maze-races/${episodeId}`, { cache: "no-store" })
+    )
+    return normalizeLiveMaze(status)
+  }
   if (episodeId.startsWith("trio_")) return getTrioSeries(episodeId)
   if (episodeId.startsWith("series_")) return getSeries(episodeId)
   const status = await checked<Record<string, unknown>>(
@@ -935,13 +1001,13 @@ export async function getReadiness(): Promise<ReadinessView> {
 
 export async function getCachedRtsShowcase(): Promise<CachedRtsShowcaseView> {
   return parseCachedRtsShowcase(await checked<unknown>(
-    await fetch("/api/embodiment/showcases/rts-skirmish-v0", { cache: "force-cache" })
+    await fetch("/api/embodiment/showcases/rts-skirmish-v0", { cache: "no-store" })
   ))
 }
 
 export async function getCachedRtsEvaluation(): Promise<CachedRtsEvaluationView> {
   return parseCachedRtsEvaluation(await checked<unknown>(
-    await fetch("/api/embodiment/showcases/rts-skirmish-v0/evaluation", { cache: "force-cache" })
+    await fetch("/api/embodiment/showcases/rts-skirmish-v0/evaluation", { cache: "no-store" })
   ))
 }
 

@@ -97,6 +97,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ffmpeg_executable=settings.ffmpeg_executable,
         preview_ingress=app.state.embodiment_preview_ingress,
     )
+    # Live Labyrinth Run is intentionally a separate v1 lifecycle from the cached showcase
+    # and the keyless trio demo service.
+    from .embodiment.live_labyrinth import LiveLabyrinthService
+    from .embodiment.live_labyrinth_media import LiveLabyrinthBroadcastRenderer
+
+    app.state.embodiment_live_labyrinth = LiveLabyrinthService(
+        render_video=LiveLabyrinthBroadcastRenderer(
+            output_root=settings.runs_dir / "live-labyrinth",
+            godot_executable=settings.godot_executable,
+            godot_project_path=settings.godot_project_path,
+            ffmpeg_executable=settings.ffmpeg_executable,
+        )
+    )
     try:
         yield
     finally:

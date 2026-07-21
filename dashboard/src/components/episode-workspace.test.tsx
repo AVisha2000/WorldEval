@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { useRef } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { EpisodeView, ParticipantFrameView } from "@/api"
-import { EpisodeWorkspace } from "@/components/episode-workspace"
+import { EpisodeWorkspace, ReplaySpeedControls } from "@/components/episode-workspace"
 import { displayRunProgress } from "@/lib/episode-progress"
 
 const episode: EpisodeView = {
@@ -21,6 +22,28 @@ const advancingFrame: ParticipantFrameView = {
   sha256: null,
   state: "live",
 }
+
+function ReplaySpeedHarness() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  return <>
+    <video ref={videoRef} aria-label="Replay under test" />
+    <ReplaySpeedControls videoRef={videoRef} />
+  </>
+}
+
+describe("Replay playback speed", () => {
+  it("switches the native video between normal, 4×, and 8× playback", () => {
+    render(<ReplaySpeedHarness />)
+    const video = screen.getByLabelText("Replay under test") as HTMLVideoElement
+
+    fireEvent.click(screen.getByRole("button", { name: "4×" }))
+    expect(video.playbackRate).toBe(4)
+    fireEvent.click(screen.getByRole("button", { name: "8×" }))
+    expect(video.playbackRate).toBe(8)
+    fireEvent.click(screen.getByRole("button", { name: "1×" }))
+    expect(video.playbackRate).toBe(1)
+  })
+})
 
 describe("RunView progress", () => {
   it("uses advancing participant-frame progress while lifecycle status is still at zero", () => {

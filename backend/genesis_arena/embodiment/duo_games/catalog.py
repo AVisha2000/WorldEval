@@ -37,6 +37,8 @@ from .rts_skirmish import (
     build_rts_skirmish_demo_provider,
     evaluate_rts_skirmish,
 )
+from .rts_skirmish_v1 import TASK_ID as RTS_SKIRMISH_V1_SCENARIO_ID
+from .rts_skirmish_v1 import evaluate_rts_skirmish_v1
 from .spar import SPAR_MODELS, SPAR_SCENARIO_ID, build_spar_demo_provider, evaluate_spar
 
 CENTRAL_RELAY_TASK_ID = "central-relay-v0"
@@ -52,14 +54,19 @@ class DuoGameDefinition:
     task_id: str
     display_label: str
     protocol_version: str
-    models: tuple[str, str]
+    models: tuple[str, ...]
     provider_builder: ProviderBuilder | None
     evaluator: Evaluator | None
     maximum_episode_ticks: int
 
     @property
-    def is_additive_game(self) -> bool:
+    def is_managed_v2(self) -> bool:
         return self.protocol_version == DUO_PROTOCOL_VERSION
+
+    @property
+    def is_additive_game(self) -> bool:
+        """Whether this v2 task offers the immutable keyless demo pair."""
+        return self.is_managed_v2 and self.provider_builder is not None
 
 
 def _model_pair(models: Mapping[str, object]) -> tuple[str, str]:
@@ -123,6 +130,15 @@ DUO_GAME_CATALOG: Mapping[str, DuoGameDefinition] = MappingProxyType(
             _model_pair(RTS_SKIRMISH_MODELS),
             build_rts_skirmish_demo_provider,
             evaluate_rts_skirmish,
+            1200,
+        ),
+        RTS_SKIRMISH_V1_SCENARIO_ID: DuoGameDefinition(
+            RTS_SKIRMISH_V1_SCENARIO_ID,
+            "RTS Skirmish · Live",
+            DUO_PROTOCOL_VERSION,
+            (),
+            None,
+            evaluate_rts_skirmish_v1,
             1200,
         ),
     }

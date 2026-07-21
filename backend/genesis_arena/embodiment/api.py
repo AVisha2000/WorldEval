@@ -17,6 +17,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 
+from .credentials import SessionCredential
 from .crossroads_conquest import CachedCrossroadsShowcase
 from .demo_scenarios import demo_scenario
 from .duel.service import (
@@ -33,6 +34,14 @@ from .episode_service import (
     EpisodeService,
 )
 from .labyrinth_run import CachedLabyrinthRun
+from .live_labyrinth import (
+    MAX_LIVE_PROVIDER_CALLS,
+    LiveLabyrinthNotFoundError,
+    LiveLabyrinthNotReadyError,
+    LiveLabyrinthService,
+    LiveMazeEntrant,
+)
+from .live_runtime import close_provider_adapter, provider_adapter
 from .readiness import PilotReadinessStore
 from .rts_showcase import CachedRtsShowcase
 from .scripted_construction_demo import (
@@ -80,6 +89,13 @@ def _trio_service(request: Request | WebSocket) -> TrioSeriesService:
     service = getattr(request.app.state, "embodiment_trio_series", None)
     if not isinstance(service, TrioSeriesService):
         raise RuntimeError("Embodiment trio series service is not configured")
+    return service
+
+
+def _live_labyrinth_service(request: Request) -> LiveLabyrinthService:
+    service = getattr(request.app.state, "embodiment_live_labyrinth", None)
+    if not isinstance(service, LiveLabyrinthService):
+        raise RuntimeError("Live labyrinth service is not configured")
     return service
 
 
@@ -212,6 +228,93 @@ async def create_episode(
     return created
 
 
+@router.post("/api/embodiment/maze-races", status_code=202)
+async def create_live_maze_race(
+    request: Request, response: Response, payload: Any = _BODY
+) -> Mapping[str, object]:
+    """Start an isolated, concurrent three-controller live maze race."""
+    try:
+        values = _validate_live_maze_payload(payload)
+        credential = SessionCredential(values["api_key"])
+        adapters = {
+            entrant.participant_id: provider_adapter(values["provider"], credential)
+            for entrant in values["entrants"]
+        }
+
+        async def cleanup() -> None:
+            try:
+                await asyncio.gather(
+                    *(close_provider_adapter(adapter) for adapter in adapters.values()),
+                    return_exceptions=True,
+                )
+            finally:
+                credential.close()
+
+        created = await _live_labyrinth_service(request).create(
+            entrants=values["entrants"],
+            providers=adapters,
+            max_provider_calls=values["max_provider_calls"],
+            cleanup=cleanup,
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422, detail={"code": "invalid_live_maze_race_request"}
+        ) from None
+    response.headers["Cache-Control"] = "no-store"
+    return created
+
+
+@router.get("/api/embodiment/maze-races/{episode_id}")
+async def get_live_maze_race(request: Request, episode_id: str) -> Mapping[str, object]:
+    try:
+        return await _live_labyrinth_service(request).status(episode_id)
+    except LiveLabyrinthNotFoundError:
+        raise HTTPException(status_code=404, detail={"code": "live_maze_race_not_found"}) from None
+
+
+@router.get("/api/embodiment/maze-races/{episode_id}/video")
+async def get_live_maze_video(request: Request, episode_id: str) -> Response:
+    try:
+        path = await _live_labyrinth_service(request).video_path(episode_id)
+    except LiveLabyrinthNotFoundError:
+        raise HTTPException(status_code=404, detail={"code": "live_maze_race_not_found"}) from None
+    if path is None:
+        raise HTTPException(status_code=409, detail={"code": "live_maze_video_not_ready"})
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/api/embodiment/maze-races/{episode_id}/{projection}")
+async def get_live_maze_projection(
+    request: Request, episode_id: str, projection: str
+) -> Mapping[str, object]:
+    if projection not in {"result", "evaluation", "replay"}:
+        raise HTTPException(status_code=404, detail={"code": "live_maze_projection_not_found"})
+    try:
+        return await getattr(_live_labyrinth_service(request), projection)(episode_id)
+    except LiveLabyrinthNotFoundError:
+        raise HTTPException(status_code=404, detail={"code": "live_maze_race_not_found"}) from None
+    except LiveLabyrinthNotReadyError:
+        raise HTTPException(status_code=409, detail={"code": "live_maze_race_not_ready"}) from None
+
+
+@router.post("/api/embodiment/maze-races/{episode_id}/cancel")
+async def cancel_live_maze_race(request: Request, episode_id: str) -> Mapping[str, object]:
+    try:
+        return await _live_labyrinth_service(request).cancel(episode_id)
+    except LiveLabyrinthNotFoundError:
+        raise HTTPException(status_code=404, detail={"code": "live_maze_race_not_found"}) from None
+
+
+
+
 @router.get("/api/embodiment/episodes/{episode_id}")
 async def get_episode(request: Request, response: Response, episode_id: str) -> Mapping[str, Any]:
     response.headers["Cache-Control"] = "no-store"
@@ -293,9 +396,7 @@ async def stream_live_episode_preview(websocket: WebSocket, episode_id: str) -> 
         await _service(websocket).unsubscribe_live_preview(episode_id, token)
 
 
-@router.websocket(
-    "/api/embodiment/series/{series_id}/participants/{participant_id}/preview-live"
-)
+@router.websocket("/api/embodiment/series/{series_id}/participants/{participant_id}/preview-live")
 async def stream_live_series_participant_preview(
     websocket: WebSocket, series_id: str, participant_id: str
 ) -> None:
@@ -317,9 +418,7 @@ async def stream_live_series_participant_preview(
     except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
-        await _series_service(websocket).unsubscribe_live_preview(
-            series_id, participant_id, token
-        )
+        await _series_service(websocket).unsubscribe_live_preview(series_id, participant_id, token)
 
 
 @router.websocket("/api/embodiment/series/{series_id}/broadcast/preview-live")
@@ -327,9 +426,9 @@ async def stream_live_series_broadcast_preview(websocket: WebSocket, series_id: 
     """Public RTS presentation JPEGs only; this route never returns a player observation."""
 
     try:
-        token, queue, initial = (
-            await _series_service(websocket).live_broadcast_preview_subscription(series_id)
-        )
+        token, queue, initial = await _series_service(
+            websocket
+        ).live_broadcast_preview_subscription(series_id)
     except (DuelSeriesNotFoundError, ValueError):
         await websocket.close(code=4404)
         return
@@ -369,9 +468,7 @@ async def stream_live_trio_participant_preview(
     except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
-        await _trio_service(websocket).unsubscribe_live_preview(
-            series_id, participant_id, token
-        )
+        await _trio_service(websocket).unsubscribe_live_preview(series_id, participant_id, token)
 
 
 @router.get("/api/embodiment/episodes/{episode_id}/result")
@@ -818,16 +915,12 @@ async def get_trio_series_archive(
         ) from None
 
 
-@router.get(
-    "/api/embodiment/trio-series/{series_id}/participants/{participant_id}/frame"
-)
+@router.get("/api/embodiment/trio-series/{series_id}/participants/{participant_id}/frame")
 async def get_trio_participant_frame(
     request: Request, series_id: str, participant_id: str
 ) -> Response:
     try:
-        state, snapshot = await _trio_service(request).participant_frame(
-            series_id, participant_id
-        )
+        state, snapshot = await _trio_service(request).participant_frame(series_id, participant_id)
     except TrioSeriesNotFoundError:
         raise HTTPException(
             status_code=404, detail={"code": "embodiment_trio_series_not_found"}
@@ -855,8 +948,7 @@ async def get_trio_participant_frame(
 
 
 @router.get(
-    "/api/embodiment/trio-series/{series_id}/legs/{leg_index}/participants/"
-    "{participant_id}/video"
+    "/api/embodiment/trio-series/{series_id}/legs/{leg_index}/participants/{participant_id}/video"
 )
 async def get_trio_participant_video(
     request: Request, series_id: str, leg_index: int, participant_id: str
@@ -866,9 +958,7 @@ async def get_trio_participant_video(
             status_code=404, detail={"code": "embodiment_trio_native_replay_not_found"}
         )
     try:
-        path = await _trio_service(request).native_video_path(
-            series_id, leg_index, participant_id
-        )
+        path = await _trio_service(request).native_video_path(series_id, leg_index, participant_id)
     except TrioSeriesNotFoundError:
         raise HTTPException(
             status_code=404, detail={"code": "embodiment_trio_series_not_found"}
@@ -983,6 +1073,59 @@ def _validate_series_payload(payload: Any) -> dict[str, Any]:
         "seed": payload["seed"],
         "max_live_provider_calls": payload.get("max_live_provider_calls", 2160),
         "task_id": payload.get("task_id", "central-relay-v0"),
+    }
+
+
+def _validate_live_maze_payload(payload: Any) -> dict[str, Any]:
+    """Validate the shared-key, three-slot live maze request without echoing a key."""
+    allowed = {"provider", "api_key", "entrants", "max_provider_calls"}
+    if not isinstance(payload, dict) or set(payload) - allowed:
+        raise ValueError("invalid live maze payload")
+    provider = payload.get("provider")
+    api_key = payload.get("api_key")
+    entrants = payload.get("entrants")
+    if (
+        provider not in {"openai", "anthropic", "gemini"}
+        or not isinstance(api_key, str)
+        or not api_key
+    ):
+        raise ValueError("invalid live maze provider")
+    if not isinstance(entrants, list) or len(entrants) != 3:
+        raise ValueError("invalid live maze entrants")
+    defaults = (("Sol", "#ffb454"), ("Terra", "#63d6ff"), ("Luna", "#c6a8ff"))
+    normalized: list[LiveMazeEntrant] = []
+    for index, (entrant, default) in enumerate(zip(entrants, defaults)):
+        if not isinstance(entrant, dict) or set(entrant) != {"display_name", "model"}:
+            raise ValueError("invalid live maze entrant")
+        name, color = default
+        model = entrant.get("model")
+        display_name = entrant.get("display_name")
+        if not isinstance(model, str) or not model or len(model) > 128:
+            raise ValueError("invalid live maze model")
+        if display_name != name:
+            raise ValueError("live maze entrant order is invalid")
+        normalized.append(
+            LiveMazeEntrant(
+                participant_id=f"participant_{index}",
+                entrant_id=f"entrant_{index}",
+                display_name=name,
+                provider=provider,
+                model=model,
+                color=color,
+            )
+        )
+    max_provider_calls = payload.get("max_provider_calls", MAX_LIVE_PROVIDER_CALLS)
+    if (
+        isinstance(max_provider_calls, bool)
+        or not isinstance(max_provider_calls, int)
+        or not 1 <= max_provider_calls <= MAX_LIVE_PROVIDER_CALLS
+    ):
+        raise ValueError("invalid live maze call budget")
+    return {
+        "provider": provider,
+        "api_key": api_key,
+        "entrants": tuple(normalized),
+        "max_provider_calls": max_provider_calls,
     }
 
 

@@ -84,7 +84,7 @@ describe("SetupPanel", () => {
     const onRtsQuickStart = vi.fn()
     render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo", mode: "duel", duoTaskId: "rts-skirmish-v0" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={onRtsQuickStart} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
-    expect(screen.getByText(/Blue Command and Red Legion gather, build, arm, and fight/i)).toBeInTheDocument()
+    expect(screen.getByText(/Terra and Luna Demo agents gather, build, arm, and fight/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Run RTS Skirmish" }))
     expect(onRtsQuickStart).toHaveBeenCalledOnce()
   })

@@ -2,23 +2,23 @@
   "casualties": [
     {
       "at_tick": 850,
-      "team": "Blue",
-      "unit_id": "blue_0"
+      "team": "Terra",
+      "unit_id": "terra_agent_1"
     },
     {
       "at_tick": 880,
-      "team": "Red",
-      "unit_id": "red_0"
+      "team": "Luna",
+      "unit_id": "luna_agent_1"
     },
     {
       "at_tick": 900,
-      "team": "Red",
-      "unit_id": "red_1"
+      "team": "Luna",
+      "unit_id": "luna_agent_2"
     },
     {
       "at_tick": 1020,
-      "team": "Red",
-      "unit_id": "red_2"
+      "team": "Luna",
+      "unit_id": "luna_agent_3"
     }
   ],
   "completion": {
@@ -29,19 +29,19 @@
   "evaluation": {
     "metrics": [
       {
-        "id": "blue_economy",
-        "label": "Blue economy",
+        "id": "terra_economy",
+        "label": "Terra economy",
         "value": "6 deposits \u00b7 3 militia armed"
       },
       {
-        "id": "red_economy",
-        "label": "Red economy",
+        "id": "luna_economy",
+        "label": "Luna economy",
         "value": "6 deposits \u00b7 3 militia armed"
       },
       {
         "id": "unit_survival",
         "label": "Unit survival",
-        "value": "Blue 2 \u00b7 Red 0"
+        "value": "Terra 2 \u00b7 Luna 0"
       },
       {
         "id": "combat",
@@ -55,12 +55,12 @@
       }
     ],
     "path": "evaluation.json",
-    "sha256": "dfb47a9868223f6b2ad1b93b2dd042299415d84a712cc6347f89c031987838f9"
+    "sha256": "5d3b0413cdb0c769d10e43c51842a3e0d48d8a92638b445bdcf036c4fc6ed656"
   },
   "highlights": [
     {
       "at_seconds": 0,
-      "label": "Blue and Red workers deploy"
+      "label": "Terra and Luna workers deploy"
     },
     {
       "at_seconds": 15,
@@ -80,22 +80,22 @@
     },
     {
       "at_seconds": 100,
-      "label": "Red retreats as Blue pursues"
+      "label": "Luna retreats as Terra pursues"
     },
     {
       "at_seconds": 116,
-      "label": "Blue destroys the Red tower"
+      "label": "Terra destroys Luna's tower"
     },
     {
       "at_seconds": 132,
-      "label": "Blue attacks the Red Town Hall"
+      "label": "Terra attacks Luna's Town Hall"
     },
     {
       "at_seconds": 145,
-      "label": "Blue victory celebration"
+      "label": "Terra victory celebration"
     }
   ],
-  "label": "WorldArena: Mini RTS \u2014 Blue vs Red",
+  "label": "WorldArena: Mini RTS \u2014 Terra vs Luna",
   "replay": {
     "final_state_sha256": "2578b9135e7bcd31607da7861a75a781ef41ad49c0df99cfbee4c80e31ebe887",
     "path": "rts-skirmish-demo.replay.json",
@@ -110,10 +110,10 @@
     "height": 1080,
     "mime_type": "video/mp4",
     "path": "rts-skirmish-broadcast.mp4",
-    "sha256": "8f05ad902141797ddf7e2f590644dc62e3b9073153673965775703bc16a3d967",
+    "sha256": "11d3b6e683e807d47ab1ed60656cc7fc2bd82b3050308b04ad53c5b3ab86faa8",
     "width": 1920
   },
   "winner": {
-    "team": "Blue Command"
+    "team": "Terra"
   }
 }

@@ -463,7 +463,7 @@ def _evaluate_duo_game_replay(replay: Mapping[str, Any]) -> Mapping[str, Any]:
         raise EpisodeArtifactError("duo replay task identity is invalid")
     task_id = config["task_id"]
     game = duo_game(task_id)
-    if not game.is_additive_game or game.evaluator is None:
+    if not game.is_managed_v2 or game.evaluator is None:
         raise EpisodeArtifactError("duo replay task is not an additive game")
     events = [
         event
@@ -471,13 +471,15 @@ def _evaluate_duo_game_replay(replay: Mapping[str, Any]) -> Mapping[str, Any]:
         for event in step.get("result", {}).get("public_events", [])
         if isinstance(event, Mapping)
     ]
-    completed_kind = (
-        "rts_skirmish_completed" if task_id == "rts-skirmish-v0" else "duo_game_completed"
-    )
+    completed_kind = {
+        "rts-skirmish-v0": "rts_skirmish_completed",
+        "rts-skirmish-v1": "rts_skirmish_v1_completed",
+    }.get(task_id, "duo_game_completed")
     completed = [event for event in events if event.get("kind") == completed_kind]
     expected_summary_kind = {
         "duo-resource-relay-v0": "duo_resource_relay_participant_summary",
         "rts-skirmish-v0": "rts_skirmish_participant_summary",
+        "rts-skirmish-v1": "rts_skirmish_v1_participant_summary",
     }.get(task_id, "duo_participant_summary")
     summaries = [event for event in events if event.get("kind") == expected_summary_kind]
     if len(completed) != 1 or len(summaries) != 2:
@@ -534,7 +536,7 @@ def _evaluate_duo_game_replay(replay: Mapping[str, Any]) -> Mapping[str, Any]:
                     )
                 }
             )
-        elif task_id == "rts-skirmish-v0":
+        elif task_id in {"rts-skirmish-v0", "rts-skirmish-v1"}:
             common.update(
                 {
                     field: data.get(field)

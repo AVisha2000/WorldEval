@@ -12,6 +12,9 @@ const ResourceRelayAuthority := preload(
 const RtsSkirmishAuthority := preload(
 	"res://scripts/embodiment/rts_skirmish/rts_skirmish_authority.gd"
 )
+const RtsSkirmishV1Authority := preload(
+	"res://scripts/embodiment/rts_skirmish/rts_skirmish_v1_authority.gd"
+)
 const Codec := preload("res://scripts/embodiment/transport/embodiment_frame_codec.gd")
 const ProtocolIdentity := preload("res://scripts/embodiment/v2/protocol/embodiment_protocol_package_identity_v2.gd")
 
@@ -24,18 +27,18 @@ const WINDOW_FIELDS := ["episode_id", "observation_seq", "mode", "start_tick", "
 ## RTS authority; every older task continues to use the frozen ordinary decision window.
 const RTS_TASK_WINDOW_FIELDS := ["episode_id", "observation_seq", "mode", "start_tick", "duration_ticks", "plans"]
 const DECISION_FIELDS := ["disposition", "action", "fallback", "no_input_reason"]
-const RTS_TASK_MEMORY_PREFIX := "rts-task-plan-v1:"
+const RTS_TASK_MEMORY_PREFIX := "rts-task-plan-"
 const SOLO_TASKS := ["movement-maze-v0", "operator-action-course-v0"]
 const DUO_TASKS := [
 	"duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0",
 	"duo-resource-relay-v0",
-	"rts-skirmish-v0",
+	"rts-skirmish-v0", "rts-skirmish-v1",
 ]
 const TASKS := [
 	"movement-maze-v0", "operator-action-course-v0",
 	"duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0",
 	"duo-resource-relay-v0",
-	"rts-skirmish-v0",
+	"rts-skirmish-v0", "rts-skirmish-v1",
 ]
 
 var authority = null
@@ -80,6 +83,7 @@ func configure(value: Dictionary) -> PackedStringArray:
 		"duo-spar-v0": authority = SparAuthority.new()
 		"duo-resource-relay-v0": authority = ResourceRelayAuthority.new()
 		"rts-skirmish-v0": authority = RtsSkirmishAuthority.new()
+		"rts-skirmish-v1": authority = RtsSkirmishV1Authority.new()
 	errors.append_array(authority.configure(value))
 	if not errors.is_empty():
 		authority = null
@@ -88,7 +92,7 @@ func configure(value: Dictionary) -> PackedStringArray:
 
 func step_window(window: Variant) -> Dictionary:
 	assert(authority != null, "configure before stepping")
-	if config.task_id == "rts-skirmish-v0":
+	if config.task_id in ["rts-skirmish-v0", "rts-skirmish-v1"]:
 		if _is_rts_task_window(window):
 			last_replay_decision_window = _rts_compatibility_window(window)
 			last_rts_task_plan_window = window.duplicate(true)
@@ -136,7 +140,7 @@ func participant_presentation_source(participant_id: String) -> Dictionary:
 
 
 func decision_window_schema_valid(window: Variant) -> bool:
-	if config.task_id == "rts-skirmish-v0" and _is_rts_task_window(window):
+	if config.task_id in ["rts-skirmish-v0", "rts-skirmish-v1"] and _is_rts_task_window(window):
 		return _rts_task_window_schema_valid(window)
 	var participants: Array = config.participant_ids
 	var duo: bool = config.task_id in DUO_TASKS
@@ -257,7 +261,10 @@ func _rts_task_window_from_compatibility(window: Variant) -> Dictionary:
 		if not memory_update is String or not str(memory_update).begins_with(RTS_TASK_MEMORY_PREFIX):
 			return {}
 		found_embedded_plan = true
-		var payload := str(memory_update).trim_prefix(RTS_TASK_MEMORY_PREFIX).to_utf8_buffer()
+		var separator := str(memory_update).find(":")
+		if separator < RTS_TASK_MEMORY_PREFIX.length():
+			return {}
+		var payload := str(memory_update).substr(separator + 1).to_utf8_buffer()
 		var parsed := Codec.parse_canonical(payload, 2048)
 		if not bool(parsed.get("ok", false)) or not parsed.get("value") is Dictionary:
 			return {}

@@ -56,6 +56,7 @@ _V2_TASKS = _V1_TASKS | frozenset(
         "duo-spar-v0",
         "duo-resource-relay-v0",
         "rts-skirmish-v0",
+        "rts-skirmish-v1",
     )
 )
 _V3_TASKS = frozenset(("trio-relay-v0", "trio-free-for-all-v0"))
@@ -331,6 +332,7 @@ class EpisodeConfig:
             "duo-spar-v0",
             "duo-resource-relay-v0",
             "rts-skirmish-v0",
+            "rts-skirmish-v1",
         ) and self.mode not in ("scripted-duel-v0", "model-duel-v0"):
             raise ValueError("duo games require a two-participant mode")
         if self.protocol_version == "llm-controller/0.3.0" and self.mode != "trio-game-v0":
