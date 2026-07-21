@@ -9,174 +9,199 @@ import {
   staticFile,
   useCurrentFrame,
 } from 'remotion';
-
-const colors = {
-  ink: '#06131d',
-  cyan: '#62e3c1',
-  gold: '#ffc45d',
-  coral: '#ff7f76',
-  text: '#f5f9f8',
-  muted: '#b7cad1',
-};
+import {
+  ArenaMatte,
+  CornerMetadata,
+  KineticTitle,
+  PulseGrid,
+  RoutePulse,
+  StageCard,
+  arenaPalette,
+} from './HackathonMotion';
 
 const gameplay = staticFile('worldarena-gameplay.mp4');
+const paper = arenaPalette.paper;
+const ink = arenaPalette.ink;
+const cyan = arenaPalette.cyan;
 
-const GameplayBed = () => (
-  <AbsoluteFill>
-    <Video src={gameplay} muted loop style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-    <AbsoluteFill style={{background: 'linear-gradient(100deg, rgba(2,11,18,0.78), rgba(2,11,18,0.24) 62%, rgba(2,11,18,0.5))'}} />
-  </AbsoluteFill>
-);
-
-const Label = ({children, tone = colors.cyan}: {children: React.ReactNode; tone?: string}) => (
-  <div style={{color: tone, fontSize: 19, fontWeight: 800, letterSpacing: 3.2, textTransform: 'uppercase'}}>{children}</div>
-);
-
-const Scene = ({
-  eyebrow,
-  title,
-  body,
-  children,
-  filler = false,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
-  children?: React.ReactNode;
-  filler?: boolean;
-}) => {
+const GameplayBed = () => {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 14], [0, 1], {
-    extrapolateRight: 'clamp',
-    easing: Easing.bezier(0.16, 1, 0.3, 1),
-  });
-  const y = interpolate(frame, [0, 18], [34, 0], {extrapolateRight: 'clamp'});
+  const scale = interpolate(frame % 540, [0, 540], [1.045, 1.1]);
+  const x = interpolate(frame % 450, [0, 450], [-12, 12]);
+
   return (
     <AbsoluteFill>
-      <GameplayBed />
-      <div style={{position: 'absolute', left: 90, top: 86, width: 820, opacity, translate: `0 ${y}px`}}>
-        <Label tone={filler ? colors.gold : colors.cyan}>{filler ? 'Roadmap concept visual' : eyebrow}</Label>
-        <div style={{fontSize: 76, lineHeight: 1.04, fontWeight: 850, letterSpacing: -2.4, marginTop: 20}}>{title}</div>
-        <div style={{fontSize: 27, lineHeight: 1.4, color: colors.muted, marginTop: 28, maxWidth: 735}}>{body}</div>
-      </div>
-      {children}
-      {filler ? <div style={{position: 'absolute', right: 66, bottom: 54, border: `1px solid ${colors.gold}`, borderRadius: 999, background: 'rgba(5,14,22,0.86)', color: colors.gold, fontSize: 16, fontWeight: 800, letterSpacing: 1.5, padding: '11px 16px'}}>NOT A LIVE CAPTURE</div> : null}
+      <Video
+        src={gameplay}
+        muted
+        loop
+        style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${scale}) translateX(${x}px)`}}
+      />
+      <AbsoluteFill style={{background: 'linear-gradient(90deg, rgba(3,10,13,0.94) 0%, rgba(3,10,13,0.72) 35%, rgba(3,10,13,0.12) 70%, rgba(3,10,13,0.54) 100%)'}} />
+      <AbsoluteFill style={{background: 'linear-gradient(0deg, rgba(3,10,13,0.72), transparent 34%, rgba(3,10,13,0.3))'}} />
     </AbsoluteFill>
   );
 };
 
-const ProtocolRail = () => (
-  <div style={{position: 'absolute', left: 90, right: 90, bottom: 96, display: 'flex', gap: 18}}>
-    <ProtocolCard step="01" label="Participant view" />
-    <ProtocolCard step="02" label="Bounded input" />
-    <ProtocolCard step="03" label="Godot resolves" />
-    <ProtocolCard step="04" label="Replay evidence" />
-  </div>
+const TinyLabel = ({children, tone = cyan}: {children: React.ReactNode; tone?: string}) => (
+  <div style={{color: tone, fontSize: 17, fontWeight: 850, letterSpacing: 2.8, textTransform: 'uppercase'}}>{children}</div>
 );
 
-const ProtocolCard = ({step, label}: {step: string; label: string}) => (
-  <div style={{flex: 1, padding: '19px 21px', background: 'rgba(4,18,27,0.9)', border: '1px solid rgba(112, 222, 199, 0.45)', borderRadius: 18}}>
-    <div style={{color: colors.cyan, fontSize: 16, fontWeight: 850, letterSpacing: 2}}>{step}</div>
-    <div style={{fontSize: 23, fontWeight: 760, marginTop: 8}}>{label}</div>
-  </div>
+const TextPanel = ({eyebrow, title, body, index, filler = false}: {eyebrow: string; title: string; body: string; index: string; filler?: boolean}) => {
+  const frame = useCurrentFrame();
+  const lineWidth = interpolate(frame, [8, 38], [0, 112], {extrapolateRight: 'clamp', easing: Easing.bezier(0.16, 1, 0.3, 1)});
+  return (
+    <div style={{position: 'absolute', left: 80, top: 150, width: 740}}>
+      <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
+        <TinyLabel tone={filler ? '#ffd877' : cyan}>{filler ? 'Roadmap concept visual' : eyebrow}</TinyLabel>
+        <div style={{height: 2, width: lineWidth, background: filler ? '#ffd877' : cyan}} />
+        <div style={{color: 'rgba(246,250,247,0.62)', fontSize: 15, fontWeight: 800, letterSpacing: 1.6}}>{index}</div>
+      </div>
+      <KineticTitle size={88} delay={8} style={{color: paper, marginTop: 23, maxWidth: 725}}>{title}</KineticTitle>
+      <div style={{color: 'rgba(235,244,240,0.8)', fontSize: 25, lineHeight: 1.35, marginTop: 27, maxWidth: 620, letterSpacing: '-0.018em'}}>{body}</div>
+    </div>
+  );
+};
+
+const Telemetry = ({label = 'LIVE SIMULATION'}: {label?: string}) => {
+  const frame = useCurrentFrame();
+  const progress = Math.round(((frame % 150) / 150) * 100).toString().padStart(2, '0');
+  return (
+    <div style={{position: 'absolute', right: 48, bottom: 38, display: 'flex', gap: 20, alignItems: 'center', color: 'rgba(240,248,244,0.72)', fontSize: 14, fontWeight: 800, letterSpacing: 1.45}}>
+      <span style={{color: cyan}}>●</span><span>{label}</span><span>SYNC {progress}%</span>
+    </div>
+  );
+};
+
+const ActionRail = ({items}: {items: string[]}) => {
+  const frame = useCurrentFrame();
+  return (
+    <div style={{position: 'absolute', left: 80, right: 80, bottom: 88, display: 'flex', gap: 10}}>
+      {items.map((item, index) => {
+        const active = Math.floor(frame / 44) % items.length === index;
+        return <div key={item} style={{flex: 1, padding: '16px 18px', borderRadius: 15, background: active ? paper : 'rgba(5,18,23,0.82)', color: active ? ink : 'rgba(241,245,241,0.72)', border: `1px solid ${active ? paper : 'rgba(104,234,214,0.28)'}`, fontSize: 18, fontWeight: 780, letterSpacing: 0.15}}><span style={{color: active ? '#138b86' : cyan, fontSize: 13, marginRight: 10}}>0{index + 1}</span>{item}</div>;
+      })}
+    </div>
+  );
+};
+
+const EvidenceFrame = ({file, caption, concept = false}: {file: string; caption: string; concept?: boolean}) => {
+  const frame = useCurrentFrame();
+  const enter = interpolate(frame, [12, 34], [34, 0], {extrapolateRight: 'clamp', easing: Easing.bezier(0.16, 1, 0.3, 1)});
+  return (
+    <div style={{position: 'absolute', right: 62, top: 150, width: 760, transform: `translateY(${enter}px)`}}>
+      <div style={{padding: 10, background: 'rgba(241,244,238,0.94)', borderRadius: 27, boxShadow: '0 30px 85px rgba(0,0,0,0.46)'}}>
+        <Img src={staticFile(file)} style={{display: 'block', width: '100%', borderRadius: 18}} />
+      </div>
+      <div style={{marginTop: 15, textAlign: 'right', color: concept ? '#ffd877' : 'rgba(240,248,244,0.72)', fontSize: 14, fontWeight: 850, letterSpacing: 1.45}}>{concept ? 'ROADMAP CONCEPT / NOT A LIVE CAPTURE' : caption}</div>
+    </div>
+  );
+};
+
+const EditorialScene = ({eyebrow, title, body, index, children, filler = false, telemetry}: {eyebrow: string; title: string; body: string; index: string; children?: React.ReactNode; filler?: boolean; telemetry?: string}) => (
+  <AbsoluteFill>
+    <GameplayBed />
+    <PulseGrid opacity={0.34} />
+    <CornerMetadata left="WORLDARENA / BUILD WEEK" right="EMBODIED EVALUATION" dark />
+    <TextPanel eyebrow={eyebrow} title={title} body={body} index={index} filler={filler} />
+    {children}
+    <Telemetry label={telemetry} />
+  </AbsoluteFill>
 );
 
-const EvidenceImage = ({file, caption}: {file: string; caption: string}) => (
-  <div style={{position: 'absolute', right: 80, top: 108, width: 730}}>
-    <Img src={staticFile(file)} style={{width: '100%', borderRadius: 22, border: '1px solid rgba(164, 220, 225, 0.36)', boxShadow: '0 28px 70px rgba(0,0,0,0.45)'}} />
-    <div style={{color: colors.muted, fontSize: 16, fontWeight: 700, letterSpacing: 1.5, marginTop: 14, textAlign: 'right'}}>{caption}</div>
-  </div>
-);
+const Hook = ({strategic = false}: {strategic?: boolean}) => {
+  const frame = useCurrentFrame();
+  const expand = interpolate(frame, [114, 154], [0.79, 1.13], {extrapolateRight: 'clamp', easing: Easing.bezier(0.16, 1, 0.3, 1)});
+  const promptOpacity = interpolate(frame, [0, 14, 112, 130], [0, 1, 1, 0], {extrapolateRight: 'clamp'});
+  const answerOpacity = interpolate(frame, [112, 132, 150], [0, 0.92, 0], {extrapolateRight: 'clamp'});
+  return (
+    <ArenaMatte>
+      <CornerMetadata left="WORLDARENA / 01" right="WHAT THE WORLD CHANGES" dark />
+      <StageCard style={{left: 132, top: 180, width: 1650, height: 720, transform: `scale(${expand})`, overflow: 'hidden'}}>
+        <div style={{color: '#607076', fontSize: 18, fontWeight: 800, letterSpacing: 2.2}}>WORLDARENA</div>
+        <KineticTitle size={118} delay={4} style={{maxWidth: 1160, color: ink, marginTop: 38}}>{strategic ? 'Plans are easy. Consequences are harder.' : 'What can an AI actually do in the physical world?'}</KineticTitle>
+        <div style={{position: 'absolute', left: 42, right: 42, bottom: 48, opacity: promptOpacity, padding: '26px 30px', borderRadius: 20, background: '#dce6e0', color: ink, fontSize: 30, fontWeight: 650}}>{strategic ? 'observe → plan → commit → adapt' : '“The petrol station is five minutes away. Walk there.”'}</div>
+        <div style={{position: 'absolute', left: 42, right: 42, bottom: 48, opacity: answerOpacity, padding: '26px 30px', borderRadius: 20, background: ink, color: paper, fontSize: 30, fontWeight: 760}}>{strategic ? 'The board changes while you decide.' : 'But the car is still behind.'}<span style={{color: cyan}}>  Physical dependency matters.</span></div>
+      </StageCard>
+      <RoutePulse points={[[104, 940], [420, 860], [800, 922], [1210, 836], [1740, 930]]} />
+    </ArenaMatte>
+  );
+};
 
 export const WorldArenaEmbodiedPitch = () => (
-  <AbsoluteFill style={{background: colors.ink, color: colors.text, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', overflow: 'hidden'}}>
+  <AbsoluteFill style={{background: arenaPalette.matte, color: paper, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', overflow: 'hidden'}}>
     <Audio src={staticFile('embodied-pitch.m4a')} />
-    <Sequence from={0} durationInFrames={540} premountFor={30}>
-      <Scene eyebrow="WorldArena" title="Can an AI act through physical dependencies?" body="A plan can sound right and still fail when the world pushes back." filler>
-        <div style={{position: 'absolute', right: 110, bottom: 122, display: 'flex', gap: 22}}>
-          <ProtocolCard step="AI" label="Walk to station" />
-          <div style={{fontSize: 54, color: colors.gold, alignSelf: 'center'}}>≠</div>
-          <ProtocolCard step="WORLD" label="Car still needs fuel" />
-        </div>
-      </Scene>
-    </Sequence>
+    <Sequence from={0} durationInFrames={540} premountFor={30}><Hook /></Sequence>
     <Sequence from={540} durationInFrames={540} premountFor={30}>
-      <Scene eyebrow="Embodied agent evaluation" title="The model chooses inputs. Godot owns reality." body="Bounded movement, look, and interaction commands meet fixed-tick physics, collision, resources, and consequences.">
-        <ProtocolRail />
-      </Scene>
+      <EditorialScene eyebrow="Embodied agent evaluation" title="The model chooses inputs. Godot owns reality." body="Continuous movement, collision, resources, and interaction holds create consequences." index="02 / CONTROL">
+        <ActionRail items={['participant view', 'bounded input', 'Godot resolves', 'replay evidence']} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={1080} durationInFrames={780} premountFor={30}>
-      <Scene eyebrow="Solo curriculum" title="Find. Gather. Carry. Deposit. Build." body="Construction is a sequence of visible dependencies—never a hidden semantic shortcut." filler>
-        <div style={{position: 'absolute', right: 82, top: 218, width: 670, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16}}>
-          <ProtocolCard step="01" label="Visible resource" />
-          <ProtocolCard step="02" label="Held interaction" />
-          <ProtocolCard step="03" label="Carry to relay" />
-          <ProtocolCard step="04" label="Build barricade" />
-        </div>
-      </Scene>
+      <EditorialScene eyebrow="Solo curriculum" title="Find. Gather. Carry. Deposit. Build." body="A real chain of visible dependencies—never a hidden semantic shortcut." index="03 / CAPABILITY" filler>
+        <ActionRail items={['visible resource', 'held interaction', 'carry to relay', 'build barricade']} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={1860} durationInFrames={600} premountFor={30}>
-      <Scene eyebrow="Inspectable by design" title="No hidden repair. Evidence, not claims." body="Participant-scoped observations, receipts, checkpoints, evaluation data, and offline-verifiable replay artifacts.">
-        <EvidenceImage file="artifact-replay.png" caption="IMPLEMENTED REPLAY / ARTIFACT SURFACE" />
-      </Scene>
+      <EditorialScene eyebrow="Inspectable by design" title="Evidence, not claims." body="Participant-scoped observations, checkpoints, receipts, and verifiable replay artifacts." index="04 / PROOF">
+        <EvidenceFrame file="artifact-replay.png" caption="IMPLEMENTED REPLAY / ARTIFACT SURFACE" />
+      </EditorialScene>
     </Sequence>
     <Sequence from={2460} durationInFrames={600} premountFor={30}>
-      <Scene eyebrow="Fair competition" title="A mirrored two-leg controller duel." body="Identical bodies and controls. Swapped sides. Measure the model, not a favourable spawn." filler>
-        <EvidenceImage file="controller-dashboard-concept.png" caption="CONTROLLER LAB / CONCEPT SURFACE" />
-      </Scene>
+      <EditorialScene eyebrow="Fair competition" title="A mirrored two-leg controller duel." body="Identical bodies and controls. Swapped sides. Measure the model—not a spawn." index="05 / FAIRNESS" filler>
+        <EvidenceFrame file="controller-dashboard-concept.png" caption="CONTROLLER LAB" concept />
+      </EditorialScene>
     </Sequence>
     <Sequence from={3060} durationInFrames={600} premountFor={30}>
-      <Scene eyebrow="Three-agent arena" title="Sol, Terra, and Luna contest one shared world." body="This authored deterministic local presentation demonstrates gather, build, scout, conflict, and outcome.">
-        <div style={{position: 'absolute', right: 64, bottom: 56, color: colors.gold, fontSize: 16, letterSpacing: 1.4, fontWeight: 800}}>UNVERIFIED DETERMINISTIC LOCAL DEMO</div>
-      </Scene>
+      <EditorialScene eyebrow="Three-agent arena" title="Sol. Terra. Luna. One shared world." body="This authored deterministic local presentation shows gather, build, scout, conflict, and outcome." index="06 / ARENA" telemetry="UNVERIFIED LOCAL DEMO">
+        <RoutePulse points={[[1100, 850], [1270, 662], [1500, 760], [1710, 544]]} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={3660} durationInFrames={900} premountFor={30}>
-      <Scene eyebrow="Built with Codex + GPT-5.6" title="Evaluate what AI does, not only what it says." body="Codex accelerated the authority, dashboard, tests, and this production. GPT-5.6 is integrated for live controller experiments.">
-        <EvidenceImage file="simulation-lab.png" caption="IMPLEMENTED SIMULATION LAB" />
-      </Scene>
+      <EditorialScene eyebrow="Built with Codex + GPT-5.6" title="Evaluate what AI does, not only what it says." body="Codex accelerated the simulation, authority, tests, dashboard, and this production. GPT-5.6 supports live controller experiments." index="07 / BUILD">
+        <EvidenceFrame file="simulation-lab.png" caption="IMPLEMENTED SIMULATION LAB" />
+      </EditorialScene>
     </Sequence>
     <Sequence from={4560} durationInFrames={660} premountFor={30}>
-      <Scene eyebrow="WorldArena" title="Embodied AI. Fair games. Replayable evidence." body="The shown gameplay is a deterministic local demo, reproducible without keys or network calls." />
+      <EditorialScene eyebrow="WorldArena" title="Embodied AI. Fair games. Replayable evidence." body="A deterministic local demo, reproducible without keys or network calls." index="08 / CLOSE" telemetry="WORLD READY" />
     </Sequence>
   </AbsoluteFill>
 );
 
 export const WorldArenaStrategicPitch = () => (
-  <AbsoluteFill style={{background: colors.ink, color: colors.text, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', overflow: 'hidden'}}>
+  <AbsoluteFill style={{background: arenaPalette.matte, color: paper, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', overflow: 'hidden'}}>
     <Audio src={staticFile('strategic-pitch.m4a')} />
-    <Sequence from={0} durationInFrames={480} premountFor={30}>
-      <Scene eyebrow="WorldEval" title="Plans are easy. Consequences are harder." body="Can a model adapt when information is partial, resources are finite, and other agents change the board?" />
-    </Sequence>
+    <Sequence from={0} durationInFrames={480} premountFor={30}><Hook strategic /></Sequence>
     <Sequence from={480} durationInFrames={600} premountFor={30}>
-      <Scene eyebrow="WorldArena" title="A shared world for evaluating intelligent agents." body="Language models choose strategy. Godot owns movement, resources, construction, combat, and scoring.">
-        <ProtocolRail />
-      </Scene>
+      <EditorialScene eyebrow="WorldArena" title="A shared world for evaluating intelligent agents." body="Models choose strategy. Godot owns movement, resources, construction, and scoring." index="02 / ARENA">
+        <ActionRail items={['see', 'plan', 'act', 'prove']} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={1080} durationInFrames={600} premountFor={30}>
-      <Scene eyebrow="One simultaneous round" title="Observe. Seal plans. Resolve. Audit." body="Visibility-filtered observations and sealed plans prevent latency or presentation from changing the outcome.">
-        <ProtocolRail />
-      </Scene>
+      <EditorialScene eyebrow="One simultaneous round" title="Observe. Seal plans. Resolve. Audit." body="Visibility-filtered observations and sealed plans protect the integrity of each round." index="03 / PROTOCOL">
+        <ActionRail items={['observe', 'seal plans', 'resolve', 'audit']} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={1680} durationInFrames={720} premountFor={30}>
-      <Scene eyebrow="The world makes strategy visible" title="Gather. Build. Scout. Negotiate. Adapt." body="A strong answer is not enough when supply, timing, territory, and rivals have consequences." />
+      <EditorialScene eyebrow="The world makes strategy visible" title="Gather. Build. Scout. Negotiate. Adapt." body="Supply, territory, timing, and rivals turn answers into accountable actions." index="04 / PRESSURE">
+        <RoutePulse points={[[920, 870], [1220, 690], [1390, 840], [1710, 600]]} />
+      </EditorialScene>
     </Sequence>
     <Sequence from={2400} durationInFrames={720} premountFor={30}>
-      <Scene eyebrow="Evidence-linked scoring" title="Measure more than a win screen." body="Planning, efficiency, social intelligence, delegation, reliability—and the receipts supporting every result.">
-        <EvidenceImage file="artifact-replay.png" caption="IMPLEMENTED REPLAY / ARTIFACT SURFACE" />
-      </Scene>
+      <EditorialScene eyebrow="Evidence-linked scoring" title="Measure more than a win screen." body="Planning, efficiency, social intelligence, reliability—and evidence supporting every result." index="05 / SCORE">
+        <EvidenceFrame file="artifact-replay.png" caption="IMPLEMENTED REPLAY / ARTIFACT SURFACE" />
+      </EditorialScene>
     </Sequence>
     <Sequence from={3120} durationInFrames={720} premountFor={30}>
-      <Scene eyebrow="What exists today" title="An authored deterministic local demo." body="This gameplay cut is a presentation, not a published leaderboard result. Concept panels identify roadmap capabilities.">
-        <div style={{position: 'absolute', right: 64, bottom: 56, color: colors.gold, fontSize: 16, letterSpacing: 1.4, fontWeight: 800}}>UNVERIFIED DETERMINISTIC LOCAL DEMO</div>
-      </Scene>
+      <EditorialScene eyebrow="What exists today" title="An authored deterministic local demo." body="This cut is a presentation, not a published leaderboard result. Concept panels identify roadmap work." index="06 / DISCLOSURE" telemetry="UNVERIFIED LOCAL DEMO" />
     </Sequence>
     <Sequence from={3840} durationInFrames={720} premountFor={30}>
-      <Scene eyebrow="Built with Codex + GPT-5.6" title="Observable. Reproducible. Comparable." body="Codex accelerated the simulation, contracts, dashboard, tests, and video workflow. GPT-5.6 supports live controller experiments.">
-        <EvidenceImage file="simulation-lab.png" caption="IMPLEMENTED SIMULATION LAB" />
-      </Scene>
+      <EditorialScene eyebrow="Built with Codex + GPT-5.6" title="Observable. Reproducible. Comparable." body="Codex accelerated the simulation, contracts, dashboard, tests, and video workflow. GPT-5.6 supports controller experiments." index="07 / BUILD">
+        <EvidenceFrame file="simulation-lab.png" caption="IMPLEMENTED SIMULATION LAB" />
+      </EditorialScene>
     </Sequence>
     <Sequence from={4560} durationInFrames={660} premountFor={30}>
-      <Scene eyebrow="WorldArena" title="Evaluate what AI does." body="Not only what it says." />
+      <EditorialScene eyebrow="WorldArena" title="Evaluate what AI does." body="Not only what it says." index="08 / CLOSE" telemetry="WORLD READY" />
     </Sequence>
   </AbsoluteFill>
 );
