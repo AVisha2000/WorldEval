@@ -5,6 +5,7 @@ import {
 } from './WorldArenaIntro';
 import {WorldArenaExplainer} from './WorldArenaExplainer';
 import {WorldArenaEmbodiedPitch, WorldArenaStrategicPitch} from './WorldArenaHackathonPitches';
+import {WorldArenaQuickSlides} from './WorldArenaQuickSlides';
 
 const defaultIntroProps: WorldArenaIntroProps = {
   title: 'WORLD ARENA',
@@ -44,6 +45,14 @@ export const RemotionRoot = () => {
       id="WorldArenaStrategicPitch"
       component={WorldArenaStrategicPitch}
       durationInFrames={5220}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+    <Composition
+      id="WorldArenaQuickSlides"
+      component={WorldArenaQuickSlides}
+      durationInFrames={540}
       fps={30}
       width={1920}
       height={1080}
