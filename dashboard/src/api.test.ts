@@ -170,7 +170,7 @@ describe("cached solo showcase route", () => {
     )
     expect(fetch).toHaveBeenCalledWith(
       "/api/embodiment/showcases/solo-multi-action-v0",
-      { cache: "force-cache" }
+      { cache: "no-store" }
     )
   })
 })

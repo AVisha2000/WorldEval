@@ -1083,7 +1083,10 @@ export function cachedMazeVideoUrl(): string {
 
 export async function getCachedSoloShowcase(): Promise<CachedSoloShowcaseView> {
   return parseCachedSoloShowcase(await checked<unknown>(
-    await fetch("/api/embodiment/showcases/solo-multi-action-v0", { cache: "force-cache" })
+    // The local API may be restarted while the dashboard stays open.  Do not retain a previous
+    // 404 for the primary solo preset, otherwise a healthy restarted backend remains stuck in
+    // the "unavailable" view until the browser cache is manually cleared.
+    await fetch("/api/embodiment/showcases/solo-multi-action-v0", { cache: "no-store" })
   ))
 }
 
