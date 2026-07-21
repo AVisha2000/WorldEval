@@ -149,75 +149,6 @@
     object-fit: cover;
     box-shadow: 0 8px 24px #0006;
   }
-  .readiness-panel {
-    min-height: 92px;
-    display: grid;
-    grid-template-columns: 170px minmax(0, 1fr) max-content;
-    align-items: center;
-    gap: 20px;
-    border-bottom: 1px solid var(--border);
-    padding: 14px 24px;
-    background: oklch(0.14 0.007 55);
-  }
-  .readiness-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .readiness-summary strong {
-    font-size: 14px;
-  }
-  .readiness-summary small,
-  .readiness-gate small {
-    color: var(--muted-foreground);
-    font-size: 10px;
-  }
-  .readiness-gates {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(6, minmax(105px, 1fr));
-    gap: 8px;
-  }
-  .readiness-gate {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 9px;
-    background: oklch(0.165 0.008 55);
-  }
-  .readiness-gate svg {
-    flex: 0 0 auto;
-    width: 16px;
-    color: var(--muted-foreground);
-  }
-  .readiness-gate.passed {
-    border-color: oklch(0.58 0.1 145);
-  }
-  .readiness-gate.passed svg {
-    color: oklch(0.72 0.14 145);
-  }
-  .readiness-gate span {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .readiness-gate b,
-  .readiness-gate small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .readiness-gate b {
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .readiness-panel > code {
-    color: var(--muted-foreground);
-    font-size: 10px;
-  }
 .app-body {
     display: grid;
     grid-template-columns: 320px minmax(0, 1fr);
@@ -1326,15 +1257,6 @@
 }
 
 @media (max-width: 1080px) {
-  .readiness-panel {
-    grid-template-columns: 150px minmax(0, 1fr);
-  }
-  .readiness-panel > code {
-    display: none;
-  }
-  .readiness-gates {
-    grid-template-columns: repeat(3, minmax(105px, 1fr));
-  }
   .app-body {
     grid-template-columns: 280px minmax(0, 1fr);
   }
@@ -1366,21 +1288,6 @@
   .app-body {
     display: flex;
     flex-direction: column;
-  }
-  .readiness-panel {
-    display: flex;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-  }
-  .readiness-gates {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 3px;
-  }
-  .readiness-gate {
-    flex: 0 0 152px;
   }
   .setup-panel {
     border-right: 0;

@@ -8,22 +8,6 @@ function response(value: Record<string, unknown>) {
   return { ok: true, json: async () => value } as Response
 }
 
-const readiness = {
-  format: "llm-controller/embodiment-readiness-view/1.1.0",
-  gates: [
-    { id: "offline", label: "Offline certification", passed: true, code: null },
-    { id: "approved_mixamo_y_bot", label: "Approved Y Bot", passed: false, code: "evidence_file_invalid" },
-    { id: "live_provider_managed_solo", label: "Live providers", passed: false, code: "live_provider_report_missing" },
-    { id: "live_model_paired_duel", label: "Live two-model duel", passed: false, code: "live_duel_report_missing" },
-    { id: "browser_visual_qa", label: "Browser lifecycle", passed: false, code: "browser_report_missing" },
-    { id: "final_native_video", label: "Final native video", passed: false, code: "final_video_missing" },
-  ],
-  ready_for_promotion: false,
-  report_available: true,
-  runtime_capabilities: { passed: false, code: "runtime_capabilities_not_released" },
-  source_fingerprint: "a".repeat(64),
-}
-
 const cachedRtsShowcase = {
   showcase_id: "rts-skirmish-v0",
   task_id: "rts-skirmish-v0",
@@ -117,7 +101,6 @@ const cachedMazeEvaluation = {
 function lifecycleFetch() {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
-    if (url.endsWith("/certification/readiness")) return response(readiness)
     if (url.endsWith("/showcases/rts-skirmish-v0/evaluation")) return response(cachedRtsEvaluation)
     if (url.endsWith("/showcases/rts-skirmish-v0")) return response(cachedRtsShowcase)
     if (url.endsWith("/showcases/trio-maze-race-v0/evaluation")) return response(cachedMazeEvaluation)
@@ -159,7 +142,7 @@ async function selectLiveProvider(user: ReturnType<typeof userEvent.setup>) {
 describe("Controller dashboard", () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.stubGlobal("fetch", vi.fn(async () => response(readiness)))
+    vi.stubGlobal("fetch", vi.fn(async () => response({})))
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:participant-frame")
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
   })
@@ -361,11 +344,13 @@ describe("Controller dashboard", () => {
       { provider: "demo", model: "resource-relay-bravo-v1" },
     ])
   })
-  it("renders credential-free certification readiness", async () => {
+  it("omits certification readiness from the dashboard", () => {
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
     renderApp()
-    expect(await screen.findByText("1/6 gates verified")).toBeInTheDocument()
-    expect(screen.getByText("Offline certification")).toBeInTheDocument()
-    expect(screen.getByText("Runtime capabilities remain unreleased")).toBeInTheDocument()
+
+    expect(screen.queryByLabelText("Certification readiness")).not.toBeInTheDocument()
+    expect(fetch.mock.calls.some(([input]) => String(input).endsWith("/certification/readiness"))).toBe(false)
   })
   it("keeps the credential in component state and never browser storage", async () => {
     const user = userEvent.setup()
@@ -438,7 +423,6 @@ describe("Controller dashboard", () => {
     let statusReads = 0
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.endsWith("/certification/readiness")) return response(readiness)
       if (url.endsWith("/frame")) {
         return new Response(null, { status: 204, headers: { "X-Frame-State": "finished" } })
       }
@@ -486,7 +470,6 @@ describe("Controller dashboard", () => {
     let timelineReads = 0
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.endsWith("/certification/readiness")) return response(readiness)
       if (init?.method === "POST") {
         return response({
           config: { task_id: "construction-v0" },
@@ -540,7 +523,6 @@ describe("Controller dashboard", () => {
     const framePng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
     const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url.endsWith("/certification/readiness")) return response(readiness)
       if (init?.method === "POST") {
         return response({
           config: { task_id: "orientation-v0" },

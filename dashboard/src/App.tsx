@@ -19,11 +19,9 @@ import {
   getCachedRtsShowcase,
   getEpisode,
   getEpisodeTimeline,
-  getReadiness,
 } from "@/api"
 import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { EpisodeWorkspace } from "@/components/episode-workspace"
-import { ReadinessPanel } from "@/components/readiness-panel"
 import { SetupPanel } from "@/components/setup-panel"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -311,12 +309,6 @@ export function App() {
     },
     onSuccess: () => status.refetch(),
   })
-  const readiness = useQuery({
-    queryKey: ["certification-readiness"],
-    queryFn: getReadiness,
-    refetchInterval: 10_000,
-    retry: false,
-  })
   const cachedShowcase = useQuery({
     queryKey: ["cached-rts-showcase"],
     queryFn: getCachedRtsShowcase,
@@ -374,7 +366,6 @@ export function App() {
           </TabsList>
         </Tabs>
       </header>
-      <ReadinessPanel readiness={readiness.data} unavailable={readiness.isError} />
       <div className="app-body">
         <SetupPanel
           setup={setup}
