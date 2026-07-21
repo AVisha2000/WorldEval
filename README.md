@@ -105,25 +105,23 @@ To inspect the Godot project separately:
 The browser preview is presentation-only. A newest-frame-only participant JPEG stream is kept
 separate from decisions and replay, while verified PNG snapshots provide a reliability fallback.
 
-## Packaged showcases
+## Game showcases
 
-The Controller Lab includes three sealed, deterministic highlights under **Pre-run saves**. They do
-not create a run or contact a model.
+The Controller Lab highlights three games, each designed to exercise a different combination of
+agent capabilities.
 
 ### Mini RTS
 
-**WorldArena: Mini RTS** is the primary demo: a compact, deterministic `rts-skirmish-v0` scenario.
-Credential-free Demo agents Terra and Luna each begin with one worker, harvest persistent wood and
-ore nodes, return their loads, unlock and arm the same three workers as militia, and fight at the
-bridge.
+**WorldArena: Mini RTS** is a compact 1v1 strategy game. Agents gather wood and ore, invest in
+infrastructure, train units, contest central ground, and attack or defend a stronghold. Godot
+remains the authority for movement, combat, scoring, and replay.
 
-The fixed cinematic story ends with Terra pursuing Luna's final fighter, destroying Luna's tower
-and Town Hall, and celebrating a deterministic victory. Godot remains the authority for movement,
-combat, scoring, and replay.
+**What it evaluates:** long-horizon planning, resource allocation, task sequencing, adaptation,
+tactical positioning, and combat prioritization under partial observation.
 
-Terra and Luna use the same structured task path intended for later LLM controllers. In-world task
-labels such as “Harvest Tree” and “Hold the bridge” are short milestone summaries from the sealed
-Demo policy. They are not hidden chain-of-thought, prompts, raw model output, or hidden state.
+Agents use the same structured task path intended for LLM controllers. In-world labels such as
+“Harvest Tree” and “Hold the bridge” are short milestone summaries, not hidden chain-of-thought,
+prompts, raw model output, or hidden state.
 
 [Watch the 150-second native gameplay capture](godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
 
@@ -135,14 +133,13 @@ Demo policy. They are not hidden chain-of-thought, prompts, raw model output, or
 
 *Bridge battle—Terra and Luna militia exchange attacks while the public HUD tracks health and objectives.*
 
-![Two surviving Terra militia celebrating after Luna's Town Hall falls](docs/screenshots/worldarena-rts-blue-victory.jpg)
+![Terra militia applying pressure to Luna's stronghold](docs/screenshots/worldarena-rts-blue-victory.jpg)
 
-*Deterministic finish—two Terra survivors stand in Luna's destroyed stronghold as the victory HUD closes the replay.*
+*Stronghold pressure—surviving units push into opposing territory while the HUD reports the match state.*
 
-Choose **Run RTS Skirmish** to play the sealed, authority-verified broadcast. The public tactical
-view is for the audience only and is explicitly separate from each agent's participant-visible
-observation. Use the Timeline, Result, Evaluation, and Replay tabs to inspect the story and its
-verification metadata.
+Choose **Run RTS Skirmish** to view the game. The public tactical view is for the audience only and
+is explicitly separate from each agent's participant-visible observation. Use the Timeline,
+Result, Evaluation, and Replay tabs to inspect the gameplay and its verification metadata.
 
 To start the Controller Lab without the launcher:
 
@@ -159,23 +156,30 @@ Open the local URL displayed by the dashboard, then choose **Run RTS Skirmish**.
 
 ### Labyrinth Run
 
-Choose **Play Labyrinth Run**. Sol, Luna, and Terra race separate copies of the same maze at equal
-speed. The broadcast keeps the model-colour key visible and closes with the verified podium and
-winner explanation.
+**WorldArena: Labyrinth Run** is a three-agent navigation race. Each agent moves through a private
+maze lane using locally visible passage choices while the broadcast tracks progress, finish time,
+travelled cells, and path efficiency.
+
+**What it evaluates:** spatial reasoning, route planning, working memory, decision-making under
+partial observation, recovery from wrong turns, and movement efficiency.
+
+Choose **Play Labyrinth Run** to view the race and compare the agents' navigation metrics.
 
 ![Sol, Luna, and Terra racing identical labyrinths](docs/screenshots/worldarena-labyrinth-run-race.png)
 
-![Sol's verified Labyrinth Run winner calling card](docs/screenshots/worldarena-labyrinth-run-winner.png)
+![Labyrinth Run result card with navigation metrics](docs/screenshots/worldarena-labyrinth-run-winner.png)
 
 ### Crossroads Conquest
 
-Choose **Run Crossroads Conquest** to open the sealed 180-second `crossroads-conquest-v0`
-broadcast. Its fixed seed is `424242`: Sol eliminates Terra after Terra's counter-raid critically
-weakens Sol, then Luna waits for the authoritative elimination event before attacking and winning.
+**WorldArena: Crossroads Conquest** is a three-faction strategy game played across a shared map.
+Agents gather resources, expand their position, manage defenses, interpret rival behaviour, and
+choose when to cooperate, compete, or attack.
 
-Run, Timeline, and Result use the cached public manifest projection. Evaluation and Replay load the
-allow-listed evaluation projection only when opened. The replay file remains server-side; there is
-no public replay-download route.
+**What it evaluates:** multi-agent strategy, opponent modelling, negotiation and trust, resource
+management, timing, opportunism, and adaptation as alliances and threats change.
+
+Choose **Run Crossroads Conquest** to view the match. The Result and Evaluation tabs connect final
+placement to evidence from each faction's decisions and outcomes.
 
 More permanent captures are available in the
 [WorldArena screenshot collection](docs/screenshots/README.md).
