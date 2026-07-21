@@ -28,6 +28,11 @@ showcase and two solo control games, the seat-swapped 1v1 ladder, and three-seat
 Demo games. The browser receives participant-filtered pixels and allow-listed timeline/evaluation
 data only—never prompts, raw provider output, credentials, hidden state, or spectator views.
 
+The **Pre-run saves** library also exposes three immutable highlights: Labyrinth Run, Mini RTS
+Skirmish, and **Crossroads Conquest**. Crossroads playback uses only cached `GET` routes and never
+posts a new run. Its Evaluation and Replay tabs fetch the public evaluation lazily; the authority
+replay stays server-side and has no browser route.
+
 ## Builds
 
 The normal build preserves the FastAPI-backed Controller Lab:

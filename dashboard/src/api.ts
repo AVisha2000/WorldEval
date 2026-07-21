@@ -405,6 +405,96 @@ export type CachedMazeEvaluationView = {
   }
 }
 
+export type CrossroadsFactionId = "sol" | "luna" | "terra"
+
+export type CachedCrossroadsEntrant = {
+  entrantId: ParticipantId
+  factionId: CrossroadsFactionId
+  displayName: "Sol" | "Luna" | "Terra"
+  glyph: "△" | "○" | "□"
+  color: "#fbbf24" | "#a78bfa" | "#34d399"
+  policyId: "crossroads-conquest-demo-v1"
+}
+
+export type CachedCrossroadsPlacement = {
+  placement: 1 | 2 | 3
+  entrantId: ParticipantId
+  factionId: CrossroadsFactionId
+  displayName: "Sol" | "Luna" | "Terra"
+}
+
+export type CachedCrossroadsElimination = {
+  order: 1 | 2
+  factionId: "terra" | "sol"
+  eliminatedBy: "sol" | "luna"
+  round: number
+  eventId: string
+}
+
+export type CachedCrossroadsShowcaseView = {
+  showcaseId: "crossroads-conquest-v0"
+  taskId: "crossroads-conquest-v0"
+  title: string
+  tagline: string
+  status: "ready"
+  cached: true
+  verified: true
+  entrants: CachedCrossroadsEntrant[]
+  winner: { entrantId: "participant_1"; factionId: "luna"; displayName: "Luna" }
+  placements: CachedCrossroadsPlacement[]
+  eliminationOrder: CachedCrossroadsElimination[]
+  timeline: Array<{
+    beatId: string
+    atSeconds: number
+    round: number
+    frameIndex: number
+    eventId: string
+    kind: string
+    editorial: boolean
+    label: string
+  }>
+  video: CachedRtsShowcaseView["video"]
+  authority: {
+    protocol: string
+    seed: 424242
+    policyId: "crossroads-conquest-demo-v1"
+    mapId: "tri_13_v1"
+    rulesId: "arena-v0.4"
+  }
+}
+
+export type CachedCrossroadsEvaluationView = {
+  showcaseId: "crossroads-conquest-v0"
+  taskId: "crossroads-conquest-v0"
+  scope: "crossroads_conquest"
+  outcome: {
+    winner: CachedCrossroadsShowcaseView["winner"]
+    placements: CachedCrossroadsPlacement[]
+    eliminationOrder: CachedCrossroadsElimination[]
+  }
+  verification: {
+    state: "verified"
+    deterministic: true
+    deterministicRuns: 2
+    orderRejections: 0
+    lunaFirstHostileRound: number
+    manifestSha256: string
+    replaySha256: string
+    evaluationSha256: string
+    videoSha256: string
+    normalizedTraceSha256: string
+    finalStateSha256: string
+  }
+  factions: Array<{
+    factionId: CrossroadsFactionId
+    placement: number
+    coreHp: number
+    eliminatedRound: number | null
+    eliminatedBy: CrossroadsFactionId | null
+    strongholdsDestroyed: number
+  }>
+}
+
 async function checked<T>(response: Response): Promise<T> {
   if (!response.ok)
     throw new Error(`Episode service returned ${response.status}`)
@@ -873,6 +963,22 @@ export async function getCachedMazeEvaluation(): Promise<CachedMazeEvaluationVie
 
 export function cachedMazeVideoUrl(): string {
   return "/api/embodiment/showcases/trio-maze-race-v0/video"
+}
+
+export async function getCachedCrossroadsShowcase(): Promise<CachedCrossroadsShowcaseView> {
+  return parseCachedCrossroadsShowcase(await checked<unknown>(
+    await fetch("/api/embodiment/showcases/crossroads-conquest-v0", { cache: "force-cache" })
+  ))
+}
+
+export async function getCachedCrossroadsEvaluation(): Promise<CachedCrossroadsEvaluationView> {
+  return parseCachedCrossroadsEvaluation(await checked<unknown>(
+    await fetch("/api/embodiment/showcases/crossroads-conquest-v0/evaluation", { cache: "force-cache" })
+  ))
+}
+
+export function cachedCrossroadsVideoUrl(): string {
+  return "/api/embodiment/showcases/crossroads-conquest-v0/video"
 }
 
 async function getSeries(seriesId: string): Promise<EpisodeView> {
@@ -1711,6 +1817,228 @@ function parseCachedMazeEvaluation(raw: unknown): CachedMazeEvaluationView {
   }
 }
 
+function parseCachedCrossroadsShowcase(raw: unknown): CachedCrossroadsShowcaseView {
+  const value = objectValue(raw, "Cached Crossroads showcase")
+  const video = objectValue(value.video, "Cached Crossroads video")
+  const authority = objectValue(value.authority, "Cached Crossroads authority")
+  const title = safePublicText(value.title, 180)
+  const tagline = safePublicText(value.tagline, 240)
+  if (
+    value.showcase_id !== "crossroads-conquest-v0" || value.task_id !== "crossroads-conquest-v0" ||
+    value.status !== "ready" || value.cached !== true || value.verified !== true ||
+    !title || !tagline || !Array.isArray(value.entrants) || value.entrants.length !== 3 ||
+    !Array.isArray(value.timeline) || value.timeline.length !== 17 ||
+    video.duration_seconds !== 180 || video.fps !== 30 || video.width !== 1920 ||
+    video.height !== 1080 || video.mime_type !== "video/mp4" || !sha256Value(video.sha256) ||
+    authority.protocol !== "world-arena/0.4" || authority.seed !== 424242 ||
+    authority.policy_id !== "crossroads-conquest-demo-v1" || authority.map_id !== "tri_13_v1" ||
+    authority.rules_id !== "arena-v0.4"
+  ) throw new Error("Cached Crossroads showcase is invalid")
+
+  const expectedEntrants = [
+    ["participant_0", "sol", "Sol", "△", "#fbbf24"],
+    ["participant_1", "luna", "Luna", "○", "#a78bfa"],
+    ["participant_2", "terra", "Terra", "□", "#34d399"],
+  ] as const
+  const entrants = value.entrants.map((child, index) => {
+    const item = objectValue(child, "Cached Crossroads entrant")
+    const expected = expectedEntrants[index]
+    if (
+      item.entrant_id !== expected[0] || item.faction_id !== expected[1] ||
+      item.display_name !== expected[2] || item.glyph !== expected[3] ||
+      item.color !== expected[4] || item.policy_id !== "crossroads-conquest-demo-v1"
+    ) throw new Error("Cached Crossroads showcase is invalid")
+    return {
+      entrantId: expected[0], factionId: expected[1], displayName: expected[2],
+      glyph: expected[3], color: expected[4], policyId: "crossroads-conquest-demo-v1" as const,
+    }
+  })
+  const winner = parseCrossroadsWinner(value.winner)
+  const placements = parseCrossroadsPlacements(value.placements)
+  const eliminationOrder = parseCrossroadsEliminations(value.elimination_order)
+  const timelineWindows = [
+    ["opening_reveal", 0, 12, true], ["sol_introduction", 12, 19, true],
+    ["terra_introduction", 19, 26, true], ["luna_introduction", 26, 33, true],
+    ["terra_claims_crossroads", 33, 44, false], ["sol_prepares_assault", 44, 55, false],
+    ["luna_observes", 55, 65, false], ["crossroads_clash", 65, 78, false],
+    ["sol_takes_crossroads", 78, 90, false], ["two_front_march", 90, 102, false],
+    ["terra_counterpunch", 102, 114, false], ["sol_breaches_terra", 114, 126, false],
+    ["terra_eliminated", 126, 137, false], ["exposed_sol_overview", 137, 146, false],
+    ["luna_strikes", 146, 158, false], ["sol_eliminated", 158, 169, false],
+    ["verified_result", 169, 180, false],
+  ] as const
+  let previousSecond = -1
+  const timeline = value.timeline.map((child, index) => {
+    const item = objectValue(child, "Cached Crossroads timeline event")
+    const [expectedBeatId, windowStart, windowEnd, expectedEditorial] = timelineWindows[index]
+    const beatId = safePublicText(item.beat_id, 80)
+    const atSeconds = publicNonNegativeNumber(item.at_seconds)
+    const round = publicNonNegativeInteger(item.round)
+    const frameIndex = publicNonNegativeInteger(item.frame_index)
+    const eventId = item.event_id === "" ? "" : safePublicText(item.event_id, 80)
+    const kind = safePublicText(item.kind, 48)
+    const label = safePublicText(item.label, 240)
+    if (
+      beatId !== expectedBeatId || eventId === null || atSeconds === null || atSeconds < windowStart ||
+      atSeconds >= windowEnd || atSeconds < previousSecond || round === null || round > 29 ||
+      frameIndex === null || !kind || !label || item.editorial !== expectedEditorial ||
+      (expectedEditorial ? eventId !== "" : !eventId)
+    ) throw new Error("Cached Crossroads showcase is invalid")
+    previousSecond = atSeconds
+    return { beatId, atSeconds, round, frameIndex, eventId, kind, editorial: expectedEditorial, label }
+  })
+  return {
+    showcaseId: "crossroads-conquest-v0",
+    taskId: "crossroads-conquest-v0",
+    title,
+    tagline,
+    status: "ready",
+    cached: true,
+    verified: true,
+    entrants,
+    winner,
+    placements,
+    eliminationOrder,
+    timeline,
+    video: {
+      durationSeconds: 180,
+      fps: 30,
+      height: 1080,
+      mimeType: "video/mp4",
+      sha256: video.sha256 as string,
+      width: 1920,
+    },
+    authority: {
+      protocol: "world-arena/0.4",
+      seed: 424242,
+      policyId: "crossroads-conquest-demo-v1",
+      mapId: "tri_13_v1",
+      rulesId: "arena-v0.4",
+    },
+  }
+}
+
+function parseCachedCrossroadsEvaluation(raw: unknown): CachedCrossroadsEvaluationView {
+  const value = objectValue(raw, "Cached Crossroads evaluation")
+  const outcome = objectValue(value.outcome, "Cached Crossroads outcome")
+  const verification = objectValue(value.verification, "Cached Crossroads verification")
+  if (
+    value.showcase_id !== "crossroads-conquest-v0" || value.task_id !== "crossroads-conquest-v0" ||
+    value.scope !== "crossroads_conquest" || !Array.isArray(value.factions) ||
+    value.factions.length !== 3 || verification.state !== "verified" ||
+    verification.deterministic !== true || verification.deterministic_runs !== 2 ||
+    verification.order_rejections !== 0
+  ) throw new Error("Cached Crossroads evaluation is invalid")
+  const lunaFirstHostileRound = publicNonNegativeInteger(verification.luna_first_hostile_round)
+  const hashKeys = [
+    "manifest_sha256", "replay_sha256", "evaluation_sha256", "video_sha256",
+    "normalized_trace_sha256", "final_state_sha256",
+  ] as const
+  if (lunaFirstHostileRound === null || hashKeys.some((key) => !sha256Value(verification[key])))
+    throw new Error("Cached Crossroads evaluation is invalid")
+  const winner = parseCrossroadsWinner(outcome.winner)
+  const placements = parseCrossroadsPlacements(outcome.placements)
+  const eliminationOrder = parseCrossroadsEliminations(outcome.elimination_order)
+  if (lunaFirstHostileRound !== eliminationOrder[0].round + 1)
+    throw new Error("Cached Crossroads evaluation is invalid")
+  const factions = value.factions.map((child) => {
+    const item = objectValue(child, "Cached Crossroads faction evaluation")
+    const factionId = crossroadsFactionIdValue(item.faction_id)
+    const placement = publicPositiveInteger(item.placement)
+    const coreHp = publicNonNegativeInteger(item.core_hp)
+    const eliminatedRound = item.eliminated_round === null
+      ? null
+      : publicNonNegativeInteger(item.eliminated_round)
+    const eliminatedBy = item.eliminated_by === null
+      ? null
+      : crossroadsFactionIdValue(item.eliminated_by)
+    const strongholdsDestroyed = publicNonNegativeInteger(item.strongholds_destroyed)
+    if (
+      !factionId || !placement || coreHp === null ||
+      (item.eliminated_round !== null && eliminatedRound === null) ||
+      (item.eliminated_by !== null && eliminatedBy === null) || strongholdsDestroyed === null
+    ) throw new Error("Cached Crossroads evaluation is invalid")
+    return { factionId, placement, coreHp, eliminatedRound, eliminatedBy, strongholdsDestroyed }
+  })
+  const byFaction = new Map(factions.map((faction) => [faction.factionId, faction]))
+  if (
+    byFaction.size !== 3 || byFaction.get("luna")?.placement !== 1 ||
+    byFaction.get("sol")?.placement !== 2 || byFaction.get("terra")?.placement !== 3
+  ) throw new Error("Cached Crossroads evaluation is invalid")
+  return {
+    showcaseId: "crossroads-conquest-v0",
+    taskId: "crossroads-conquest-v0",
+    scope: "crossroads_conquest",
+    outcome: { winner, placements, eliminationOrder },
+    verification: {
+      state: "verified",
+      deterministic: true,
+      deterministicRuns: 2,
+      orderRejections: 0,
+      lunaFirstHostileRound,
+      manifestSha256: verification.manifest_sha256 as string,
+      replaySha256: verification.replay_sha256 as string,
+      evaluationSha256: verification.evaluation_sha256 as string,
+      videoSha256: verification.video_sha256 as string,
+      normalizedTraceSha256: verification.normalized_trace_sha256 as string,
+      finalStateSha256: verification.final_state_sha256 as string,
+    },
+    factions,
+  }
+}
+
+function parseCrossroadsWinner(raw: unknown): CachedCrossroadsShowcaseView["winner"] {
+  const value = objectValue(raw, "Cached Crossroads winner")
+  if (
+    value.entrant_id !== "participant_1" || value.faction_id !== "luna" ||
+    value.display_name !== "Luna"
+  ) throw new Error("Cached Crossroads outcome is invalid")
+  return { entrantId: "participant_1", factionId: "luna", displayName: "Luna" }
+}
+
+function parseCrossroadsPlacements(raw: unknown): CachedCrossroadsPlacement[] {
+  if (!Array.isArray(raw) || raw.length !== 3)
+    throw new Error("Cached Crossroads placements are invalid")
+  const expected = [
+    [1, "participant_1", "luna", "Luna"],
+    [2, "participant_0", "sol", "Sol"],
+    [3, "participant_2", "terra", "Terra"],
+  ] as const
+  return raw.map((child, index) => {
+    const item = objectValue(child, "Cached Crossroads placement")
+    const target = expected[index]
+    if (
+      item.placement !== target[0] || item.entrant_id !== target[1] ||
+      item.faction_id !== target[2] || item.display_name !== target[3]
+    ) throw new Error("Cached Crossroads placements are invalid")
+    return {
+      placement: target[0], entrantId: target[1], factionId: target[2], displayName: target[3],
+    }
+  })
+}
+
+function parseCrossroadsEliminations(raw: unknown): CachedCrossroadsElimination[] {
+  if (!Array.isArray(raw) || raw.length !== 2)
+    throw new Error("Cached Crossroads elimination order is invalid")
+  const expected = [[1, "terra", "sol"], [2, "sol", "luna"]] as const
+  const values = raw.map((child, index) => {
+    const item = objectValue(child, "Cached Crossroads elimination")
+    const target = expected[index]
+    const round = publicPositiveInteger(item.round)
+    const eventId = safePublicText(item.event_id, 80)
+    if (
+      item.order !== target[0] || item.faction_id !== target[1] ||
+      item.eliminated_by !== target[2] || !round || round > 29 || !eventId
+    ) throw new Error("Cached Crossroads elimination order is invalid")
+    return {
+      order: target[0], factionId: target[1], eliminatedBy: target[2], round, eventId,
+    }
+  })
+  if (values[0].round >= values[1].round)
+    throw new Error("Cached Crossroads elimination order is invalid")
+  return values
+}
+
 function parseCachedRtsCompletion(raw: unknown): CachedRtsShowcaseView["completion"] {
   const completion = objectValue(raw, "Cached RTS completion")
   const outcome = safePublicText(completion.outcome, 40)
@@ -1731,6 +2059,10 @@ function participantIdValue(value: unknown): ParticipantId | null {
     : null
 }
 
+function crossroadsFactionIdValue(value: unknown): CrossroadsFactionId | null {
+  return value === "sol" || value === "luna" || value === "terra" ? value : null
+}
+
 function boundedDisplayText(value: unknown, maxLength: number): string | null {
   return typeof value === "string" && value.length > 0 && value.length <= maxLength && !value.includes("\u0000")
     ? value
@@ -1743,6 +2075,10 @@ function sha256Value(value: unknown): value is string {
 
 function publicNonNegativeInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null
+}
+
+function publicNonNegativeNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null
 }
 
 function publicPositiveInteger(value: unknown): number | null {

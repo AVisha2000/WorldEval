@@ -36,6 +36,7 @@ type Props = {
   onTeamQuickStart: () => void
   onRtsQuickStart: () => void
   onMazeQuickStart: () => void
+  onCrossroadsQuickStart: () => void
 }
 const tasks = [
   ["orientation-v0", "Stage A Orientation"],
@@ -71,7 +72,13 @@ const labyrinthEntrants = [
   { name: "Luna", model: "demo-luna-v1", tone: "luna" },
 ] as const
 
-type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onMazeQuickStart"> & {
+const crossroadsEntrants = [
+  { name: "Sol", glyph: "△", tone: "sol" },
+  { name: "Luna", glyph: "○", tone: "luna" },
+  { name: "Terra", glyph: "□", tone: "terra" },
+] as const
+
+type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onMazeQuickStart" | "onCrossroadsQuickStart"> & {
   mode: EpisodeSetup["mode"]
   onSelectMode: (mode: EpisodeSetup["mode"]) => void
 }
@@ -79,6 +86,7 @@ type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickSta
 function DemoLibrary({
   mode,
   pending,
+  onCrossroadsQuickStart,
   onMazeQuickStart,
   onQuickStart,
   onRtsQuickStart,
@@ -122,6 +130,24 @@ function DemoLibrary({
         </Button>
       </article>
 
+      <article className="saved-demo saved-demo--crossroads">
+        <div className="saved-demo-path"><ArchiveIcon /><code>/saves/crossroads-conquest.mp4</code></div>
+        <h3>Crossroads Conquest</h3>
+        <p>Three strongholds. One crossroads. Last faction standing.</p>
+        <div className="saved-demo-entrants" aria-label="Crossroads Conquest factions">
+          {crossroadsEntrants.map((entrant) => (
+            <span className={`saved-demo-entrant saved-demo-entrant--${entrant.tone}`} key={entrant.name}>
+              <i aria-hidden="true" />
+              <b>{entrant.glyph} {entrant.name}</b>
+              <small>crossroads-conquest-demo-v1</small>
+            </span>
+          ))}
+        </div>
+        <Button type="button" size="lg" disabled={pending} onClick={onCrossroadsQuickStart} className="saved-demo-action saved-demo-action--crossroads">
+          <PlayIcon data-icon="inline-start" />Run Crossroads Conquest
+        </Button>
+      </article>
+
       <div className="demo-file-browser" aria-label="Configurable deterministic demos">
         <div className="demo-file-browser-heading"><FolderOpenIcon /><code>/demos/</code><span>No key</span></div>
         <button type="button" aria-pressed={mode === "solo"} onClick={() => onSelectMode("solo")}>
@@ -142,7 +168,7 @@ function DemoLibrary({
   )
 }
 
-export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onMazeQuickStart }: Props) {
+export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onMazeQuickStart, onCrossroadsQuickStart }: Props) {
   const isScriptedDemo = setup.controllerMode === "scripted_demo"
   const selectScriptedDemo = () => onChange({
     ...setup,
@@ -210,6 +236,7 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
       {isScriptedDemo ? <DemoLibrary
         mode={setup.mode}
         pending={pending}
+        onCrossroadsQuickStart={onCrossroadsQuickStart}
         onMazeQuickStart={onMazeQuickStart}
         onQuickStart={onQuickStart}
         onRtsQuickStart={onRtsQuickStart}

@@ -9,7 +9,8 @@ const REPLAY_SCHEMA := "worldarena/crossroads-conquest-replay/1"
 const SHOWCASE_ID := "crossroads-conquest-v0"
 const POLICY_ID := "crossroads-conquest-demo-v1"
 const MAP_ID := "tri_13_v1"
-const PROTOCOL := "arena-v0.4"
+const PROTOCOL := "world-arena/0.4"
+const RULES_ID := "arena-v0.4"
 const SEED := 424242
 const DURATION_SECONDS := 180.0
 const CAPTURE_FPS := 30
@@ -163,7 +164,8 @@ func _validate_replay_shape(replay: Dictionary) -> String:
 		return "crossroads_replay_schema_invalid"
 	if replay.get("showcase_id") != SHOWCASE_ID:
 		return "crossroads_replay_showcase_invalid"
-	if replay.get("protocol") != PROTOCOL or replay.get("map_id") != MAP_ID:
+	if replay.get("protocol") != PROTOCOL or replay.get("map_id") != MAP_ID \
+			or replay.get("rules_id") != RULES_ID:
 		return "crossroads_replay_authority_binding_invalid"
 	if typeof(replay.get("seed")) != TYPE_INT or int(replay.seed) != SEED:
 		return "crossroads_replay_seed_invalid"
@@ -235,7 +237,7 @@ func _index_public_events() -> String:
 			if _events_by_id.has(event_id) and _events_by_id[event_id] != event:
 				return "crossroads_replay_event_mismatch"
 			_events_by_id[event_id] = event.duplicate(true)
-		_event_frame_by_id[event_id] = frame_index
+			_event_frame_by_id[event_id] = frame_index
 	for event_id: String in _events_by_id:
 		if not _event_frame_by_id.has(event_id):
 			return "crossroads_replay_event_unframed"

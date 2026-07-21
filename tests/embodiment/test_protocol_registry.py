@@ -11,7 +11,7 @@ from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistr
 ROOT = Path(__file__).resolve().parents[2]
 V1_SHA256 = "ddfc8998dfe33c0bb68aff31f78118a227792f4d568bd438d732c3d3abe0c34d"
 V2_SHA256 = "edbd41865f3ed7186b02f6d370dd6e655910bcfebe66c330bafa42d5e533fff5"
-V3_SHA256 = "4b39a9fb9c7dd056092131dfa18c93e1174ef16bc6ec45f443917de731387f08"
+V3_SHA256 = "49435d7099c6a28a45f1e08dd8640a4f5e786c6dc2fed8bf4eede862c6da984a"
 
 
 @pytest.fixture(scope="module")

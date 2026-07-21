@@ -98,6 +98,83 @@ const cachedMazeEvaluation = {
   },
 }
 
+const crossroadsPlacements = [
+  { placement: 1, entrant_id: "participant_1", faction_id: "luna", display_name: "Luna" },
+  { placement: 2, entrant_id: "participant_0", faction_id: "sol", display_name: "Sol" },
+  { placement: 3, entrant_id: "participant_2", faction_id: "terra", display_name: "Terra" },
+]
+
+const crossroadsEliminations = [
+  { order: 1, faction_id: "terra", eliminated_by: "sol", round: 25, event_id: "terra_eliminated" },
+  { order: 2, faction_id: "sol", eliminated_by: "luna", round: 29, event_id: "sol_eliminated" },
+]
+
+const crossroadsBeatIds = [
+  "opening_reveal", "sol_introduction", "terra_introduction", "luna_introduction",
+  "terra_claims_crossroads", "sol_prepares_assault", "luna_observes", "crossroads_clash",
+  "sol_takes_crossroads", "two_front_march", "terra_counterpunch", "sol_breaches_terra",
+  "terra_eliminated", "exposed_sol_overview", "luna_strikes", "sol_eliminated",
+  "verified_result",
+]
+
+const crossroadsEventIds = [
+  "", "", "", "", "event_4", "event_5", "event_6", "event_7", "event_8", "event_9",
+  "event_10", "event_11", "terra_falls", "terra_falls", "event_14", "sol_falls", "sol_falls",
+]
+
+const cachedCrossroadsShowcase = {
+  showcase_id: "crossroads-conquest-v0",
+  task_id: "crossroads-conquest-v0",
+  title: "WorldArena: Crossroads Conquest",
+  tagline: "Three strongholds. One crossroads. Last faction standing.",
+  status: "ready", cached: true, verified: true,
+  entrants: [
+    { entrant_id: "participant_0", faction_id: "sol", display_name: "Sol", glyph: "△", color: "#fbbf24", policy_id: "crossroads-conquest-demo-v1" },
+    { entrant_id: "participant_1", faction_id: "luna", display_name: "Luna", glyph: "○", color: "#a78bfa", policy_id: "crossroads-conquest-demo-v1" },
+    { entrant_id: "participant_2", faction_id: "terra", display_name: "Terra", glyph: "□", color: "#34d399", policy_id: "crossroads-conquest-demo-v1" },
+  ],
+  winner: { entrant_id: "participant_1", faction_id: "luna", display_name: "Luna" },
+  placements: crossroadsPlacements,
+  elimination_order: crossroadsEliminations,
+  timeline: [
+    [0, 0, "Map reveal"], [12, 1, "Sol prepares siege"], [19, 1, "Terra eyes the center"],
+    [26, 1, "Luna scouts"], [33, 10, "Terra claims the center"], [44, 11, "Sol prepares its assault"],
+    [55, 12, "Luna holds fire"], [65, 16, "The Crossroads clash begins"],
+    [78, 20, "Sol takes the center"], [90, 22, "Two fronts open"],
+    [102, 24, "Terra's counterpunch lands"], [114, 25, "Sol breaches Terra"],
+    [126, 25, "Terra eliminated"], [137, 26, "Luna stages west"],
+    [146, 27, "Luna strikes"], [158, 29, "Sol eliminated"], [169, 29, "Luna wins"],
+  ].map(([at_seconds, round, label], index) => ({
+    beat_id: crossroadsBeatIds[index], at_seconds, round,
+    frame_index: Math.max(0, index - 3), event_id: crossroadsEventIds[index],
+    kind: index < 4 ? "editorial" : "authority_event", editorial: index < 4, label,
+  })),
+  video: { duration_seconds: 180, fps: 30, height: 1080, mime_type: "video/mp4", sha256: "7".repeat(64), width: 1920 },
+  authority: { protocol: "world-arena/0.4", seed: 424242, policy_id: "crossroads-conquest-demo-v1", map_id: "tri_13_v1", rules_id: "arena-v0.4" },
+}
+
+const cachedCrossroadsEvaluation = {
+  showcase_id: "crossroads-conquest-v0", task_id: "crossroads-conquest-v0",
+  scope: "crossroads_conquest",
+  outcome: {
+    winner: cachedCrossroadsShowcase.winner,
+    placements: crossroadsPlacements,
+    elimination_order: crossroadsEliminations,
+  },
+  verification: {
+    state: "verified", deterministic: true, deterministic_runs: 2, order_rejections: 0,
+    luna_first_hostile_round: 26, manifest_sha256: "8".repeat(64),
+    replay_sha256: "9".repeat(64), evaluation_sha256: "a".repeat(64),
+    video_sha256: "7".repeat(64), normalized_trace_sha256: "b".repeat(64),
+    final_state_sha256: "c".repeat(64),
+  },
+  factions: [
+    { faction_id: "sol", placement: 2, core_hp: 0, eliminated_round: 29, eliminated_by: "luna", strongholds_destroyed: 1 },
+    { faction_id: "luna", placement: 1, core_hp: 1000, eliminated_round: null, eliminated_by: null, strongholds_destroyed: 1 },
+    { faction_id: "terra", placement: 3, core_hp: 0, eliminated_round: 25, eliminated_by: "sol", strongholds_destroyed: 0 },
+  ],
+}
+
 function lifecycleFetch() {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
@@ -105,6 +182,8 @@ function lifecycleFetch() {
     if (url.endsWith("/showcases/rts-skirmish-v0")) return response(cachedRtsShowcase)
     if (url.endsWith("/showcases/trio-maze-race-v0/evaluation")) return response(cachedMazeEvaluation)
     if (url.endsWith("/showcases/trio-maze-race-v0")) return response(cachedMazeShowcase)
+    if (url.endsWith("/showcases/crossroads-conquest-v0/evaluation")) return response(cachedCrossroadsEvaluation)
+    if (url.endsWith("/showcases/crossroads-conquest-v0")) return response(cachedCrossroadsShowcase)
     if (url.endsWith("/frame")) {
       return new Response(null, { status: 204, headers: { "X-Frame-State": "finished" } })
     }
@@ -271,6 +350,48 @@ describe("Controller dashboard", () => {
     expect(screen.getByText("93.75%")).toBeInTheDocument()
     await user.click(screen.getByRole("tab", { name: "Replay" }))
     expect(await screen.findByText(/Python package and Godot authority agree/)).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
+  })
+  it("opens Crossroads Conquest as the third cached highlight and lazy-loads its evaluation", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Run Crossroads Conquest" }))
+    expect(await screen.findByRole("heading", { name: "WorldArena: Crossroads Conquest" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Cached Crossroads Conquest showcase").querySelector("video"))
+      .toHaveAttribute("src", "/api/embodiment/showcases/crossroads-conquest-v0/video")
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      "/api/embodiment/showcases/crossroads-conquest-v0", { cache: "force-cache" }
+    ))
+    const evaluationRequests = () => fetch.mock.calls.filter(([url]) =>
+      String(url).endsWith("/showcases/crossroads-conquest-v0/evaluation")
+    )
+    expect(evaluationRequests()).toHaveLength(0)
+
+    await user.click(screen.getByRole("tab", { name: "Timeline" }))
+    expect(await screen.findByText("Broadcast timeline")).toBeInTheDocument()
+    expect(screen.getByText("Terra claims the center")).toBeInTheDocument()
+    expect(evaluationRequests()).toHaveLength(0)
+
+    await user.click(screen.getByRole("tab", { name: "Result" }))
+    expect(screen.getByText("Luna wins")).toBeInTheDocument()
+    expect(screen.getByText("Sol eliminated Terra · Luna eliminated Sol")).toBeInTheDocument()
+    expect(screen.getByText("Round 25")).toBeInTheDocument()
+    expect(evaluationRequests()).toHaveLength(0)
+
+    await user.click(screen.getByRole("tab", { name: "Evaluation" }))
+    expect(await screen.findByText("Authority-derived evaluation")).toBeInTheDocument()
+    expect(await screen.findByText("identical authority runs")).toBeInTheDocument()
+    expect(screen.getByText("rejected orders")).toBeInTheDocument()
+    expect(evaluationRequests()).toHaveLength(1)
+
+    await user.click(screen.getByRole("tab", { name: "Replay" }))
+    expect(await screen.findByText("Immutable replay identity")).toBeInTheDocument()
+    expect(screen.getAllByText("crossroads-conquest-demo-v1")).toHaveLength(4)
+    expect(evaluationRequests()).toHaveLength(1)
+    expect(fetch.mock.calls.some(([url]) => String(url).includes(".replay.json"))).toBe(false)
     expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
   })
   it("launches the keyless scripted 1v1 with exactly two Demo policies", async () => {

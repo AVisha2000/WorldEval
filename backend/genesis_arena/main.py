@@ -20,6 +20,7 @@ from .config import REPOSITORY_ROOT, Settings
 from .duel.api import router as duel_router
 from .duel.match_service import default_duel_match_service
 from .embodiment.api import router as embodiment_router
+from .embodiment.crossroads_conquest import CachedCrossroadsShowcase, CrossroadsShowcaseError
 from .embodiment.dashboard import mount_built_dashboard
 from .embodiment.duel.live_runtime import default_duel_series_service
 from .embodiment.labyrinth_run import CachedLabyrinthRun
@@ -57,6 +58,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Starting a dashboard session therefore never spends time or resources re-running the demo.
     app.state.embodiment_rts_showcase = CachedRtsShowcase.load(REPOSITORY_ROOT)
     app.state.embodiment_labyrinth_showcase = CachedLabyrinthRun.load(REPOSITORY_ROOT)
+    try:
+        app.state.embodiment_crossroads_showcase = CachedCrossroadsShowcase.load(REPOSITORY_ROOT)
+    except CrossroadsShowcaseError:
+        # Crossroads is an optional future showcase. Its absent cache must never prevent the
+        # checked-in Mini RTS golden path or the rest of the local dashboard from starting.
+        app.state.embodiment_crossroads_showcase = None
     app.state.embodiment_episodes = default_episode_service(
         repository_root=REPOSITORY_ROOT,
         godot_executable=settings.godot_executable,

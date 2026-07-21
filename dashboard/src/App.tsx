@@ -9,6 +9,8 @@ import type {
   EpisodeSetup,
 } from "@/api"
 import {
+  getCachedCrossroadsEvaluation,
+  getCachedCrossroadsShowcase,
   cachedMazeVideoUrl,
   cachedRtsVideoUrl,
   cancelRun,
@@ -21,6 +23,7 @@ import {
   getEpisodeTimeline,
 } from "@/api"
 import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
+import { CrossroadsWorkspace } from "@/components/crossroads-workspace"
 import { EpisodeWorkspace } from "@/components/episode-workspace"
 import { SetupPanel } from "@/components/setup-panel"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -258,7 +261,7 @@ export function App() {
   const [setup, setSetup] = useState(INITIAL_SETUP)
   const submittedSetup = useRef<EpisodeSetup | null>(null)
   const [episodeId, setEpisodeId] = useState<string | null>(null)
-  const [showcase, setShowcase] = useState<"rts" | "maze" | null>(null)
+  const [showcase, setShowcase] = useState<"rts" | "maze" | "crossroads" | null>(null)
   const [selected, setSelected] = useState(0)
   const [view, setView] = useState("run")
   const create = useMutation({
@@ -337,6 +340,20 @@ export function App() {
     staleTime: 60 * 60 * 1000,
     retry: false,
   })
+  const cachedCrossroadsShowcase = useQuery({
+    queryKey: ["cached-crossroads-showcase"],
+    queryFn: getCachedCrossroadsShowcase,
+    enabled: showcase === "crossroads",
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  })
+  const cachedCrossroadsEvaluation = useQuery({
+    queryKey: ["cached-crossroads-evaluation"],
+    queryFn: getCachedCrossroadsEvaluation,
+    enabled: showcase === "crossroads" && (view === "evaluation" || view === "replay"),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  })
   const statusEpisode = status.data ?? create.data
   const episode = statusEpisode && timeline.data !== undefined
     ? { ...statusEpisode, timeline: timeline.data }
@@ -384,6 +401,11 @@ export function App() {
             setEpisodeId(null)
             setView("run")
           }}
+          onCrossroadsQuickStart={() => {
+            setShowcase("crossroads")
+            setEpisodeId(null)
+            setView("run")
+          }}
         />
         {showcase === "rts" ? (
           <CachedRtsWorkspace
@@ -399,6 +421,14 @@ export function App() {
             evaluationError={cachedMazeEvaluation.isError}
             showcase={cachedMazeShowcase.data}
             showcaseError={cachedMazeShowcase.isError}
+            view={view}
+          />
+        ) : showcase === "crossroads" ? (
+          <CrossroadsWorkspace
+            evaluation={cachedCrossroadsEvaluation.data}
+            evaluationError={cachedCrossroadsEvaluation.isError}
+            showcase={cachedCrossroadsShowcase.data}
+            showcaseError={cachedCrossroadsShowcase.isError}
             view={view}
           />
         ) : (

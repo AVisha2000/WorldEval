@@ -36,6 +36,25 @@ _ENTRANTS = (
     ("participant_1", "luna", "Luna", "○", "#a78bfa"),
     ("participant_2", "terra", "Terra", "□", "#34d399"),
 )
+_TIMELINE_WINDOWS = (
+    ("opening_reveal", 0, 12, True),
+    ("sol_introduction", 12, 19, True),
+    ("terra_introduction", 19, 26, True),
+    ("luna_introduction", 26, 33, True),
+    ("terra_claims_crossroads", 33, 44, False),
+    ("sol_prepares_assault", 44, 55, False),
+    ("luna_observes", 55, 65, False),
+    ("crossroads_clash", 65, 78, False),
+    ("sol_takes_crossroads", 78, 90, False),
+    ("two_front_march", 90, 102, False),
+    ("terra_counterpunch", 102, 114, False),
+    ("sol_breaches_terra", 114, 126, False),
+    ("terra_eliminated", 126, 137, False),
+    ("exposed_sol_overview", 137, 146, False),
+    ("luna_strikes", 146, 158, False),
+    ("sol_eliminated", 158, 169, False),
+    ("verified_result", 169, 180, False),
+)
 
 
 class CrossroadsShowcaseError(RuntimeError):
@@ -70,7 +89,7 @@ class CachedCrossroadsShowcase:
         try:
             replay_bytes = (directory / manifest["replay"]["path"]).read_bytes()
             evaluation_bytes = (directory / manifest["evaluation"]["path"]).read_bytes()
-            video_bytes = video_path.read_bytes()
+            video_size = video_path.stat().st_size
             replay = strict_json_loads(replay_bytes)
             evaluation = strict_json_loads(evaluation_bytes)
         except OSError as error:
@@ -81,13 +100,13 @@ class CachedCrossroadsShowcase:
         hashes = {
             "replay": hashlib.sha256(replay_bytes).hexdigest(),
             "evaluation": hashlib.sha256(evaluation_bytes).hexdigest(),
-            "video": hashlib.sha256(video_bytes).hexdigest(),
+            "video": _sha256_file(video_path),
         }
         if any(hashes[name] != manifest[name]["sha256"] for name in hashes):
             raise CrossroadsShowcaseError("crossroads_showcase_hash_invalid")
-        if len(video_bytes) != manifest["video"]["size_bytes"] or len(video_bytes) > MAX_VIDEO_BYTES:
+        if video_size != manifest["video"]["size_bytes"] or video_size > MAX_VIDEO_BYTES:
             raise CrossroadsShowcaseError("crossroads_showcase_video_invalid")
-        if not _is_fast_start_mp4(video_bytes):
+        if not _is_fast_start_mp4(video_path, video_size):
             raise CrossroadsShowcaseError("crossroads_showcase_video_invalid")
 
         _validate_replay_binding(replay, manifest)
@@ -146,9 +165,7 @@ class CachedCrossroadsShowcase:
             "outcome": {
                 "winner": dict(self.manifest["winner"]),
                 "placements": [dict(value) for value in self.manifest["placements"]],
-                "elimination_order": [
-                    dict(value) for value in self.manifest["elimination_order"]
-                ],
+                "elimination_order": [dict(value) for value in self.manifest["elimination_order"]],
             },
             "verification": {
                 "state": "verified",
@@ -345,47 +362,136 @@ def _validate_video(raw: Any) -> None:
 
 
 def _validate_timeline(raw: Any) -> None:
-    if not isinstance(raw, list) or not 12 <= len(raw) <= 24:
+    if not isinstance(raw, list) or len(raw) != len(_TIMELINE_WINDOWS):
         _invalid_manifest()
-    previous = -1
-    ids: set[str] = set()
-    event_ids: set[str] = set()
-    for raw_item in raw:
+    previous = -1.0
+    for raw_item, expected in zip(raw, _TIMELINE_WINDOWS):
         item = _mapping(raw_item)
-        if not set(item) in (
-            {"at_seconds", "event_id", "id", "label", "round"},
-            {"at_seconds", "event_id", "faction_id", "id", "label", "round"},
-        ):
+        if set(item) != {
+            "at_seconds",
+            "beat_id",
+            "editorial",
+            "event_id",
+            "frame_index",
+            "kind",
+            "label",
+            "round",
+        }:
             _invalid_manifest()
-        timeline_id = item.get("id")
+        expected_id, window_start, window_end, editorial = expected
+        beat_id = item.get("beat_id")
         at_seconds = item.get("at_seconds")
         round_number = item.get("round")
+        frame_index = item.get("frame_index")
         event_id = item.get("event_id")
         if (
-            not _integer(at_seconds)
-            or not 0 <= at_seconds < 180
-            or at_seconds <= previous
+            beat_id != expected_id
+            or not _number(at_seconds)
+            or not window_start <= at_seconds < window_end
+            or at_seconds < previous
             or not _integer(round_number)
             or not 0 <= round_number <= 29
+            or not _integer(frame_index)
+            or frame_index < 0
+            or item.get("editorial") is not editorial
         ):
             _invalid_manifest()
-        _public_text(timeline_id, limit=80)
-        _public_text(event_id, limit=80)
+        if editorial:
+            if event_id != "":
+                _invalid_manifest()
+        else:
+            _public_text(event_id, limit=80)
+        _public_text(item.get("kind"), limit=48)
         _public_text(item.get("label"))
-        if timeline_id in ids or event_id in event_ids:
-            _invalid_manifest()
-        ids.add(timeline_id)
-        event_ids.add(event_id)
         previous = at_seconds
-        if "faction_id" in item and item["faction_id"] not in {"sol", "luna", "terra"}:
-            _invalid_manifest()
 
 
 def _validate_replay_binding(replay: Mapping[str, Any], manifest: Mapping[str, Any]) -> None:
-    if replay.get("task_id") not in (None, SHOWCASE_ID):
+    if set(replay) != {
+        "authority",
+        "duration_seconds",
+        "events",
+        "initial_snapshot",
+        "map_id",
+        "policy",
+        "protocol",
+        "public_timeline",
+        "result",
+        "rounds",
+        "rules_id",
+        "schema",
+        "seed",
+        "showcase_id",
+        "task_id",
+    }:
         raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
-    final_hash = replay.get("final_state_sha256", replay.get("final_state_hash"))
-    if final_hash is not None and final_hash != manifest["authority_bindings"]["final_state_sha256"]:
+    bindings = manifest["authority_bindings"]
+    if (
+        replay.get("schema") != "worldarena/crossroads-conquest-replay/1"
+        or replay.get("showcase_id") != SHOWCASE_ID
+        or replay.get("task_id") != SHOWCASE_ID
+        or replay.get("protocol") != bindings["protocol"]
+        or replay.get("map_id") != bindings["map_id"]
+        or replay.get("rules_id") != bindings["rules_id"]
+        or replay.get("seed") != SEED
+        or replay.get("duration_seconds") != 180
+        or replay.get("public_timeline") != manifest["public_timeline"]
+        or not isinstance(replay.get("initial_snapshot"), dict)
+    ):
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    policy = replay.get("policy")
+    authority = replay.get("authority")
+    if (
+        not isinstance(policy, dict)
+        or set(policy) != {"id", "sha256"}
+        or policy.get("id") != POLICY_ID
+        or policy.get("sha256") != bindings["policy_sha256"]
+        or not isinstance(authority, dict)
+        or set(authority) != {"completed_rounds", "final_state_sha256", "normalized_trace_sha256"}
+        or authority.get("completed_rounds") != 29
+        or authority.get("normalized_trace_sha256") != bindings["normalized_trace_sha256"]
+        or authority.get("final_state_sha256") != bindings["final_state_sha256"]
+    ):
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    rounds = replay.get("rounds")
+    if not isinstance(rounds, list) or len(rounds) != authority["completed_rounds"]:
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    for expected_round, raw_round in enumerate(rounds, start=1):
+        if not isinstance(raw_round, dict) or raw_round.get("round") != expected_round:
+            raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+        plans = raw_round.get("plans")
+        if (
+            not isinstance(plans, dict)
+            or set(plans) != {"luna", "sol", "terra"}
+            or any(not isinstance(plans[faction], list) for faction in plans)
+            or not isinstance(raw_round.get("frames"), list)
+        ):
+            raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    events = replay.get("events")
+    if (
+        not isinstance(events, list)
+        or not events
+        or any(not isinstance(item, dict) for item in events)
+    ):
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    event_ids = {item.get("event_id", item.get("id")) for item in events}
+    if any(
+        item["event_id"] and item["event_id"] not in event_ids
+        for item in manifest["public_timeline"]
+    ):
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    result = replay.get("result")
+    if not isinstance(result, dict) or result.get("winner") != "luna":
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    result_placements = result.get("placements")
+    if not isinstance(result_placements, list) or [
+        item.get("faction_id") if isinstance(item, dict) else item for item in result_placements
+    ] != ["luna", "sol", "terra"]:
+        raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
+    result_eliminations = result.get("elimination_order")
+    if not isinstance(result_eliminations, list) or [
+        item.get("faction_id") if isinstance(item, dict) else item for item in result_eliminations
+    ] != ["terra", "sol"]:
         raise CrossroadsShowcaseError("crossroads_showcase_replay_invalid")
 
 
@@ -409,8 +515,7 @@ def _validate_evaluation(value: Mapping[str, Any], manifest: Mapping[str, Any]) 
         derived.get("replay_sha256") != manifest["replay"]["sha256"]
         or derived.get("normalized_trace_sha256")
         != manifest["authority_bindings"]["normalized_trace_sha256"]
-        or derived.get("final_state_sha256")
-        != manifest["authority_bindings"]["final_state_sha256"]
+        or derived.get("final_state_sha256") != manifest["authority_bindings"]["final_state_sha256"]
     ):
         raise CrossroadsShowcaseError("crossroads_showcase_evaluation_invalid")
     outcome = _mapping_evaluation(value.get("outcome"))
@@ -427,8 +532,7 @@ def _validate_evaluation(value: Mapping[str, Any], manifest: Mapping[str, Any]) 
     if (
         verification["deterministic_runs"] != 2
         or verification["order_rejections"] != 0
-        or verification["luna_first_hostile_round"]
-        != manifest["elimination_order"][0]["round"] + 1
+        or verification["luna_first_hostile_round"] != manifest["elimination_order"][0]["round"] + 1
     ):
         raise CrossroadsShowcaseError("crossroads_showcase_evaluation_invalid")
     factions = value.get("factions")
@@ -522,30 +626,49 @@ def _integer(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _is_fast_start_mp4(value: bytes) -> bool:
+def _number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _is_fast_start_mp4(path: Path, file_size: int) -> bool:
     """Verify an MP4 signature and that its movie atom precedes media data."""
 
-    if len(value) < 24:
+    if file_size < 24:
         return False
     offset = 0
     atom_order: list[bytes] = []
-    while offset + 8 <= len(value) and len(atom_order) < 32:
-        size = int.from_bytes(value[offset : offset + 4], "big")
-        atom_type = value[offset + 4 : offset + 8]
-        header_size = 8
-        if size == 1:
-            if offset + 16 > len(value):
+    with path.open("rb") as stream:
+        while offset + 8 <= file_size and len(atom_order) < 32:
+            stream.seek(offset)
+            header = stream.read(16)
+            if len(header) < 8:
                 return False
-            size = int.from_bytes(value[offset + 8 : offset + 16], "big")
-            header_size = 16
-        elif size == 0:
-            size = len(value) - offset
-        if size < header_size or offset + size > len(value):
-            return False
-        atom_order.append(atom_type)
-        offset += size
-    return b"ftyp" in atom_order and b"moov" in atom_order and (
-        b"mdat" not in atom_order or atom_order.index(b"moov") < atom_order.index(b"mdat")
+            size = int.from_bytes(header[:4], "big")
+            atom_type = header[4:8]
+            header_size = 8
+            if size == 1:
+                if len(header) < 16:
+                    return False
+                size = int.from_bytes(header[8:16], "big")
+                header_size = 16
+            elif size == 0:
+                size = file_size - offset
+            if size < header_size or offset + size > file_size:
+                return False
+            atom_order.append(atom_type)
+            offset += size
+    return (
+        b"ftyp" in atom_order
+        and b"moov" in atom_order
+        and (b"mdat" not in atom_order or atom_order.index(b"moov") < atom_order.index(b"mdat"))
     )
 
 

@@ -17,6 +17,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 
+from .crossroads_conquest import CachedCrossroadsShowcase
 from .demo_scenarios import demo_scenario
 from .duel.service import (
     DuelSeriesEvidenceNotReadyError,
@@ -103,6 +104,13 @@ def _labyrinth_showcase(request: Request) -> CachedLabyrinthRun:
     return showcase
 
 
+def _crossroads_showcase(request: Request) -> CachedCrossroadsShowcase:
+    showcase = getattr(request.app.state, "embodiment_crossroads_showcase", None)
+    if not isinstance(showcase, CachedCrossroadsShowcase):
+        raise HTTPException(status_code=503, detail="Crossroads Conquest showcase is unavailable")
+    return showcase
+
+
 @router.get("/api/embodiment/showcases/rts-skirmish-v0")
 async def get_rts_showcase(request: Request, response: Response) -> Mapping[str, Any]:
     response.headers["Cache-Control"] = "public, max-age=3600"
@@ -149,6 +157,33 @@ async def get_labyrinth_showcase_video(request: Request) -> FileResponse:
         media_type="video/mp4",
         headers={
             "Cache-Control": "public, max-age=3600",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/api/embodiment/showcases/crossroads-conquest-v0")
+async def get_crossroads_showcase(request: Request, response: Response) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600, immutable"
+    return _crossroads_showcase(request).public_view()
+
+
+@router.get("/api/embodiment/showcases/crossroads-conquest-v0/evaluation")
+async def get_crossroads_showcase_evaluation(
+    request: Request, response: Response
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600, immutable"
+    return _crossroads_showcase(request).public_evaluation()
+
+
+@router.get("/api/embodiment/showcases/crossroads-conquest-v0/video")
+async def get_crossroads_showcase_video(request: Request) -> FileResponse:
+    return FileResponse(
+        _crossroads_showcase(request).video_path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "public, max-age=3600, immutable",
             "Content-Security-Policy": "default-src 'none'",
             "X-Content-Type-Options": "nosniff",
         },

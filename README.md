@@ -129,6 +129,17 @@ The repository keeps permanent captures in the
 
 ![Sol's verified Labyrinth Run winner calling card](docs/screenshots/worldarena-labyrinth-run-winner.png)
 
+## Run the Crossroads Conquest Highlight
+
+Choose **Run Crossroads Conquest** as the third **Pre-run saves** card. The dashboard opens the
+sealed 180-second `crossroads-conquest-v0` broadcast without creating a run or contacting a model.
+Its fixed seed is `424242`: Sol eliminates Terra after Terra's counter-raid critically weakens Sol,
+then Luna waits for the authoritative elimination event before attacking and winning.
+
+Run, Timeline, and Result use the cached public manifest projection. Evaluation and Replay load the
+allow-listed evaluation projection only when opened. The replay file remains server-side; there is
+no public replay-download route.
+
 ## How a match works
 
 1. Godot freezes a world state and gives each faction a private, visibility-filtered observation.

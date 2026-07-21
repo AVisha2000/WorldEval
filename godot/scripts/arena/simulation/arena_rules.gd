@@ -42,6 +42,8 @@ const HARVEST := {"forest": {"resource": "wood", "amount": 12}, "stone": {"resou
 const GATHER_CYCLE_WORK := 10
 const BUILD_STAFFING_CAP := 3
 const RESEARCH_STAFFING_CAP := 2
+const BASE_UNIT_SUPPLY := 4
+const STORAGE_UNIT_SUPPLY_BONUS := 4
 const RESEARCH := {
 	"fieldcraft": {"cost": {"food": 20, "wood": 15}, "work": 120, "tier": 1},
 	"ironworking": {"cost": {"wood": 35, "stone": 30, "iron": 15}, "work": 220, "tier": 2},

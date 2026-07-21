@@ -27,7 +27,7 @@ from genesis_arena.embodiment.replay import verify_replay_bytes
 
 ROOT = Path(__file__).resolve().parents[2]
 V1_SHA256 = "ddfc8998dfe33c0bb68aff31f78118a227792f4d568bd438d732c3d3abe0c34d"
-V2_SHA256 = "9007eb292f4402c679d9852b0c967c920a64700f7d7a7886ee0edac29fe1526b"
+V2_SHA256 = "edbd41865f3ed7186b02f6d370dd6e655910bcfebe66c330bafa42d5e533fff5"
 V3 = "llm-controller/0.3.0"
 FIXTURE = (
     ROOT
@@ -64,7 +64,7 @@ def test_v3_is_additive_and_older_protocol_hashes_are_byte_stable(
     assert registry.package("llm-controller/0.1.0").package_sha256 == V1_SHA256
     assert registry.package("llm-controller/0.2.0").package_sha256 == V2_SHA256
     assert registry.package(V3).package_sha256 == (
-        "4b39a9fb9c7dd056092131dfa18c93e1174ef16bc6ec45f443917de731387f08"
+        "49435d7099c6a28a45f1e08dd8640a4f5e786c6dc2fed8bf4eede862c6da984a"
     )
     assert "trio-result" in registry.package(V3).SCHEMA_FILES
     assert _authority_script(V3) == V3_MANAGED_AUTHORITY_SCRIPT

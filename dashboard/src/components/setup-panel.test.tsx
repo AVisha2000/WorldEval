@@ -23,7 +23,7 @@ describe("SetupPanel", () => {
 
   it("offers the OpenAI 5.6 family at fixed low reasoning effort", async () => {
     const user = userEvent.setup()
-    render(<SetupPanel setup={setup} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} />)
+    render(<SetupPanel setup={setup} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
     await user.click(screen.getByRole("combobox", { name: "Model" }))
     expect(await screen.findByRole("option", { name: "GPT-5.6 Sol · flagship" })).toBeInTheDocument()
@@ -38,7 +38,7 @@ describe("SetupPanel", () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     const onSubmit = vi.fn()
-    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo", scenarioId: "orientation-v0" }} pending={false} onChange={onChange} onSubmit={onSubmit} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} />)
+    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo", scenarioId: "orientation-v0" }} pending={false} onChange={onChange} onSubmit={onSubmit} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
     expect(screen.getByRole("button", { name: "Run selected solo demo" })).toBeEnabled()
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
@@ -66,7 +66,7 @@ describe("SetupPanel", () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     const duel = { ...setup, controllerMode: "scripted_demo" as const, mode: "duel" as const }
-    render(<SetupPanel setup={duel} pending={false} onChange={onChange} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} />)
+    render(<SetupPanel setup={duel} pending={false} onChange={onChange} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
     expect(screen.getByLabelText("Demo duel entrants")).toHaveTextContent("duelist-alpha-v1")
@@ -82,7 +82,7 @@ describe("SetupPanel", () => {
   it("makes RTS Skirmish the primary credential-free MVP quick start", async () => {
     const user = userEvent.setup()
     const onRtsQuickStart = vi.fn()
-    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo", mode: "duel", duoTaskId: "rts-skirmish-v0" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={onRtsQuickStart} onMazeQuickStart={vi.fn()} />)
+    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo", mode: "duel", duoTaskId: "rts-skirmish-v0" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={onRtsQuickStart} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
     expect(screen.getByText(/Blue Command and Red Legion gather, build, arm, and fight/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Run RTS Skirmish" }))
@@ -92,7 +92,7 @@ describe("SetupPanel", () => {
   it("highlights Labyrinth Run first with the three model colours", async () => {
     const user = userEvent.setup()
     const onMazeQuickStart = vi.fn()
-    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={onMazeQuickStart} />)
+    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={onMazeQuickStart} onCrossroadsQuickStart={vi.fn()} />)
 
     expect(screen.getByRole("radio", { name: "Pre-run saves" })).toBeChecked()
     expect(screen.getByLabelText("Labyrinth Run models")).toHaveTextContent("Soldemo-sol-v1")
@@ -100,6 +100,24 @@ describe("SetupPanel", () => {
     expect(screen.getByLabelText("Labyrinth Run models")).toHaveTextContent("Lunademo-luna-v1")
     await user.click(screen.getByRole("button", { name: "Play Labyrinth Run" }))
     expect(onMazeQuickStart).toHaveBeenCalledOnce()
+  })
+
+  it("offers Crossroads Conquest as the third cached quick-start", async () => {
+    const user = userEvent.setup()
+    const onCrossroadsQuickStart = vi.fn()
+    render(<SetupPanel setup={{ ...setup, controllerMode: "scripted_demo" }} pending={false} onChange={vi.fn()} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={onCrossroadsQuickStart} />)
+
+    const buttons = screen.getAllByRole("button", { name: /Play Labyrinth Run|Run RTS Skirmish|Run Crossroads Conquest/ })
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Play Labyrinth Run",
+      "Run RTS Skirmish",
+      "Run Crossroads Conquest",
+    ])
+    expect(screen.getByLabelText("Crossroads Conquest factions")).toHaveTextContent("△ Sol")
+    expect(screen.getByLabelText("Crossroads Conquest factions")).toHaveTextContent("○ Luna")
+    expect(screen.getByLabelText("Crossroads Conquest factions")).toHaveTextContent("□ Terra")
+    await user.click(screen.getByRole("button", { name: "Run Crossroads Conquest" }))
+    expect(onCrossroadsQuickStart).toHaveBeenCalledOnce()
   })
 
   it("offers exactly Sol, Luna, and Terra across both three-leg Demo games", async () => {
@@ -110,7 +128,7 @@ describe("SetupPanel", () => {
       controllerMode: "scripted_demo",
       mode: "trio",
       trioTaskId: "trio-relay-v0",
-    }} pending={false} onChange={onChange} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} />)
+    }} pending={false} onChange={onChange} onSubmit={vi.fn()} onQuickStart={vi.fn()} onTeamQuickStart={vi.fn()} onRtsQuickStart={vi.fn()} onMazeQuickStart={vi.fn()} onCrossroadsQuickStart={vi.fn()} />)
 
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
     expect(screen.getByLabelText("Demo trio entrants")).toHaveTextContent("Sol · demo-sol-v1")
