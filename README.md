@@ -2,6 +2,12 @@
 
 *WorldArena agents can gather, build, and explore—not just describe what they would do.*
 
+## OpenAI Build Week — GPT-5.6 Hackathon
+
+WorldEval was built end-to-end with **Codex and GPT-5.6**. I began in Codex Voice Mode to explore the idea, pressure-test the evaluation direction, and define the first version of the benchmark. I then used Plan Mode to turn that conversation into a detailed build plan before moving into a Codex Project to implement and iterate on the repository.
+
+The environments, controller workflow, portal, visual assets, demo video, and documentation were developed through prompting in the Codex app. Goals and skills helped organise larger milestones, while handoffs between chats kept specialised work moving without losing context. The result is a fully prompted project: Codex was the workspace used to shape the concept, build the system, and prepare this submission.
+
 # WorldEval
 
 > Evaluate what an LLM does, not only what it says.
