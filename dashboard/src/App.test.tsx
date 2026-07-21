@@ -231,7 +231,7 @@ describe("Controller dashboard", () => {
   })
   it("defaults to the credential-free scripted solo demos", () => {
     render(<QueryClientProvider client={new QueryClient()}><App /></QueryClientProvider>)
-    expect(screen.getByRole("heading", { name: /WorldArena Mini RTS Arena/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "WorldArea" })).toBeInTheDocument()
     expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Run selected solo demo" })).toBeEnabled()
     expect(screen.getByRole("combobox", { name: "Selected demo folder" })).toBeEnabled()

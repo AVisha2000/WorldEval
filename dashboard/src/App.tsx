@@ -369,9 +369,7 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-brand">
-          <h1>
-            WorldArena <span>Mini RTS Arena</span>
-          </h1>
+          <h1>WorldArea</h1>
           <img
             alt="WorldArena agents building on a shared world"
             className="app-header-thumbnail"
