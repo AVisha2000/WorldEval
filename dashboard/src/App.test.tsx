@@ -214,8 +214,8 @@ describe("Controller dashboard", () => {
     vi.stubGlobal("fetch", fetch)
     renderApp()
 
-    expect(screen.getByText(/Alpha builds the economy while Bravo commands the rival force/i)).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Play Mini RTS" }))
+    expect(screen.getByText(/Blue Command and Red Legion gather, build, arm, and fight/i)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Run RTS Skirmish" }))
 
     expect(screen.getByRole("heading", { name: "Blue Command vs Red Legion" })).toBeInTheDocument()
     expect(screen.getByText(/saved authority-verified demo/i)).toBeInTheDocument()
@@ -233,7 +233,7 @@ describe("Controller dashboard", () => {
     vi.stubGlobal("fetch", fetch)
     renderApp()
 
-    await user.click(screen.getByRole("button", { name: "Play Mini RTS" }))
+    await user.click(screen.getByRole("button", { name: "Run RTS Skirmish" }))
     await user.click(screen.getByRole("tab", { name: "Timeline" }))
     expect(await screen.findByText("Cinematic timeline")).toBeInTheDocument()
     expect(screen.getByText("Bridge battle")).toBeInTheDocument()

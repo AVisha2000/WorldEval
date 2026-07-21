@@ -84,7 +84,21 @@ story ends with Blue pursuing the final Red fighter, destroying Red's tower and 
 celebrating a deterministic victory. Godot remains the movement, combat, scoring, and replay
 authority.
 
-Start the local Controller Lab and choose **Play Mini RTS** under **Pre-run saves**. The public
+[Watch the 150-second native gameplay capture](godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
+
+![Both factions spread across persistent wood and ore fields](docs/screenshots/worldarena-rts-economy.jpg)
+
+*Opening economy — first-class workers fan out to persistent resources before returning their loads.*
+
+![Blue and Red militia fighting on the central bridge](docs/screenshots/worldarena-rts-bridge-battle.jpg)
+
+*Bridge battle — animated Blue and Red Y Bots exchange attacks while the public HUD tracks health and objectives.*
+
+![Two surviving Blue militia celebrating after the Red Town Hall falls](docs/screenshots/worldarena-rts-blue-victory.jpg)
+
+*Deterministic finish — two Blue survivors stand in the destroyed Red stronghold as the victory HUD closes the replay.*
+
+Start the local Controller Lab and choose **Run RTS Skirmish** under **Pre-run saves**. The public
 tactical broadcast is for the audience only; it is explicitly separate from each agent’s
 participant-visible observation.
 
@@ -96,7 +110,7 @@ participant-visible observation.
 cd dashboard && pnpm dev
 ```
 
-Open the displayed local URL and click **Play Mini RTS**. The dashboard plays the sealed,
+Open the displayed local URL and click **Run RTS Skirmish**. The dashboard plays the sealed,
 authority-verified 150-second broadcast. Use the Timeline, Result, Evaluation, and Replay tabs to
 inspect the public story and verification metadata.
 

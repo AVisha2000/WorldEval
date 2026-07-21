@@ -116,9 +116,9 @@ function DemoLibrary({
       <article className="saved-demo saved-demo--rts">
         <div className="saved-demo-path"><ArchiveIcon /><code>/saves/mini-rts-skirmish.mp4</code></div>
         <h3>Mini RTS Skirmish</h3>
-        <p>Alpha builds the economy while Bravo commands the rival force in the verified Blue-versus-Red broadcast.</p>
+        <p>Blue Command and Red Legion gather, build, arm, and fight through the verified deterministic broadcast.</p>
         <Button type="button" size="lg" disabled={pending} onClick={onRtsQuickStart} className="saved-demo-action saved-demo-action--rts">
-          <PlayIcon data-icon="inline-start" />Play Mini RTS
+          <PlayIcon data-icon="inline-start" />Run RTS Skirmish
         </Button>
       </article>
 
