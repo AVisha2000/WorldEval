@@ -539,6 +539,45 @@
 .nested-image-portal img.nested-image-portal--contain {
   object-fit: contain;
 }
+.goblin-flyby {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  display: block;
+  width: clamp(126px, 15vw, 218px);
+  height: auto;
+  filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.42));
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+}
+.goblin-flyby--male,
+.goblin-smoke--male {
+  top: 63%;
+}
+.goblin-flyby--female,
+.goblin-smoke--female {
+  top: 66%;
+}
+.goblin-flyby--female {
+  width: clamp(120px, 14vw, 208px);
+}
+.goblin-smoke {
+  position: absolute;
+  z-index: 19;
+  left: 0;
+  display: block;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(238 232 218 / 0.62) 0,
+    rgb(183 184 179 / 0.36) 44%,
+    transparent 72%
+  );
+  filter: blur(0.8px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
 .solar-finale-copy {
   position: absolute;
   z-index: 19;
@@ -1256,6 +1295,20 @@
   .zoom-plate > .zoom-plate-image,
   .nested-image-portal img {
     object-position: center center;
+  }
+  .goblin-flyby {
+    width: clamp(104px, 32vw, 148px);
+  }
+  .goblin-flyby--male,
+  .goblin-smoke--male {
+    top: 68%;
+  }
+  .goblin-flyby--female,
+  .goblin-smoke--female {
+    top: 70%;
+  }
+  .goblin-flyby--female {
+    width: clamp(98px, 30vw, 140px);
   }
   .solar-finale-copy {
     right: 18px;

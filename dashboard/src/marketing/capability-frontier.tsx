@@ -1,7 +1,8 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import {
   motion,
   type MotionValue,
+  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useSpring,
@@ -16,6 +17,8 @@ import continentPlate from "./assets/nested-zoom-06-continent.jpg"
 import earthPlate from "./assets/nested-zoom-07-earth.jpg"
 import moonPlate from "./assets/nested-zoom-08-moon.jpg"
 import solarPlate from "./assets/nested-zoom-09-solar.jpg"
+import femaleAstronautGoblin from "./assets/astronaut-goblin-female.png"
+import maleAstronautGoblin from "./assets/astronaut-goblin-male.png"
 
 type ZoomPlate = {
   end: number
@@ -27,6 +30,36 @@ type ZoomPlate = {
   src: string
   start: number
 }
+
+type GoblinFlybyProps = {
+  end: number
+  progress: MotionValue<number>
+  reducedMotion: boolean
+  src: string
+  start: number
+  variant: "female" | "male"
+}
+
+const GOBLIN_FLIGHT_DURATION = 1.72
+const GOBLIN_FLIGHT_TIMES = [0, 0.16, 0.38, 0.58, 0.76, 1]
+const GOBLIN_FLIGHT_X = [
+  "-28vw",
+  "8vw",
+  "31vw",
+  "20vw",
+  "6vw",
+  "20vw",
+]
+const GOBLIN_FLIGHT_Y = [
+  "8vh",
+  "0vh",
+  "-10vh",
+  "-27vh",
+  "-11vh",
+  "-70vh",
+]
+const GOBLIN_FLIGHT_ROTATE = [-8, 4, 92, 188, 282, 372]
+const SMOKE_PARTICLES = [0, 1, 2, 3, 4] as const
 
 const PLATES: ZoomPlate[] = [
   {
@@ -198,6 +231,106 @@ function NestedZoomPlate({
   )
 }
 
+function GoblinFlightRun({
+  src,
+  variant,
+}: Pick<GoblinFlybyProps, "src" | "variant">) {
+  return (
+    <>
+      {SMOKE_PARTICLES.map((particle) => (
+        <motion.span
+          aria-hidden="true"
+          animate={{
+            opacity: [0, 0.16, 0.52, 0.4, 0.2, 0],
+            scale: [0.35, 0.5, 0.82, 1.15, 1.48, 1.82],
+            x: GOBLIN_FLIGHT_X,
+            y: GOBLIN_FLIGHT_Y,
+          }}
+          className={`goblin-smoke goblin-smoke--${variant}`}
+          initial={{
+            opacity: 0,
+            scale: 0.35,
+            x: GOBLIN_FLIGHT_X[0],
+            y: GOBLIN_FLIGHT_Y[0],
+          }}
+          key={particle}
+          style={{
+            height: 12 + particle * 3,
+            width: 12 + particle * 3,
+          }}
+          transition={{
+            delay: particle * 0.045,
+            duration: GOBLIN_FLIGHT_DURATION - 0.08,
+            ease: "easeInOut",
+            times: GOBLIN_FLIGHT_TIMES,
+          }}
+        />
+      ))}
+      <motion.img
+        alt=""
+        aria-hidden="true"
+        animate={{
+          opacity: [0, 0.96, 0.96, 0.96, 0.92, 0],
+          rotate: GOBLIN_FLIGHT_ROTATE,
+          scale: [0.78, 0.84, 0.88, 0.86, 0.82, 0.74],
+          x: GOBLIN_FLIGHT_X,
+          y: GOBLIN_FLIGHT_Y,
+        }}
+        className={`goblin-flyby goblin-flyby--${variant}`}
+        decoding="async"
+        initial={{
+          opacity: 0,
+          rotate: GOBLIN_FLIGHT_ROTATE[0],
+          scale: 0.78,
+          x: GOBLIN_FLIGHT_X[0],
+          y: GOBLIN_FLIGHT_Y[0],
+        }}
+        loading="lazy"
+        src={src}
+        transition={{
+          duration: GOBLIN_FLIGHT_DURATION,
+          ease: "easeInOut",
+          times: GOBLIN_FLIGHT_TIMES,
+        }}
+      />
+    </>
+  )
+}
+
+function GoblinFlyby({
+  end,
+  progress,
+  reducedMotion,
+  src,
+  start,
+  variant,
+}: GoblinFlybyProps) {
+  const [runId, setRunId] = useState(0)
+  const hasPlayed = useRef(false)
+
+  useMotionValueEvent(progress, "change", (value) => {
+    if (reducedMotion) {
+      return
+    }
+
+    if (value >= start && value < end && !hasPlayed.current) {
+      hasPlayed.current = true
+      setRunId((current) => current + 1)
+    }
+
+    if (
+      value < Math.max(0, start - 0.025) ||
+      (end < 1 && value > end + 0.025)
+    ) {
+      hasPlayed.current = false
+    }
+  })
+
+  return reducedMotion || runId === 0 ? null : (
+    <GoblinFlightRun key={runId} src={src} variant={variant} />
+  )
+}
+
 export function CapabilityFrontier() {
   const sectionRef = useRef<HTMLElement>(null)
   const prefersReducedMotion = useReducedMotion()
@@ -258,6 +391,23 @@ export function CapabilityFrontier() {
               reducedMotion={reducedMotion}
             />
           ))}
+
+          <GoblinFlyby
+            end={0.91}
+            progress={smoothScrollProgress}
+            reducedMotion={reducedMotion}
+            src={maleAstronautGoblin}
+            start={0.81}
+            variant="male"
+          />
+          <GoblinFlyby
+            end={1}
+            progress={smoothScrollProgress}
+            reducedMotion={reducedMotion}
+            src={femaleAstronautGoblin}
+            start={0.91}
+            variant="female"
+          />
 
           <motion.p
             className="solar-finale-copy"
