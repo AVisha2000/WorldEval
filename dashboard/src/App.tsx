@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import type { EpisodeSetup } from "@/api"
 import { cancelRun, createRun, getEpisode, getEpisodeTimeline, getReadiness } from "@/api"
+import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { EpisodeWorkspace } from "@/components/episode-workspace"
 import { ReadinessPanel } from "@/components/readiness-panel"
 import { SetupPanel } from "@/components/setup-panel"
@@ -80,7 +81,18 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>WorldArena <span>Controller Lab</span></h1>
+        <div className="app-header-brand">
+          <h1>
+            WorldArena <span>Controller Lab</span>
+          </h1>
+          <img
+            alt="WorldArena agents building on a shared world"
+            className="app-header-thumbnail"
+            height="68"
+            src={worldArenaThumbnail}
+            width="120"
+          />
+        </div>
         <Tabs value={view} onValueChange={setView}>
           <TabsList variant="line">
             <TabsTrigger value="run">Run</TabsTrigger>

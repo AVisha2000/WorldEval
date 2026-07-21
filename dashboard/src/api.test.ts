@@ -140,20 +140,15 @@ describe("certification readiness", () => {
 
 describe("participant frame route", () => {
   it("loads only a no-store image response and its player-visible sequence", async () => {
-    const png = new Blob([new Uint8Array([137, 80, 78, 71])], {
-      type: "image/png",
-    })
-    const fetch = vi.fn(
-      async () =>
-        new Response(png, {
-          headers: {
-            "Content-Type": "image/png",
-            "X-Content-SHA256": "a".repeat(64),
-            "X-Frame-State": "live",
-            "X-Observation-Seq": "3",
-          },
-        })
-    )
+    const png = new Uint8Array([137, 80, 78, 71])
+    const fetch = vi.fn(async () => new Response(png, {
+      headers: {
+        "Content-Type": "image/png",
+        "X-Content-SHA256": "a".repeat(64),
+        "X-Frame-State": "live",
+        "X-Observation-Seq": "3",
+      },
+    }))
     vi.stubGlobal("fetch", fetch)
 
     const frame = await getParticipantFrame("ep_visible")
