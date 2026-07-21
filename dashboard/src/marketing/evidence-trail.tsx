@@ -1,39 +1,50 @@
-import { ArrowUpRight, Check } from "lucide-react"
+import { ArrowUpRight, Check, Ellipsis } from "lucide-react"
 import { getControllerLabUrl, REPOSITORY_URL } from "./site-data"
 
 const ROADMAP = [
   {
-    status: "Shipped",
-    detail: "Observe · Act · Record · Replay",
+    category: "Core evaluation loop",
+    title: "Observe · Act · Record · Replay",
+    status: "Implemented",
     state: "complete",
   },
   {
-    status: "Live now",
-    detail: "Labyrinth · Mini RTS · Crossroads",
+    category: "Game adapters",
+    title: "Labyrinth · Mini RTS · Crossroads",
+    status: "Implemented",
     state: "complete",
   },
   {
+    category: "Generative creation",
+    title: "Prompt to 3D game world",
+    description:
+      "Turn an idea into a playable world ready for agent evaluation.",
     status: "Next",
-    detail: "More games · More worlds · New agent teams",
     state: "current",
   },
   {
+    category: "Expansion",
+    title: "More games · More worlds · New agent teams",
     status: "Future",
-    detail: "A portable evaluation layer for any interactive environment",
+    state: "future",
+  },
+  {
+    category: "Portable layer",
+    title: "Evaluation for any interactive environment",
+    status: "Future",
     state: "future",
   },
 ] as const
 
-function RoadmapMarker({
-  index,
-  state,
-}: {
-  index: number
-  state: (typeof ROADMAP)[number]["state"]
-}) {
+function RoadmapStatus({ step }: { step: (typeof ROADMAP)[number] }) {
   return (
-    <span className="roadmap-marker" aria-hidden="true">
-      {state === "complete" ? <Check /> : index + 1}
+    <span className={`roadmap-badge roadmap-badge--${step.state}`}>
+      {step.status}
+      {step.state === "complete" ? <Check aria-hidden="true" /> : null}
+      {step.state === "current" ? <Ellipsis aria-hidden="true" /> : null}
+      {step.state === "future" ? (
+        <span className="roadmap-badge__dot" aria-hidden="true" />
+      ) : null}
     </span>
   )
 }
@@ -56,19 +67,25 @@ export function EvidenceTrail() {
             </h2>
           </div>
           <p>
-            The evaluation loop stays stable while new games, agents, and
-            evidence adapters plug in.
+            A growing list of shipped systems and next milestones—each with a
+            clear status.
           </p>
         </div>
-        <ol className="roadmap-rail">
+        <ol className="roadmap-list">
           {ROADMAP.map((step, index) => (
             <li
-              className={`roadmap-step roadmap-step--${step.state}`}
-              key={step.status}
+              className={`roadmap-item roadmap-item--${step.state}`}
+              key={step.title}
             >
-              <RoadmapMarker index={index} state={step.state} />
-              <span className="roadmap-status">{step.status}</span>
-              <strong>{step.detail}</strong>
+              <span className="roadmap-item__number" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div className="roadmap-item__copy">
+                <span>{step.category}</span>
+                <strong>{step.title}</strong>
+                {"description" in step ? <p>{step.description}</p> : null}
+              </div>
+              <RoadmapStatus step={step} />
             </li>
           ))}
         </ol>
