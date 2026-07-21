@@ -11,6 +11,9 @@ importers:
       '@remotion/cli':
         specifier: 4.0.491
         version: 4.0.491(postcss@8.5.19)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@remotion/media':
+        specifier: 4.0.491
+        version: 4.0.491(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: 19.2.7
         version: 19.2.7
@@ -384,6 +387,12 @@ packages:
 
   '@remotion/media-utils@4.0.491':
     resolution: {integrity: sha512-4MQvJReTYT0I17FXFXU4rdXGYaHP5F3fNCjkjYUAX0/L3CqsGAFKXucjqMByj1mrA2OgxdardBiyhWzlS98tXg==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  '@remotion/media@4.0.491':
+    resolution: {integrity: sha512-UfmJoRebLtZ2cY5XN6WBov7d+j//otmuzlPqsqA7wQydroChUgitFn7KIEP6bxIt7Xmjlg0rZdc8suzbFmurxA==}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
@@ -1849,6 +1858,14 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
       remotion: 4.0.491(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
+  '@remotion/media@4.0.491(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      mediabunny: 1.50.8
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      remotion: 4.0.491(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      zod: 4.3.6
+
   '@remotion/player@4.0.491(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       react: 19.2.7
@@ -2872,7 +2889,7 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  terser-webpack-plugin@5.6.1(esbuild@0.28.1)(postcss@8.5.19)(webpack@5.105.0(postcss@8.5.19)):
+  terser-webpack-plugin@5.6.1(esbuild@0.28.1)(postcss@8.5.19)(webpack@5.105.0(esbuild@0.28.1)(postcss@8.5.19)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
@@ -2967,7 +2984,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.3
-      terser-webpack-plugin: 5.6.1(esbuild@0.28.1)(postcss@8.5.19)(webpack@5.105.0(postcss@8.5.19))
+      terser-webpack-plugin: 5.6.1(esbuild@0.28.1)(postcss@8.5.19)(webpack@5.105.0(esbuild@0.28.1)(postcss@8.5.19))
       watchpack: 2.5.2
       webpack-sources: 3.5.1
     transitivePeerDependencies:
