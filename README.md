@@ -16,6 +16,11 @@ Godot resolves the world, while FastAPI validates plans, enforces budgets, and r
 The **Controller Lab** provides the browser interface for running and inspecting solo, two-agent,
 and three-agent scenarios.
 
+## Explore WorldEval
+
+- [Visit the WorldEval website](https://avisha2000.github.io/WorldEval/)
+- [Open the hosted Controller Lab](https://lab.openai-buildweek.lissan.dev)
+
 > [!NOTE]
 > This repository is independent of the 2026 paper
 > [*WorldArena: A Unified Benchmark for Evaluating Perception and Functional Utility of Embodied
