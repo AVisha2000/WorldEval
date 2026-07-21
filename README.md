@@ -7,30 +7,14 @@
 > Evaluate what an LLM does, not only what it says.
 
 WorldEval is an evaluation framework for **intelligent agents in interactive, deterministic
-worlds**. Its first environment is **WorldArena**, a 3D agent-arena platform where independently
-configured models receive partial observations, submit high-level plans, and live with the
+worlds**. Its first environment, **WorldArena**, is a 3D agent arena where independently
+configured models receive partial observations, submit high-level plans, and experience the
 economic, physical, and social consequences inside an authoritative Godot simulation.
-Its Controller Lab spans solo curricula and control games, symmetric two-agent games, and
-three-agent Relay/Free-for-All games. Agents receive participant-visible observations and emit
-strict JSON through the provider-shaped path.
 
 The LLM is the strategist; it never controls coordinates, physics, damage, resources, or scoring.
 Godot resolves the world, while FastAPI validates plans, enforces budgets, and records evidence.
-
-**Status:** working research prototype. Participant-view browser presentation, authority-derived
-evaluation, sealed replay, and versioned solo/duo/trio managed runtimes are implemented. No
-official live-model leaderboard, provider comparison, or completed benchmark season is published.
-
-**Playback and publication:** native gameplay video is reconstructed from a verified replay by
-Godot Movie Maker, then encoded locally by FFmpeg. The Pages gallery has solo, seat-swapped 1v1,
-and Sol/Luna/Terra trio slots with local coming-soon posters; no external video ID is invented or
-published by this repository.
-
-The visual stack now uses a reviewed Quaternius Medieval Village CC0 building subset, Kenney's CC0
-Adventure UI vectors, FastNoiseLite terrain variation, WorldEnvironment lighting, and
-NavigationAgent3D movement hooks. Terrain3D and LimboAI are pinned and loaded behind deterministic
-presentation-only boundaries. The newer Quaternius MegaKit and Mixamo clips retain their official
-interactive-download steps; import contracts are included, but no gated asset was bypassed.
+The **Controller Lab** provides the browser interface for running and inspecting solo, two-agent,
+and three-agent scenarios.
 
 > [!NOTE]
 > This repository is independent of the 2026 paper
@@ -38,18 +22,15 @@ interactive-download steps; import contracts are included, but no gated asset wa
 > World Models*](https://arxiv.org/abs/2602.08971). That work evaluates embodied world models;
 > this project evaluates the behaviour of competing LLM agents.
 
-## Why this framework exists
+## Why WorldEval exists
 
 Static question-answer evaluations can measure knowledge and reasoning in a single response. They
 cannot show whether a model can maintain a plan, recover after failure, manage scarce resources,
-coordinate with unfamiliar agents, detect deception, or turn language into useful action over time.
+coordinate with unfamiliar agents, detect deception, or turn language into useful action over
+time.
 
-WorldEval tests those capabilities through environments such as WorldArena. In the competitive
-arena, a model must act under partial observability and fixed budgets while two other models change
-the world at the same time. Every claim can be checked against typed actions and simulator events
-rather than an LLM judge.
-
-This makes the benchmark useful for studying:
+WorldEval tests those capabilities in deterministic environments where every claim can be checked
+against typed actions and simulator events instead of an LLM judge.
 
 | Capability | Observable evidence |
 |---|---|
@@ -60,112 +41,166 @@ This makes the benchmark useful for studying:
 | Reliability | Valid actions, timeouts, fallbacks, impossible orders, and protocol compliance |
 
 WorldEval currently measures **strategic agent behaviour** through two WorldArena research
-surfaces. The older Arena evaluates long-horizon strategy from visibility-filtered semantic
-observations. The LLM Controller embodiment path uses hybrid participant observations: filtered
-semantics plus the participant's own camera pixels. Neither surface evaluates robot safety, and
-neither gives an agent spectator vision or hidden authority coordinates.
+surfaces:
+
+- The original Arena evaluates long-horizon strategy from visibility-filtered semantic
+  observations.
+- The LLM Controller embodiment path combines filtered semantics with the participant's own camera
+  pixels.
+
+Neither surface evaluates robot safety, and neither gives an agent spectator vision or hidden
+authority coordinates.
 
 ### Embodied controller pilot
 
-The managed solo pilot adds a smaller physical-world test: a model selects a visible milestone,
-then the Godot operator must actually turn, walk, gather, carry, and build before it can choose
-again. A useful illustrative dependency check is refuelling a car: “the station is five minutes
-away” is not enough to choose walking when the objective is to drive the car there. WorldArena
-records these prerequisite chains so they can be evaluated as physical-world understanding rather
-than accepted as plausible language alone. This is an illustrative test design, not a claim about
-the failure of any particular model.
+The managed solo pilot adds a smaller physical-world test. A model selects a visible milestone,
+then the Godot operator must actually turn, walk, gather, carry, and build before the model can
+choose again.
 
-## Run the Mini RTS Demo
+For example, knowing that “the station is five minutes away” is not enough to justify walking when
+the objective is to drive a car there. WorldArena records these prerequisite chains so they can be
+evaluated as physical-world understanding rather than accepted as plausible language alone. This
+is an illustrative test design, not a claim about the failure of any particular model.
 
-**WorldArena: Mini RTS** is the golden demo path: a compact, deterministic `rts-skirmish-v0`
-where credential-free deterministic Demo agents Terra and Luna begin with one worker, harvest persistent wood and ore nodes, return loads,
-unlock and arm the same three workers as militia, then fight at the bridge. The locked cinematic
-story ends with Terra pursuing Luna's final fighter, destroying Luna's tower and Town Hall, and
-celebrating a deterministic victory. Godot remains the movement, combat, scoring, and replay
-authority.
+## Quick start
 
-Terra and Luna use the same structured task path intended for later LLM controllers. The in-world
-task labels are short, safe deterministic milestone summaries from the sealed Demo policy (for
-example, “Harvest Tree” or “Hold the bridge”), not hidden chain-of-thought, prompts, raw output,
-or hidden state.
+### Requirements
+
+- Python 3.9+
+- Godot 4.5 stable or a compatible Godot 4 build
+- FFmpeg for saved native replay and video export (`brew install ffmpeg` on macOS)
+- macOS for the included double-click launcher; the Python backend and Godot project are portable
+
+From the repository root, run:
+
+```bash
+./run_worldarena.command
+```
+
+Choose **Pre-run saves** to explore the packaged highlights, or **Live games** to configure a
+provider-backed session. Live API keys remain in backend process memory and are never written to
+source, logs, replays, `.env`, or Godot.
+
+To install and start the backend manually:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+genesis-arena
+```
+
+Open <http://127.0.0.1:8000/>. The managed episode and series service starts the appropriate
+versioned Godot authority.
+
+The installed Python commands temporarily retain their legacy `genesis-*` names for compatibility.
+See [`docs/NAMING.md`](docs/NAMING.md) for the naming conventions.
+
+To inspect the Godot project separately:
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --path godot
+```
+
+The browser preview is presentation-only. A newest-frame-only participant JPEG stream is kept
+separate from decisions and replay, while verified PNG snapshots provide a reliability fallback.
+
+## Packaged showcases
+
+The Controller Lab includes three sealed, deterministic highlights under **Pre-run saves**. They do
+not create a run or contact a model.
+
+### Mini RTS
+
+**WorldArena: Mini RTS** is the primary demo: a compact, deterministic `rts-skirmish-v0` scenario.
+Credential-free Demo agents Terra and Luna each begin with one worker, harvest persistent wood and
+ore nodes, return their loads, unlock and arm the same three workers as militia, and fight at the
+bridge.
+
+The fixed cinematic story ends with Terra pursuing Luna's final fighter, destroying Luna's tower
+and Town Hall, and celebrating a deterministic victory. Godot remains the authority for movement,
+combat, scoring, and replay.
+
+Terra and Luna use the same structured task path intended for later LLM controllers. In-world task
+labels such as “Harvest Tree” and “Hold the bridge” are short milestone summaries from the sealed
+Demo policy. They are not hidden chain-of-thought, prompts, raw model output, or hidden state.
 
 [Watch the 150-second native gameplay capture](godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
 
 ![Both factions spread across persistent wood and ore fields](docs/screenshots/worldarena-rts-economy.jpg)
 
-*Opening economy — first-class workers fan out to persistent resources before returning their loads.*
+*Opening economy—workers fan out to persistent resources before returning their loads.*
 
 ![Terra and Luna militia fighting on the central bridge](docs/screenshots/worldarena-rts-bridge-battle.jpg)
 
-*Bridge battle — animated Terra and Luna Y Bots exchange attacks while the public HUD tracks health and objectives.*
+*Bridge battle—Terra and Luna militia exchange attacks while the public HUD tracks health and objectives.*
 
 ![Two surviving Terra militia celebrating after Luna's Town Hall falls](docs/screenshots/worldarena-rts-blue-victory.jpg)
 
-*Deterministic finish — two Terra survivors stand in Luna's destroyed stronghold as the victory HUD closes the replay.*
+*Deterministic finish—two Terra survivors stand in Luna's destroyed stronghold as the victory HUD closes the replay.*
 
-Start the local Controller Lab and choose **Run RTS Skirmish** under **Pre-run saves**. The public
-tactical broadcast is for the audience only; it is explicitly separate from each agent’s
-participant-visible observation.
+Choose **Run RTS Skirmish** to play the sealed, authority-verified broadcast. The public tactical
+view is for the audience only and is explicitly separate from each agent's participant-visible
+observation. Use the Timeline, Result, Evaluation, and Replay tabs to inspect the story and its
+verification metadata.
+
+To start the Controller Lab without the launcher:
 
 ```bash
-# terminal 1, from the repository root
+# Terminal 1, from the repository root
 .venv/bin/uvicorn genesis_arena.main:app --host 127.0.0.1 --port 8000
 
-# terminal 2
-cd dashboard && pnpm dev
+# Terminal 2
+cd dashboard
+pnpm dev
 ```
 
-Open the displayed local URL and click **Run RTS Skirmish**. The dashboard plays the sealed,
-authority-verified 150-second broadcast. Use the Timeline, Result, Evaluation, and Replay tabs to
-inspect the public story and verification metadata.
+Open the local URL displayed by the dashboard, then choose **Run RTS Skirmish**.
 
-## Run the Labyrinth Run Highlight
+### Labyrinth Run
 
-Choose **Play Labyrinth Run** under **Pre-run saves**. Sol, Luna, and Terra race separate copies of
-the same maze at equal speed. The broadcast keeps the model-colour key visible and closes with the
-verified podium and winner explanation.
-
-### Screenshots
-
-The repository keeps permanent captures in the
-[WorldArena screenshot collection](docs/screenshots/README.md).
+Choose **Play Labyrinth Run**. Sol, Luna, and Terra race separate copies of the same maze at equal
+speed. The broadcast keeps the model-colour key visible and closes with the verified podium and
+winner explanation.
 
 ![Sol, Luna, and Terra racing identical labyrinths](docs/screenshots/worldarena-labyrinth-run-race.png)
 
 ![Sol's verified Labyrinth Run winner calling card](docs/screenshots/worldarena-labyrinth-run-winner.png)
 
-## Run the Crossroads Conquest Highlight
+### Crossroads Conquest
 
-Choose **Run Crossroads Conquest** as the third **Pre-run saves** card. The dashboard opens the
-sealed 180-second `crossroads-conquest-v0` broadcast without creating a run or contacting a model.
-Its fixed seed is `424242`: Sol eliminates Terra after Terra's counter-raid critically weakens Sol,
-then Luna waits for the authoritative elimination event before attacking and winning.
+Choose **Run Crossroads Conquest** to open the sealed 180-second `crossroads-conquest-v0`
+broadcast. Its fixed seed is `424242`: Sol eliminates Terra after Terra's counter-raid critically
+weakens Sol, then Luna waits for the authoritative elimination event before attacking and winning.
 
 Run, Timeline, and Result use the cached public manifest projection. Evaluation and Replay load the
 allow-listed evaluation projection only when opened. The replay file remains server-side; there is
 no public replay-download route.
 
+More permanent captures are available in the
+[WorldArena screenshot collection](docs/screenshots/README.md).
+
 ## How a match works
 
-1. Godot freezes a world state and gives each faction a private, visibility-filtered observation.
-2. Eligible specialist advisors run, then all three Commanders plan concurrently.
+1. Godot freezes the world state and gives each faction a private, visibility-filtered observation.
+2. Eligible specialist advisors run, then all Commanders plan concurrently.
 3. Plans are canonicalized and sealed with commit hashes before any plan is revealed.
 4. Godot verifies and resolves all accepted actions through the same fixed-tick round.
 5. Events, receipts, usage, state hashes, and evidence are written for scoring and replay.
 
-This commit/lock/reveal protocol prevents provider latency from granting initiative. Rendering,
+This commit-lock-reveal protocol prevents provider latency from granting initiative. Rendering,
 camera movement, and playback speed cannot change a result.
 
 The compact arena contains 13 districts, finite resources, fogged scouting, persistent gathering,
 worker-scaled construction and repair, supply lines, technology, walls, towers, armies, siege,
-public/private messages, atomic trades, non-binding pacts, and visible pact violations. The only
-victory is the last surviving stronghold. Reaching the 120-round cap truncates the run and publishes
-diagnostic standings without declaring a winner.
+public and private messages, atomic trades, non-binding pacts, and visible pact violations. The
+only victory condition is the last surviving stronghold. Reaching the 120-round cap truncates the
+run and publishes diagnostic standings without declaring a winner.
 
 ## Evaluation methodology
 
 The competitive result is the Godot-derived placement. A separate, versioned **WorldEval Score**
-explains behaviour and never changes the winner:
+explains behaviour but never changes the winner.
 
 | Category | Weight |
 |---|---:|
@@ -177,10 +212,10 @@ explains behaviour and never changes the winner:
 | Reliability and safety | 5% |
 
 Scores fail closed when required evidence is missing. Each category retains its measurements and
-supporting action/event IDs; best decisions and largest failures are selected by deterministic
+supporting action and event IDs. Best decisions and largest failures are selected by deterministic
 three-round outcome deltas. **No LLM judge is used.**
 
-Results from different cognition tracks are kept separate:
+Results from different cognition tracks remain separate:
 
 | Track | Model access | Use |
 |---|---|---|
@@ -189,75 +224,37 @@ Results from different cognition tracks are kept separate:
 | Open Teams | Configurable or mixed-model teams | Experiments only; no shared leaderboard |
 
 The included season scheduler freezes the model snapshot, prompt, rules, map, tools, budgets, and
-deadlines. It creates 33 deterministic seeds with all three seat rotations: **99 scored matches plus
+deadlines. It creates 33 deterministic seeds with all three seat rotations: **99 scored matches and
 one unscored championship showcase**. Aggregation reports per-seed results, pairwise outcomes,
 placement, category scores, and 95% win-rate confidence intervals. Batch execution of the schedule
 is not yet included.
 
-## Research foundations and differences
+## Architecture
 
-WorldEval combines lessons from prior work rather than treating any one final score as sufficient:
-
-| Research | Lesson adopted here | WorldEval's focus |
-|---|---|---|
-| [ALEM](https://arxiv.org/abs/2606.08340) | Separate coordination from base task skill | Mixed cooperation and competition between independently scored Commanders |
-| [Melting Pot 2.0](https://arxiv.org/abs/2211.13746) | Test generalization to unfamiliar social partners | Natural-language negotiation whose value is tied to later physical outcomes |
-| [Neural MMO](https://arxiv.org/abs/2308.15802) | Vary opponents and test robustness | Seat-balanced schedules and per-opponent aggregates |
-| [BALROG](https://arxiv.org/abs/2411.13543) | Keep fine-grained agentic metrics beyond success | Evidence-linked planning, economy, social, cognition, and reliability measures |
-| [Cattle Trade](https://arxiv.org/abs/2605.14537) | Preserve behavioural traces beyond wins | Negotiation coupled to territory, logistics, construction, and combat |
-
-The distinctive question is not simply “can the model win a game?” It is: **can an LLM deploy
-planning, adaptation, negotiation, delegation, and resource discipline together—and can every
-consequence be reproduced and audited?**
-
-## Run locally
-
-Requirements:
-
-- Python 3.9+
-- Godot 4.5 stable or a compatible Godot 4 build
-- FFmpeg for saved native replay and export (`brew install ffmpeg` on macOS)
-- macOS for the included double-click launcher; the Python backend and Godot project are portable
-
-From the repository root:
-
-```bash
-./run_worldarena.command
+```text
+Live model adapters / Pre-run showcase inputs
+                 ↓
+WorldEval / FastAPI: isolation · strict JSON · budgets · neutral fallback · safe projections
+                 ↓  llm-controller/0.1.0 · 0.2.0 · 0.3.0
+WorldArena / Godot: sole authority · participant observations · receipts · checkpoints
+                 ↓
+Solo / fixed-window duo / fixed-window trio simulation
+                 ↓
+Participant-only preview · authority evaluation · verified native replay
 ```
 
-Choose **Pre-run saves** for the packaged highlights, or **Live games** to configure a
-provider-backed session. Live keys stay in backend process memory and are never written to source,
-logs, replays, `.env`, or Godot.
+Only the deterministic simulation changes world state. Python may reject malformed output but
+cannot award territory, resources, damage, or victory.
 
-To start the processes manually:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[dev]"
-genesis-arena
-```
-
-The installed Python commands temporarily retain their legacy `genesis-*` names for compatibility;
-see [`docs/NAMING.md`](docs/NAMING.md).
-
-Open <http://127.0.0.1:8000/>. The managed episode/series service starts the appropriate versioned
-Godot authority. To inspect the Godot project separately:
-
-```bash
-/Applications/Godot.app/Contents/MacOS/Godot --path godot
-```
-
-The browser preview is presentation-only: a newest-frame-only participant JPEG stream is separated
-from decisions and replay, while verified PNG snapshots remain the reliability fallback.
-
-## Native replay and video
+## Replay and video
 
 Completed Controller Lab runs are sealed before native playback is produced. The replay archive
 selects the Movie Maker verifier for `llm-controller/0.1.0`, `0.2.0`, or `0.3.0`, reconstructs only
 the selected participant view at 30 FPS, and invokes local FFmpeg for H.264/yuv420p output with
-`+faststart`. Install FFmpeg first; native replay is reported unavailable when it is not configured,
-while evidence and deterministic verification remain usable.
+`+faststart`.
+
+Native replay is reported as unavailable when FFmpeg is not configured, while evidence and
+deterministic verification remain usable.
 
 The existing MVP renderer can also render verified embodiment replay inputs directly:
 
@@ -265,34 +262,39 @@ The existing MVP renderer can also render verified embodiment replay inputs dire
 .venv/bin/python scripts/render_embodiment_mvp_demo.py --help
 ```
 
-Local run bundles and exported video remain ignored. Upload and Pages video IDs require explicit
-user authorization. Native embodiment video uses Godot Movie Maker plus FFmpeg—never Remotion.
+Local run bundles and exported video remain ignored by Git. Uploads and Pages video IDs require
+explicit user authorization. Native embodiment video uses Godot Movie Maker and FFmpeg, never
+Remotion.
 
-The older Arena highlight command remains a separate presentation path:
+The original Arena highlight command remains a separate presentation path:
 
 ```bash
 ./render_highlight_replay.command
 ```
 
-See [`docs/HIGHLIGHT_EXPORT.md`](docs/HIGHLIGHT_EXPORT.md) for the command-line options.
+See [`docs/HIGHLIGHT_EXPORT.md`](docs/HIGHLIGHT_EXPORT.md) for its command-line options.
 
-### GitHub action preview
+### Gameplay preview
 
-This 20-second cut is taken from the same deterministic showcase and keeps the
-negotiation, Crown clash, and reversal beats visible without requiring a local render:
+This 20-second cut comes from the same deterministic showcase. It keeps the negotiation, Crown
+clash, and reversal beats visible without requiring a local render.
 
 ![WorldArena open-world action highlight](docs/assets/worldarena-highlight.gif)
 
-## Verify
+The Pages gallery includes solo, seat-swapped 1v1, and Sol/Luna/Terra trio slots with local
+coming-soon posters. Optional repository variables `YOUTUBE_SOLO_ID`, `YOUTUBE_DUEL_ID`, and
+`YOUTUBE_TRIO_ID` enable privacy-enhanced YouTube facades only after a visitor presses play. No
+external video ID is invented or published by this repository.
 
-For the older Arena fast verification pass:
+## Verification and development
+
+Run the original Arena's fast deterministic verification pass:
 
 ```bash
 ./run_fast_deterministic_tests.command
 ```
 
-Set `WORLD_ARENA_FAST_ROUNDS=12` if you want a slightly longer batch smoke while keeping it fully
-deterministic.
+Set `WORLD_ARENA_FAST_ROUNDS=12` for a slightly longer deterministic batch smoke test.
 
 Run the Python contract, concurrency, privacy, scoring, and scheduling tests:
 
@@ -315,9 +317,7 @@ pnpm build
 pnpm build:pages
 ```
 
-The Pages build uses the `/WorldArena/` base. Optional repository variables
-`YOUTUBE_SOLO_ID`, `YOUTUBE_DUEL_ID`, and `YOUTUBE_TRIO_ID` enable privacy-enhanced YouTube
-facades only after a visitor presses play. Without them, all three local poster fallbacks remain.
+The Pages build uses the `/WorldArena/` base.
 
 Run the deterministic simulation and Controller Lab regression loop:
 
@@ -339,22 +339,34 @@ production metadata:
 genesis-season-schedule docs/season-spec.example.json runs/season-schedule.json
 ```
 
-## Architecture
+## Research foundations
 
-```text
-Live model adapters / Pre-run showcase inputs
-                 ↓
-WorldEval / FastAPI: isolation · strict JSON · budgets · neutral fallback · safe projections
-                 ↓  llm-controller/0.1.0 · 0.2.0 · 0.3.0
-WorldArena / Godot: sole authority · participant observations · receipts · checkpoints
-                 ↓
-Solo / fixed-window duo / fixed-window trio simulation
-                 ↓
-Participant-only preview · authority evaluation · verified native replay
-```
+WorldEval combines lessons from prior work rather than treating any one final score as sufficient:
 
-Only the deterministic simulation changes world state. Python may reject malformed output but
-cannot award territory, resources, damage, or victory.
+| Research | Lesson adopted here | WorldEval's focus |
+|---|---|---|
+| [ALEM](https://arxiv.org/abs/2606.08340) | Separate coordination from base task skill | Mixed cooperation and competition between independently scored Commanders |
+| [Melting Pot 2.0](https://arxiv.org/abs/2211.13746) | Test generalization to unfamiliar social partners | Natural-language negotiation whose value is tied to later physical outcomes |
+| [Neural MMO](https://arxiv.org/abs/2308.15802) | Vary opponents and test robustness | Seat-balanced schedules and per-opponent aggregates |
+| [BALROG](https://arxiv.org/abs/2411.13543) | Keep fine-grained agentic metrics beyond success | Evidence-linked planning, economy, social, cognition, and reliability measures |
+| [Cattle Trade](https://arxiv.org/abs/2605.14537) | Preserve behavioural traces beyond wins | Negotiation coupled to territory, logistics, construction, and combat |
+
+The distinctive question is not simply “can the model win a game?” It is: **can an LLM deploy
+planning, adaptation, negotiation, delegation, and resource discipline together—and can every
+consequence be reproduced and audited?**
+
+## Project status
+
+WorldEval is a working research prototype. Participant-view browser presentation,
+authority-derived evaluation, sealed replay, and versioned solo, duo, and trio managed runtimes are
+implemented. No official live-model leaderboard, provider comparison, or completed benchmark
+season has been published.
+
+The visual stack uses a reviewed Quaternius Medieval Village CC0 building subset, Kenney's CC0
+Adventure UI vectors, FastNoiseLite terrain variation, WorldEnvironment lighting, and
+NavigationAgent3D movement hooks. Terrain3D and LimboAI are pinned and loaded behind deterministic,
+presentation-only boundaries. The newer Quaternius MegaKit and Mixamo clips retain their official
+interactive download steps; import contracts are included, but no gated asset was bypassed.
 
 ## Repository guide
 
