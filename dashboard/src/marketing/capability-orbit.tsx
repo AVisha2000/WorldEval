@@ -14,7 +14,7 @@ type CapabilityEra = {
   id: "3" | "4" | "5" | "future"
   number: "3" | "4" | "5" | "?"
   radius: number
-  releaseLabel: "2020" | "2023" | "2025" | "SOON 👀"
+  releaseLabel: "2020" | "2023" | "2025" | "SOON"
   start: number
   title: string
 }
@@ -83,7 +83,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "future",
     number: "?",
     radius: 368,
-    releaseLabel: "SOON 👀",
+    releaseLabel: "SOON",
     start: 0.77,
     title: "The physical frontier",
   },
@@ -388,7 +388,7 @@ export function CapabilityOrbitDescription() {
     <ol className="sr-only" id="hero-capability-summary">
       {CAPABILITY_ERAS.map((era) => (
         <li key={era.id}>
-          GPT {era.number} ({era.releaseLabel.replace(" 👀", "")}):{" "}
+          GPT {era.number} ({era.releaseLabel}):{" "}
           {era.capabilities.map(({ label }) => label).join(", ")}
           {era.id === "future" ? ". Illustrative future capabilities." : "."}
         </li>
