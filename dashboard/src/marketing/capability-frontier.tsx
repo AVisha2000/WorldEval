@@ -40,6 +40,8 @@ type GoblinFlybyProps = {
 
 const GOBLIN_FLIGHT_DURATION = 10
 const GOBLIN_LOOP_SAMPLES = 36
+const GOBLIN_LOOP_END_TIME = 0.78
+const GOBLIN_BOOST_START_TIME = 0.88
 const GOBLIN_FLIGHT_POINTS = [
   { rotate: -4, time: 0, x: -28, y: 5 },
   { rotate: -2, time: 0.08, x: 4, y: 2 },
@@ -50,13 +52,14 @@ const GOBLIN_FLIGHT_POINTS = [
 
     return {
       rotate: 10 + loopProgress * 360,
-      time: 0.22 + loopProgress * 0.56,
+      time: 0.22 + loopProgress * (GOBLIN_LOOP_END_TIME - 0.22),
       x: 50 + Math.cos(angle) * 16,
       y: -8 + Math.sin(angle) * 20,
     }
   }),
-  { rotate: 378, time: 0.86, x: 54, y: -24 },
-  { rotate: 386, time: 0.94, x: 82, y: -47 },
+  { rotate: 370, time: GOBLIN_BOOST_START_TIME, x: 34, y: -8 },
+  { rotate: 376, time: 0.92, x: 50, y: -22 },
+  { rotate: 386, time: 0.96, x: 82, y: -47 },
   { rotate: 392, time: 1, x: 112, y: -70 },
 ]
 const GOBLIN_FLIGHT_TIMES = GOBLIN_FLIGHT_POINTS.map(({ time }) => time)
@@ -72,9 +75,17 @@ const GOBLIN_FLIGHT_OPACITY = GOBLIN_FLIGHT_POINTS.map(({ time }) => {
   }
   return 0.96
 })
-const GOBLIN_FLIGHT_SCALE = GOBLIN_FLIGHT_POINTS.map(
-  ({ time }) => 0.76 + Math.sin(Math.PI * time) * 0.12
+const GOBLIN_PAUSE_SCALE =
+  0.76 + Math.sin(Math.PI * GOBLIN_LOOP_END_TIME) * 0.12
+const GOBLIN_FLIGHT_SCALE = GOBLIN_FLIGHT_POINTS.map(({ time }) =>
+  time >= GOBLIN_LOOP_END_TIME && time <= GOBLIN_BOOST_START_TIME
+    ? GOBLIN_PAUSE_SCALE
+    : 0.76 + Math.sin(Math.PI * time) * 0.12
 )
+const GOBLIN_BOOST_TIMES = [0, 0.86, GOBLIN_BOOST_START_TIME, 0.89, 0.97, 1]
+const GOBLIN_BOOST_OPACITY = [0, 0, 0, 0.96, 0.82, 0]
+const GOBLIN_BOOST_SCALE_X = [0.2, 0.2, 0.2, 1.08, 1.28, 0.5]
+const GOBLIN_BOOST_SCALE_Y = [0.5, 0.5, 0.5, 1, 0.78, 0.4]
 const PLATES: ZoomPlate[] = [
   {
     end: 0.12,
@@ -276,6 +287,36 @@ function GoblinFlightRun({
     >
       <span className="goblin-vapor-trail goblin-vapor-trail--wake" />
       <span className="goblin-vapor-trail goblin-vapor-trail--core" />
+      <motion.span
+        animate={{
+          opacity: GOBLIN_BOOST_OPACITY,
+          scaleX: GOBLIN_BOOST_SCALE_X,
+          scaleY: GOBLIN_BOOST_SCALE_Y,
+        }}
+        className="goblin-boost goblin-boost--smoke"
+        initial={{ opacity: 0, scaleX: 0.2, scaleY: 0.5 }}
+        transition={{
+          delay,
+          duration: GOBLIN_FLIGHT_DURATION,
+          ease: "linear",
+          times: GOBLIN_BOOST_TIMES,
+        }}
+      />
+      <motion.span
+        animate={{
+          opacity: GOBLIN_BOOST_OPACITY,
+          scaleX: GOBLIN_BOOST_SCALE_X,
+          scaleY: GOBLIN_BOOST_SCALE_Y,
+        }}
+        className="goblin-boost goblin-boost--flame"
+        initial={{ opacity: 0, scaleX: 0.2, scaleY: 0.5 }}
+        transition={{
+          delay,
+          duration: GOBLIN_FLIGHT_DURATION,
+          ease: "linear",
+          times: GOBLIN_BOOST_TIMES,
+        }}
+      />
       <img
         alt=""
         className="goblin-flyby"
