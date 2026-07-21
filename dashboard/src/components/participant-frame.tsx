@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs -- The preview hook returns render state alongside a canvas ref; this component never reads ref.current during render. */
 import { useEffect, useState } from "react"
 import type { UseQueryResult } from "@tanstack/react-query"
 import { LoaderCircleIcon, ShieldCheckIcon } from "lucide-react"

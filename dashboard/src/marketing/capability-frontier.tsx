@@ -263,7 +263,7 @@ export function CapabilityFrontier() {
             className="solar-finale-copy"
             style={{ opacity: reducedMotion ? 1 : finaleOpacity }}
           >
-            Everything inside this boundary is now one prompt away.
+            What’s possible with a single prompt keeps expanding.
           </motion.p>
 
           <div className="infinity-reticle" aria-hidden="true">
