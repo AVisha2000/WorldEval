@@ -42,14 +42,6 @@ const KENNEY_MINIMAP_RING := "res://assets/external/kenney_ui_pack_adventure/Vec
 const COMPACT_MAP_SCALE := 0.46
 const COMPACT_RADIUS_SCALE := 0.72
 
-const GRASS_TEXTURE := "res://art/textures/grass-warcraft-v1.png"
-const WATER_TEXTURE := "res://art/textures/water-warcraft-v1.png"
-const DIRT_PATH_TEXTURE := "res://art/textures/dirt-path-warcraft-v1.png"
-const WOOD_TEXTURE := "res://art/textures/wood-warcraft-v1.png"
-const ROCK_TEXTURE := "res://art/textures/rock-warcraft-v1.png"
-const ROOF_TEXTURE := "res://art/textures/roof-warcraft-v1.png"
-const CRYSTAL_TEXTURE := "res://art/textures/crystal-warcraft-v1.png"
-
 const FACTION_IDS := ["sol", "terra", "luna"]
 const FACTION_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
 const FACTION_COLORS := {
