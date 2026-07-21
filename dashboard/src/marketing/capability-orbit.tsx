@@ -219,27 +219,21 @@ function CapabilityRing({
 function EraMarker({
   era,
   progress,
-  reducedMotion,
 }: {
   era: CapabilityEra
   progress: MotionValue<number>
-  reducedMotion: boolean
 }) {
-  const { input, isFinal, isInitial, revealEnd } = getEraTimeline(era)
+  const { input, isFinal, isInitial } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
     input,
     isInitial ? [1, 1, 0] : isFinal ? [0, 1, 1] : [0, 1, 1, 0]
   )
-  const scale = useTransform(progress, [era.start, revealEnd], [0.72, 1])
 
   return (
     <motion.text
       className={`capability-era-number capability-era-number--${era.id}`}
-      style={{
-        opacity,
-        scale: reducedMotion ? 1 : scale,
-      }}
+      style={{ opacity }}
       textAnchor="middle"
       x={ORBIT_CENTER}
       y={ORBIT_CENTER + 56}
@@ -356,7 +350,6 @@ export function CapabilityOrbit({
               era={era}
               key={era.id}
               progress={progress}
-              reducedMotion={reducedMotion}
             />
           ))}
         </svg>

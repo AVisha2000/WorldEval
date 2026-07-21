@@ -333,8 +333,6 @@
   font-family: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
   font-size: 88px;
   font-weight: 600;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 
 .mobile-era-readouts {
