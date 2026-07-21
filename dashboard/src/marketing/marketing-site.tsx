@@ -12,7 +12,6 @@ import { CapabilityFrontier } from "./capability-frontier"
 import {
   DOCUMENTATION_URL,
   getControllerLabUrl,
-  getVideoDemos,
   REPOSITORY_URL,
 } from "./site-data"
 import "./marketing.css"
@@ -231,89 +230,15 @@ function EvaluationWorkflow() {
   )
 }
 
-function BuildAndRepository() {
-  const controllerLabUrl = getControllerLabUrl()
-  return (
-    <section
-      className="build-section section-frame"
-      aria-labelledby="build-heading"
-    >
-      <div className="build-status">
-        <p className="section-index">06 / Build status</p>
-        <h2 id="build-heading">Built in the open.</h2>
-        <dl>
-          <div>
-            <dt>Repository</dt>
-            <dd>Public source</dd>
-          </div>
-          <div>
-            <dt>Core</dt>
-            <dd>Credential-free solo, 1v1, and trio Demo paths</dd>
-          </div>
-          <div>
-            <dt>Evidence</dt>
-            <dd>Authority evaluation and versioned verified replay</dd>
-          </div>
-          <div>
-            <dt>Controller Lab</dt>
-            <dd>
-              {controllerLabUrl
-                ? "External lab configured"
-                : "Live lab coming soon"}
-            </dd>
-          </div>
-        </dl>
-      </div>
-      <div className="repository-cta">
-        <p>
-          Capability <span aria-hidden="true">→</span> Evaluation{" "}
-          <span aria-hidden="true">→</span> Evidence
-        </p>
-        <h2>Evaluate the world agents act in.</h2>
-        <div className="cta-actions">
-          <a
-            className="button button--primary"
-            href={REPOSITORY_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            View repository <ArrowIcon />
-          </a>
-          <a
-            className="button button--quiet"
-            href={DOCUMENTATION_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Read the documentation <ArrowIcon />
-          </a>
-          {controllerLabUrl ? (
-            <a
-              className="lab-link"
-              href={controllerLabUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Open Controller Lab <ArrowIcon />
-            </a>
-          ) : (
-            <a className="lab-link" href="#demos">
-              Live lab coming soon <ArrowIcon />
-            </a>
-          )}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function Footer() {
+  const controllerLabUrl = getControllerLabUrl()
+
   return (
     <footer className="marketing-footer section-frame">
       <a className="wordmark" href="#top">
         WorldEval
       </a>
-      <p>Observable behaviour in deterministic worlds.</p>
+      <p>Evaluate agents in interactive worlds. Understand what they did.</p>
       <div>
         <a href={REPOSITORY_URL} rel="noreferrer" target="_blank">
           Repository
@@ -321,13 +246,15 @@ function Footer() {
         <a href={DOCUMENTATION_URL} rel="noreferrer" target="_blank">
           Documentation
         </a>
+        <a href={controllerLabUrl} rel="noreferrer" target="_blank">
+          Controller Lab
+        </a>
       </div>
     </footer>
   )
 }
 
 export function MarketingSite() {
-  const demos = getVideoDemos()
   return (
     <MotionConfig
       reducedMotion="user"
@@ -348,7 +275,7 @@ export function MarketingSite() {
               <div className="section-placeholder" aria-hidden="true" />
             }
           >
-            <DemoGallery demos={demos} />
+            <DemoGallery />
           </Suspense>
           <Suspense
             fallback={
@@ -360,7 +287,6 @@ export function MarketingSite() {
           >
             <EvidenceTrail />
           </Suspense>
-          <BuildAndRepository />
         </main>
         <Footer />
       </div>

@@ -1,64 +1,109 @@
-import { motion, useReducedMotion } from "motion/react"
+import { ArrowUpRight, Check } from "lucide-react"
+import { getControllerLabUrl, REPOSITORY_URL } from "./site-data"
 
-const EVENTS = [
+const ROADMAP = [
   {
-    index: "01",
-    title: "Agent observed world state",
-    detail: "A bounded, visibility-filtered observation enters the loop.",
+    status: "Shipped",
+    detail: "Observe · Act · Record · Replay",
+    state: "complete",
   },
   {
-    index: "02",
-    title: "Action requested",
-    detail: "The agent selects an action through the defined interface.",
+    status: "Live now",
+    detail: "Labyrinth · Mini RTS · Crossroads",
+    state: "complete",
   },
   {
-    index: "03",
-    title: "World event emitted",
-    detail: "The deterministic world applies rules and records the event.",
+    status: "Next",
+    detail: "More games · More worlds · New agent teams",
+    state: "current",
   },
   {
-    index: "04",
-    title: "Outcome evaluated",
-    detail: "Versioned criteria connect the outcome back to evidence.",
+    status: "Future",
+    detail: "A portable evaluation layer for any interactive environment",
+    state: "future",
   },
 ] as const
 
-export function EvidenceTrail() {
-  const reducedMotion = useReducedMotion()
+function RoadmapMarker({
+  index,
+  state,
+}: {
+  index: number
+  state: (typeof ROADMAP)[number]["state"]
+}) {
   return (
-    <section
-      className="evidence-section section-frame"
-      id="evidence"
-      aria-labelledby="evidence-heading"
-    >
-      <div className="evidence-intro">
-        <div>
-          <p className="section-index">05 / Behavioural interpretability</p>
-          <h2 id="evidence-heading">A trail you can inspect.</h2>
+    <span className="roadmap-marker" aria-hidden="true">
+      {state === "complete" ? <Check /> : index + 1}
+    </span>
+  )
+}
+
+export function EvidenceTrail() {
+  const controllerLabUrl = getControllerLabUrl()
+
+  return (
+    <>
+      <section
+        className="roadmap-section section-frame"
+        id="evidence"
+        aria-labelledby="roadmap-heading"
+      >
+        <div className="roadmap-heading">
+          <div>
+            <p className="section-index">05 / Roadmap</p>
+            <h2 id="roadmap-heading">
+              From one game to any interactive world.
+            </h2>
+          </div>
+          <p>
+            The evaluation loop stays stable while new games, agents, and
+            evidence adapters plug in.
+          </p>
         </div>
-        <p>
-          WorldEval shows observable decisions and events—not private reasoning
-          or hidden motivation.
-        </p>
-      </div>
-      <ol className="event-trail">
-        {EVENTS.map((event, index) => (
-          <motion.li
-            initial={reducedMotion ? false : { opacity: 0, x: -18 }}
-            key={event.index}
-            transition={{ delay: index * 0.08, duration: 0.5 }}
-            viewport={{ amount: 0.45, once: true }}
-            whileInView={{ opacity: 1, x: 0 }}
+        <ol className="roadmap-rail">
+          {ROADMAP.map((step, index) => (
+            <li
+              className={`roadmap-step roadmap-step--${step.state}`}
+              key={step.status}
+            >
+              <RoadmapMarker index={index} state={step.state} />
+              <span className="roadmap-status">{step.status}</span>
+              <strong>{step.detail}</strong>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section
+        className="lab-cta section-frame"
+        aria-labelledby="lab-cta-heading"
+      >
+        <div>
+          <h2 id="lab-cta-heading">Put an agent in the world.</h2>
+          <p>
+            Open the Controller Lab to run a game and inspect what the agent
+            actually did.
+          </p>
+        </div>
+        <div className="lab-cta__actions">
+          <a
+            className="button button--primary"
+            href={controllerLabUrl}
+            rel="noreferrer"
+            target="_blank"
           >
-            <span className="event-index">{event.index}</span>
-            <span className="event-node" aria-hidden="true" />
-            <div>
-              <h3>{event.title}</h3>
-              <p>{event.detail}</p>
-            </div>
-          </motion.li>
-        ))}
-      </ol>
-    </section>
+            Open the Controller Lab <ArrowUpRight aria-hidden="true" />
+          </a>
+          <a
+            className="lab-cta__secondary"
+            href={REPOSITORY_URL}
+            rel="noreferrer"
+            target="_blank"
+          >
+            View the repository <ArrowUpRight aria-hidden="true" />
+          </a>
+        </div>
+      </section>
+    </>
   )
 }

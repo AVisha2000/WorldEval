@@ -860,270 +860,239 @@
   padding-block: 110px 130px;
   border-top: 1px solid var(--rule);
 }
-.section-heading-row,
-.evidence-intro {
+.showcase-heading,
+.roadmap-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 80px;
   margin-bottom: 48px;
 }
-.section-heading-row h2,
-.evidence-intro h2 {
+.showcase-heading h2,
+.roadmap-heading h2 {
+  max-width: 940px;
+  margin-top: 12px;
   font-size: clamp(48px, 5.4vw, 80px);
   line-height: 0.95;
   letter-spacing: -0.045em;
 }
-.section-heading-row > p,
-.evidence-intro > p {
+.showcase-heading > p,
+.roadmap-heading > p {
   max-width: 430px;
   color: var(--ivory-dim);
   font-size: 14px;
 }
-.demo-layout {
+.game-showcase {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
-.demo-facade {
+.game-panel {
   position: relative;
-  min-height: 260px;
+  aspect-ratio: 16 / 9;
+  display: block;
   overflow: hidden;
   border: 1px solid var(--rule);
-  aspect-ratio: 16 / 9;
   background: #0b0e0f;
-  color: var(--lunar);
-  isolation: isolate;
+  color: var(--ivory);
 }
-.demo-facade--featured {
-  grid-column: 1;
-  grid-row: 1 / 3;
-  min-height: 520px;
+.game-panel--featured {
+  grid-column: 1 / -1;
+  aspect-ratio: 2.35 / 1;
 }
-.demo-facade:nth-child(2) {
-  grid-column: 2;
-  grid-row: 1;
-}
-.demo-facade:nth-child(3) {
-  grid-column: 2;
-  grid-row: 2;
-}
-.demo-facade--amber {
-  color: var(--amber);
-}
-.demo-facade--earth {
-  color: var(--earth);
-}
-.demo-facade:hover {
-  border-color: currentColor;
-}
-.poster-art {
+.game-panel > img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.52;
+  object-fit: cover;
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.demo-facade::after {
+.game-panel__shade {
   position: absolute;
-  z-index: -1;
   inset: 0;
-  content: "";
-  background: linear-gradient(
-    180deg,
-    rgb(11 12 14 / 0.22),
-    rgb(11 12 14 / 0.83)
-  );
+  background:
+    linear-gradient(90deg, rgb(5 6 8 / 0.94), rgb(5 6 8 / 0.2) 68%),
+    linear-gradient(0deg, rgb(5 6 8 / 0.85), transparent 66%);
 }
-.demo-copy {
+.game-panel__content {
   position: absolute;
-  z-index: 2;
-  top: 24px;
-  left: 26px;
-  max-width: min(380px, 70%);
+  right: 28px;
+  bottom: 28px;
+  left: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
-.demo-copy h3 {
+.game-panel__content strong {
   color: var(--ivory);
-  font-size: clamp(24px, 2.3vw, 38px);
-  line-height: 1;
+  font-family: "Iowan Old Style", "Baskerville", serif;
+  font-size: clamp(28px, 3.1vw, 52px);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
 }
-.demo-copy p {
+.game-panel:not(.game-panel--featured) .game-panel__content strong {
+  font-size: clamp(25px, 2.4vw, 38px);
+}
+.game-panel__focus {
   margin-top: 10px;
-  color: var(--ivory-dim);
-  font-size: 12px;
-}
-.play-button {
-  position: absolute;
-  z-index: 3;
-  top: 52%;
-  left: 50%;
-  width: 76px;
-  height: 76px;
-  display: grid;
-  place-items: center;
-  transform: translate(-50%, -50%);
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  background: rgb(11 12 14 / 0.72);
-  color: inherit;
-  cursor: pointer;
-}
-.play-button svg {
-  width: 24px;
-}
-.coming-soon,
-.youtube-link {
-  position: absolute;
-  z-index: 2;
-  right: 22px;
-  bottom: 18px;
-  color: currentColor;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.youtube-link:hover {
+.game-panel__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 22px;
+  border-bottom: 1px solid rgb(238 231 215 / 0.45);
+  padding-bottom: 4px;
   color: var(--ivory);
+  font-size: 12px;
 }
-.video-embed {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border: 1px solid var(--rule);
-  background: #000;
+.game-panel__link svg {
+  width: 15px;
+  height: 15px;
 }
-.video-embed iframe {
-  width: 100%;
-  height: 100%;
-  display: block;
-  border: 0;
+.game-panel:hover,
+.game-panel:focus-visible {
+  border-color: var(--amber);
+}
+.game-panel:hover > img,
+.game-panel:focus-visible > img {
+  transform: scale(1.018);
 }
 
-.evidence-section {
-  padding-block: 120px;
+.roadmap-section {
+  padding-block: 120px 132px;
   border-top: 1px solid var(--rule);
 }
-.event-trail {
+.roadmap-heading {
+  align-items: start;
+}
+.roadmap-rail {
   position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.event-trail::before {
+.roadmap-rail::before {
   position: absolute;
-  top: 39px;
+  top: 16px;
   right: 0;
   left: 0;
   height: 1px;
   content: "";
   background: var(--rule);
 }
-.event-trail li {
+.roadmap-step {
   position: relative;
-  padding: 0 28px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 18px;
 }
-.event-index {
-  color: var(--amber);
-  font-size: 11px;
-}
-.event-node {
+.roadmap-marker {
   position: relative;
   z-index: 1;
-  width: 13px;
-  height: 13px;
-  display: block;
-  margin: 18px 0 28px;
-  border: 1px solid var(--amber);
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
   border-radius: 50%;
   background: var(--ink);
+  color: var(--ivory-dim);
+  font-size: 10px;
   box-shadow: 0 0 0 8px var(--ink);
 }
-.event-trail li:nth-child(2) .event-node {
+.roadmap-marker svg {
+  width: 15px;
+  height: 15px;
+}
+.roadmap-step--complete .roadmap-marker {
   border-color: var(--earth);
+  background: var(--earth);
+  color: #08120e;
 }
-.event-trail li:nth-child(3) .event-node {
-  border-color: #6c9fd2;
+.roadmap-step--current .roadmap-marker {
+  border-color: var(--amber);
+  color: var(--amber);
 }
-.event-trail li:nth-child(4) .event-node {
-  border-color: var(--lunar);
+.roadmap-status {
+  margin-top: 27px;
+  color: var(--amber);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
-.event-trail h3 {
-  font-size: 22px;
-  line-height: 1.1;
-}
-.event-trail p {
-  margin-top: 12px;
-  color: var(--ivory-dim);
-  font-size: 13px;
-}
-
-.build-section {
-  display: grid;
-  grid-template-columns: 0.82fr 1.18fr;
-  gap: clamp(48px, 8vw, 120px);
-  padding-block: 110px;
-  border-top: 1px solid var(--rule);
-}
-.build-section h2 {
-  font-size: clamp(42px, 4.7vw, 68px);
-  line-height: 1;
-  letter-spacing: -0.045em;
-}
-.build-status dl {
-  margin: 40px 0 0;
-  border-top: 1px solid var(--rule);
-}
-.build-status dl > div {
-  display: grid;
-  grid-template-columns: 0.7fr 1.3fr;
-  gap: 20px;
-  border-bottom: 1px solid var(--rule);
-  padding: 14px 0;
-  font-size: 12px;
-}
-.build-status dt {
-  color: var(--ivory-dim);
-}
-.build-status dd {
-  margin: 0;
+.roadmap-step--complete .roadmap-status {
   color: var(--earth);
 }
-.repository-cta {
-  border-left: 1px solid var(--rule);
-  padding-left: clamp(40px, 6vw, 90px);
+.roadmap-step--future .roadmap-status,
+.roadmap-step--future strong {
+  color: var(--ivory-dim);
 }
-.repository-cta > p {
-  color: var(--amber);
+.roadmap-step strong {
+  max-width: 260px;
+  margin-top: 12px;
   font-family: "Iowan Old Style", "Baskerville", serif;
-  font-size: clamp(24px, 2.5vw, 39px);
+  font-size: clamp(18px, 1.7vw, 25px);
+  font-weight: 500;
+  line-height: 1.2;
 }
-.repository-cta > p span {
-  padding-inline: 8px;
+
+.lab-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 80px;
+  padding-block: 84px;
+  border-block: 1px solid var(--rule);
 }
-.repository-cta h2 {
-  max-width: 680px;
-  margin-top: 28px;
+.lab-cta h2 {
+  max-width: 760px;
+  font-size: clamp(46px, 5.5vw, 82px);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
 }
-.cta-actions {
+.lab-cta p {
+  max-width: 610px;
+  margin-top: 20px;
+  color: var(--ivory-dim);
+  font-size: 14px;
+}
+.lab-cta__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 42px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  min-width: 250px;
 }
-.lab-link {
-  width: 100%;
-  display: flex;
+.lab-cta__actions .button {
+  justify-content: space-between;
+}
+.lab-cta__secondary {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  color: var(--ivory-dim) !important;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--ivory-dim);
   font-size: 12px;
 }
-.lab-link .arrow-icon {
+.lab-cta__secondary svg {
   width: 15px;
+  height: 15px;
+}
+.lab-cta__secondary:hover {
+  color: var(--ivory);
 }
 
 .marketing-footer {
@@ -1189,13 +1158,13 @@
   .pillar-list li {
     grid-template-columns: 50px 0.7fr 1fr;
   }
-  .build-section {
+  .lab-cta {
     grid-template-columns: 1fr;
+    align-items: start;
+    gap: 42px;
   }
-  .repository-cta {
-    border-top: 1px solid var(--rule);
-    border-left: 0;
-    padding: 60px 0 0;
+  .lab-cta__actions {
+    min-width: min(100%, 320px);
   }
 }
 
@@ -1389,13 +1358,12 @@
   .why-section,
   .workflow-section,
   .demo-section,
-  .evidence-section,
-  .build-section {
+  .roadmap-section {
     padding-block: 88px;
   }
   .why-statement h2,
-  .section-heading-row h2,
-  .evidence-intro h2 {
+  .showcase-heading h2,
+  .roadmap-heading h2 {
     font-size: 50px;
   }
   .pillar-list li {
@@ -1433,78 +1401,76 @@
     margin-top: 50px !important;
     padding-inline: 18px;
   }
-  .section-heading-row,
-  .evidence-intro {
+  .showcase-heading,
+  .roadmap-heading {
     align-items: start;
     flex-direction: column;
     gap: 20px;
   }
-  .demo-layout {
-    display: flex;
-    flex-direction: column;
-  }
-  .demo-facade,
-  .demo-facade--featured {
-    grid-column: auto;
-    grid-row: auto;
-    min-height: 0;
-  }
-  .demo-facade:nth-child(2),
-  .demo-facade:nth-child(3) {
-    grid-column: auto;
-    grid-row: auto;
-  }
-  .demo-copy {
-    top: 18px;
-    left: 18px;
-  }
-  .demo-copy p {
-    display: none;
-  }
-  .play-button {
-    width: 60px;
-    height: 60px;
-  }
-  .event-trail {
+  .game-showcase {
     grid-template-columns: 1fr;
   }
-  .event-trail::before {
-    top: 8px;
-    bottom: 8px;
-    left: 6px;
+  .game-panel--featured {
+    grid-column: auto;
+    aspect-ratio: 16 / 9;
+  }
+  .game-panel__content {
+    right: 20px;
+    bottom: 20px;
+    left: 20px;
+  }
+  .game-panel__link {
+    margin-top: 15px;
+  }
+  .roadmap-rail {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .roadmap-rail::before {
+    top: 16px;
+    bottom: 16px;
+    left: 16px;
     width: 1px;
     height: auto;
   }
-  .event-trail li {
+  .roadmap-step {
+    min-height: 112px;
     display: grid;
-    grid-template-columns: 34px 20px 1fr;
-    gap: 10px;
-    padding: 0 0 36px;
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: auto 1fr;
+    padding: 0 0 28px;
   }
-  .event-node {
-    margin: 1px 0 0;
+  .roadmap-marker {
+    grid-row: 1 / 3;
   }
-  .event-trail p {
-    max-width: 420px;
+  .roadmap-status {
+    margin-top: 2px;
   }
-  .build-status dl > div {
-    grid-template-columns: 1fr;
-    gap: 5px;
+  .roadmap-step strong {
+    margin-top: 8px;
   }
-  .repository-cta {
-    padding-top: 48px;
+  .lab-cta {
+    gap: 36px;
+    padding-block: 72px;
   }
-  .cta-actions {
-    flex-direction: column;
+  .lab-cta h2 {
+    font-size: 50px;
+  }
+  .lab-cta__actions {
+    width: 100%;
   }
   .marketing-footer {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     gap: 20px;
     padding-block: 34px;
   }
+  .marketing-footer > div {
+    justify-self: start;
+    flex-wrap: wrap;
+    gap: 14px 24px;
+  }
   .marketing-footer > p {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: auto;
   }
 }
 
@@ -1519,13 +1485,14 @@
     font-size: 34px;
   }
   .why-statement h2,
-  .section-heading-row h2,
-  .evidence-intro h2,
+  .showcase-heading h2,
+  .roadmap-heading h2,
   .workflow-section h2 {
     font-size: 42px;
   }
-  .demo-copy h3 {
-    font-size: 22px;
+  .game-panel__content strong,
+  .game-panel:not(.game-panel--featured) .game-panel__content strong {
+    font-size: 24px;
   }
 }
 

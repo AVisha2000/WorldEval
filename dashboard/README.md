@@ -54,22 +54,16 @@ target, set `VITE_BASE_PATH=/repository-name/`.
 
 ## Public-site configuration
 
-All values are optional. Missing videos render coming-soon posters and never create a YouTube
-iframe. A video iframe is created only after a visitor clicks its play control.
+The public game showcase uses checked-in screenshots from Crossroads Conquest, Labyrinth Run, and
+Mini RTS Skirmish. Every game card and the primary call to action open the hosted Controller Lab.
 
-| Variable                  | Purpose                                                                            |
-| ------------------------- | ---------------------------------------------------------------------------------- |
-| `VITE_CONTROLLER_LAB_URL` | Public HTTP(S) URL for the external Controller Lab. Localhost values are rejected. |
-| `VITE_YOUTUBE_SOLO_ID`    | YouTube ID for the solo multi-action showcase.                                     |
-| `VITE_YOUTUBE_DUEL_ID`    | YouTube ID for the seat-swapped scripted 1v1.                                      |
-| `VITE_YOUTUBE_TRIO_ID`    | YouTube ID for the Sol/Luna/Terra scripted free-for-all.                           |
+| Variable                  | Purpose                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `VITE_CONTROLLER_LAB_URL` | Optional public HTTP(S) override for the Controller Lab. Localhost values fall back to the hosted lab. |
 
-The three publication slots live together in `src/marketing/site-data.ts`. Trio is deliberately
-featured as the latest finished gameplay path. If an ID is absent or malformed, the site uses its
-checked-in local SVG poster facade and creates no YouTube iframe or request. The Pages workflow
-reads matching repository variables named `CONTROLLER_LAB_URL`, `YOUTUBE_SOLO_ID`,
-`YOUTUBE_DUEL_ID`, and `YOUTUBE_TRIO_ID`. Do not invent an ID or upload footage without explicit
-authorization.
+The hosted lab URL is the default in `src/marketing/site-data.ts`; the Pages workflow can override
+it with the repository variable `CONTROLLER_LAB_URL`. Invalid and local URLs fall back to
+`https://lab.openai-buildweek.lissan.dev/` so the published site always has a working destination.
 
 ## Verification
 

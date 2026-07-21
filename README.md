@@ -290,10 +290,9 @@ clash, and reversal beats visible without requiring a local render.
 
 ![WorldArena open-world action highlight](docs/assets/worldarena-highlight.gif)
 
-The Pages gallery includes solo, seat-swapped 1v1, and Sol/Luna/Terra trio slots with local
-coming-soon posters. Optional repository variables `YOUTUBE_SOLO_ID`, `YOUTUBE_DUEL_ID`, and
-`YOUTUBE_TRIO_ID` enable privacy-enhanced YouTube facades only after a visitor presses play. No
-external video ID is invented or published by this repository.
+The Pages gallery uses real captures from Crossroads Conquest, Labyrinth Run, and Mini RTS
+Skirmish. Each panel highlights the agent capability that game evaluates and opens the
+[hosted Controller Lab](https://lab.openai-buildweek.lissan.dev/) for interactive inspection.
 
 ## Verification and development
 

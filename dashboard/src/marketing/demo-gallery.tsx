@@ -1,128 +1,90 @@
-import { useState } from "react"
-import { Play } from "lucide-react"
-import type { VideoDemo } from "./site-data"
+import { ArrowUpRight } from "lucide-react"
+import crossroadsImage from "./assets/crossroads-conquest.jpg"
+import labyrinthImage from "./assets/labyrinth-run.jpg"
+import miniRtsImage from "./assets/mini-rts-bridge.jpg"
+import { getControllerLabUrl } from "./site-data"
 
-function PosterArt({ accent }: Pick<VideoDemo, "accent">) {
+type GameShowcase = {
+  id: string
+  title: string
+  focus: string
+  image: string
+  imageAlt: string
+  featured?: boolean
+}
+
+const GAMES: GameShowcase[] = [
+  {
+    id: "crossroads",
+    title: "Crossroads Conquest",
+    focus: "Multi-agent strategy",
+    image: crossroadsImage,
+    imageAlt:
+      "Sol, Terra, and Luna expanding across the shared Crossroads Conquest map",
+    featured: true,
+  },
+  {
+    id: "labyrinth",
+    title: "Labyrinth Run",
+    focus: "Spatial reasoning",
+    image: labyrinthImage,
+    imageAlt: "Sol, Luna, and Terra navigating three private maze lanes",
+  },
+  {
+    id: "mini-rts",
+    title: "Mini RTS Skirmish",
+    focus: "Planning, resources, and combat",
+    image: miniRtsImage,
+    imageAlt: "Terra and Luna militia contesting the river bridge",
+  },
+]
+
+function GamePanel({ game }: { game: GameShowcase }) {
+  const controllerLabUrl = getControllerLabUrl()
+
   return (
-    <svg
-      aria-hidden="true"
-      className="poster-art"
-      viewBox="0 0 800 450"
-      preserveAspectRatio="xMidYMid slice"
+    <a
+      aria-label={`Open ${game.title} in the Controller Lab`}
+      className={
+        game.featured ? "game-panel game-panel--featured" : "game-panel"
+      }
+      href={controllerLabUrl}
+      rel="noreferrer"
+      target="_blank"
     >
-      <defs>
-        <linearGradient id={`sky-${accent}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="currentColor" stopOpacity="0.08" />
-          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M0 322L78 278l62 26 77-79 67 66 103-132 83 112 72-40 108 91 150-56v164H0Z"
-        fill={`url(#sky-${accent})`}
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
-      <path
-        d="M0 355c146-60 244 40 388-12 131-48 265-25 412 40M0 390c196-39 390 29 800-4"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.6"
-      />
-      <path
-        d="M400 450V290M240 450l104-160M560 450L456 290M80 430h640M145 395h510M205 360h390M267 325h266"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.24"
-      />
-      <g fill="none" stroke="currentColor" strokeOpacity="0.75">
-        <path d="M566 276v-76h84v76M590 200v-42h34v42M566 232h84M608 158v-55m0 0 75 28m-75-28-52 22" />
-        <path d="M152 307v-48h64v48m-45-48v-35h26v35" />
-      </g>
-      <circle
-        cx="642"
-        cy="105"
-        r="77"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.28"
-      />
-    </svg>
+      <img alt={game.imageAlt} loading="lazy" src={game.image} />
+      <span className="game-panel__shade" aria-hidden="true" />
+      <span className="game-panel__content">
+        <strong>{game.title}</strong>
+        <span className="game-panel__focus">{game.focus}</span>
+        <span className="game-panel__link">
+          Open in Controller Lab <ArrowUpRight aria-hidden="true" />
+        </span>
+      </span>
+    </a>
   )
 }
 
-function VideoFacade({ demo }: { demo: VideoDemo }) {
-  const [loaded, setLoaded] = useState(false)
-
-  if (loaded && demo.youtubeId) {
-    return (
-      <div className="video-embed">
-        <iframe
-          allow="encrypted-media; picture-in-picture"
-          allowFullScreen
-          loading="lazy"
-          src={`https://www.youtube-nocookie.com/embed/${demo.youtubeId}?rel=0&modestbranding=1`}
-          title={demo.title}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <article
-      className={`demo-facade demo-facade--${demo.accent}${demo.featured ? "demo-facade--featured" : ""}`}
-    >
-      <PosterArt accent={demo.accent} />
-      <div className="demo-copy">
-        <h3>{demo.title}</h3>
-        <p>{demo.description}</p>
-      </div>
-      {demo.youtubeId ? (
-        <>
-          <button
-            className="play-button"
-            onClick={() => setLoaded(true)}
-            type="button"
-            aria-label={`Load ${demo.title} video`}
-          >
-            <Play aria-hidden="true" fill="currentColor" />
-          </button>
-          <a
-            className="youtube-link"
-            href={`https://www.youtube.com/watch?v=${demo.youtubeId}`}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Watch on YouTube
-          </a>
-        </>
-      ) : (
-        <span className="coming-soon">Local poster · video coming soon</span>
-      )}
-    </article>
-  )
-}
-
-export function DemoGallery({ demos }: { demos: VideoDemo[] }) {
+export function DemoGallery() {
   return (
     <section
       className="demo-section section-frame"
       id="demos"
       aria-labelledby="demos-heading"
     >
-      <div className="section-heading-row">
+      <div className="showcase-heading">
         <div>
-          <p className="section-index">04 / Gameplay evidence</p>
+          <p className="section-index">04 / Game showcase</p>
           <h2 id="demos-heading">See behaviour become evidence.</h2>
         </div>
         <p>
-          Participant-view video is requested only after you choose to play.
-          Until publication, each slot keeps a local poster and makes no
-          third-party request.
+          Three games. Three different tests of agency. One inspectable evidence
+          trail.
         </p>
       </div>
-      <div className="demo-layout">
-        {demos.map((demo) => (
-          <VideoFacade demo={demo} key={demo.id} />
+      <div className="game-showcase">
+        {GAMES.map((game) => (
+          <GamePanel game={game} key={game.id} />
         ))}
       </div>
     </section>
