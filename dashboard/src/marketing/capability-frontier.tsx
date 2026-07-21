@@ -32,33 +32,57 @@ type ZoomPlate = {
 }
 
 type GoblinFlybyProps = {
-  end: number
+  delay: number
   progress: MotionValue<number>
   reducedMotion: boolean
   src: string
-  start: number
+  triggerAt: number
   variant: "female" | "male"
 }
 
-const GOBLIN_FLIGHT_DURATION = 1.72
-const GOBLIN_FLIGHT_TIMES = [0, 0.16, 0.38, 0.58, 0.76, 1]
-const GOBLIN_FLIGHT_X = [
-  "-28vw",
-  "8vw",
-  "31vw",
-  "20vw",
-  "6vw",
-  "20vw",
+const GOBLIN_FLIGHT_DURATION = 4
+const GOBLIN_LOOP_SAMPLES = 24
+const GOBLIN_FLIGHT_POINTS = [
+  { rotate: -4, time: 0, x: -28, y: 5 },
+  { rotate: -2, time: 0.08, x: 4, y: 2 },
+  { rotate: 0, time: 0.16, x: 24, y: -2 },
+  ...Array.from({ length: GOBLIN_LOOP_SAMPLES + 1 }, (_, index) => {
+    const loopProgress = index / GOBLIN_LOOP_SAMPLES
+    const angle = Math.PI - loopProgress * Math.PI * 2
+
+    return {
+      rotate: 10 + loopProgress * 360,
+      time: 0.22 + loopProgress * 0.56,
+      x: 50 + Math.cos(angle) * 16,
+      y: -8 + Math.sin(angle) * 20,
+    }
+  }),
+  { rotate: 378, time: 0.86, x: 54, y: -24 },
+  { rotate: 386, time: 0.94, x: 82, y: -47 },
+  { rotate: 392, time: 1, x: 112, y: -70 },
 ]
-const GOBLIN_FLIGHT_Y = [
-  "8vh",
-  "0vh",
-  "-10vh",
-  "-27vh",
-  "-11vh",
-  "-70vh",
-]
-const GOBLIN_FLIGHT_ROTATE = [-8, 4, 92, 188, 282, 372]
+const GOBLIN_FLIGHT_TIMES = GOBLIN_FLIGHT_POINTS.map(({ time }) => time)
+const GOBLIN_FLIGHT_X = GOBLIN_FLIGHT_POINTS.map(({ x }) => `${x}vw`)
+const GOBLIN_FLIGHT_Y = GOBLIN_FLIGHT_POINTS.map(({ y }) => `${y}vh`)
+const GOBLIN_FLIGHT_ROTATE = GOBLIN_FLIGHT_POINTS.map(({ rotate }) => rotate)
+const GOBLIN_FLIGHT_OPACITY = GOBLIN_FLIGHT_POINTS.map(({ time }) => {
+  if (time <= 0.08) {
+    return (time / 0.08) * 0.96
+  }
+  if (time >= 0.94) {
+    return ((1 - time) / 0.06) * 0.96
+  }
+  return 0.96
+})
+const GOBLIN_FLIGHT_SCALE = GOBLIN_FLIGHT_POINTS.map(
+  ({ time }) => 0.76 + Math.sin(Math.PI * time) * 0.12
+)
+const GOBLIN_SMOKE_OPACITY = GOBLIN_FLIGHT_POINTS.map(({ time }) =>
+  Math.min(0.52, Math.sin(Math.PI * time) * 0.58)
+)
+const GOBLIN_SMOKE_SCALE = GOBLIN_FLIGHT_POINTS.map(
+  ({ time }) => 0.4 + time * 1.4
+)
 const SMOKE_PARTICLES = [0, 1, 2, 3, 4] as const
 
 const PLATES: ZoomPlate[] = [
@@ -232,17 +256,18 @@ function NestedZoomPlate({
 }
 
 function GoblinFlightRun({
+  delay,
   src,
   variant,
-}: Pick<GoblinFlybyProps, "src" | "variant">) {
+}: Pick<GoblinFlybyProps, "delay" | "src" | "variant">) {
   return (
     <>
       {SMOKE_PARTICLES.map((particle) => (
         <motion.span
           aria-hidden="true"
           animate={{
-            opacity: [0, 0.16, 0.52, 0.4, 0.2, 0],
-            scale: [0.35, 0.5, 0.82, 1.15, 1.48, 1.82],
+            opacity: GOBLIN_SMOKE_OPACITY,
+            scale: GOBLIN_SMOKE_SCALE,
             x: GOBLIN_FLIGHT_X,
             y: GOBLIN_FLIGHT_Y,
           }}
@@ -259,9 +284,9 @@ function GoblinFlightRun({
             width: 12 + particle * 3,
           }}
           transition={{
-            delay: particle * 0.045,
+            delay: delay + particle * 0.09,
             duration: GOBLIN_FLIGHT_DURATION - 0.08,
-            ease: "easeInOut",
+            ease: "linear",
             times: GOBLIN_FLIGHT_TIMES,
           }}
         />
@@ -270,9 +295,9 @@ function GoblinFlightRun({
         alt=""
         aria-hidden="true"
         animate={{
-          opacity: [0, 0.96, 0.96, 0.96, 0.92, 0],
+          opacity: GOBLIN_FLIGHT_OPACITY,
           rotate: GOBLIN_FLIGHT_ROTATE,
-          scale: [0.78, 0.84, 0.88, 0.86, 0.82, 0.74],
+          scale: GOBLIN_FLIGHT_SCALE,
           x: GOBLIN_FLIGHT_X,
           y: GOBLIN_FLIGHT_Y,
         }}
@@ -288,8 +313,9 @@ function GoblinFlightRun({
         loading="lazy"
         src={src}
         transition={{
+          delay,
           duration: GOBLIN_FLIGHT_DURATION,
-          ease: "easeInOut",
+          ease: "linear",
           times: GOBLIN_FLIGHT_TIMES,
         }}
       />
@@ -298,11 +324,11 @@ function GoblinFlightRun({
 }
 
 function GoblinFlyby({
-  end,
+  delay,
   progress,
   reducedMotion,
   src,
-  start,
+  triggerAt,
   variant,
 }: GoblinFlybyProps) {
   const [runId, setRunId] = useState(0)
@@ -313,21 +339,19 @@ function GoblinFlyby({
       return
     }
 
-    if (value >= start && value < end && !hasPlayed.current) {
+    if (value >= triggerAt && !hasPlayed.current) {
       hasPlayed.current = true
       setRunId((current) => current + 1)
-    }
-
-    if (
-      value < Math.max(0, start - 0.025) ||
-      (end < 1 && value > end + 0.025)
-    ) {
-      hasPlayed.current = false
     }
   })
 
   return reducedMotion || runId === 0 ? null : (
-    <GoblinFlightRun key={runId} src={src} variant={variant} />
+    <GoblinFlightRun
+      delay={delay}
+      key={runId}
+      src={src}
+      variant={variant}
+    />
   )
 }
 
@@ -383,11 +407,11 @@ export function CapabilityFrontier() {
           aria-label="One continuous nested camera pullback begins on an OpenAI laptop, exits through the house window, rises above its street and city, and continues past Earth, satellites, a rocket and the Moon to the Sun."
         >
           <div aria-hidden="true" className="goblin-asset-preload">
-            <img alt="" decoding="async" loading="lazy" src={maleAstronautGoblin} />
+            <img alt="" decoding="async" loading="eager" src={maleAstronautGoblin} />
             <img
               alt=""
               decoding="async"
-              loading="lazy"
+              loading="eager"
               src={femaleAstronautGoblin}
             />
           </div>
@@ -403,19 +427,19 @@ export function CapabilityFrontier() {
           ))}
 
           <GoblinFlyby
-            end={0.91}
+            delay={0}
             progress={smoothScrollProgress}
             reducedMotion={reducedMotion}
             src={maleAstronautGoblin}
-            start={0.81}
+            triggerAt={0.945}
             variant="male"
           />
           <GoblinFlyby
-            end={1}
+            delay={0.55}
             progress={smoothScrollProgress}
             reducedMotion={reducedMotion}
             src={femaleAstronautGoblin}
-            start={0.91}
+            triggerAt={0.945}
             variant="female"
           />
 
