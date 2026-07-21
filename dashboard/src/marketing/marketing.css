@@ -564,12 +564,6 @@
 .goblin-flight--male {
   top: 63%;
 }
-.goblin-flight--female {
-  top: 66%;
-}
-.goblin-flight--female {
-  width: clamp(120px, 14vw, 208px);
-}
 .goblin-flyby {
   position: relative;
   z-index: 2;
@@ -1337,12 +1331,6 @@
   }
   .goblin-flight--male {
     top: 68%;
-  }
-  .goblin-flight--female {
-    top: 70%;
-  }
-  .goblin-flight--female {
-    width: clamp(98px, 30vw, 140px);
   }
   .solar-finale-copy {
     right: 18px;

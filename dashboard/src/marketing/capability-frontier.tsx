@@ -17,7 +17,6 @@ import continentPlate from "./assets/nested-zoom-06-continent.jpg"
 import earthPlate from "./assets/nested-zoom-07-earth.jpg"
 import moonPlate from "./assets/nested-zoom-08-moon.jpg"
 import solarPlate from "./assets/nested-zoom-09-solar.jpg"
-import femaleAstronautGoblin from "./assets/astronaut-goblin-female.png"
 import maleAstronautGoblin from "./assets/astronaut-goblin-male.png"
 
 type ZoomPlate = {
@@ -37,7 +36,6 @@ type GoblinFlybyProps = {
   reducedMotion: boolean
   src: string
   triggerAt: number
-  variant: "female" | "male"
 }
 
 const GOBLIN_FLIGHT_DURATION = 10
@@ -250,8 +248,7 @@ function NestedZoomPlate({
 function GoblinFlightRun({
   delay,
   src,
-  variant,
-}: Pick<GoblinFlybyProps, "delay" | "src" | "variant">) {
+}: Pick<GoblinFlybyProps, "delay" | "src">) {
   return (
     <motion.div
       aria-hidden="true"
@@ -262,7 +259,7 @@ function GoblinFlightRun({
         x: GOBLIN_FLIGHT_X,
         y: GOBLIN_FLIGHT_Y,
       }}
-      className={`goblin-flight goblin-flight--${variant}`}
+      className="goblin-flight goblin-flight--male"
       initial={{
         opacity: 0,
         rotate: GOBLIN_FLIGHT_ROTATE[0],
@@ -296,7 +293,6 @@ function GoblinFlyby({
   reducedMotion,
   src,
   triggerAt,
-  variant,
 }: GoblinFlybyProps) {
   const [runId, setRunId] = useState(0)
   const hasPlayed = useRef(false)
@@ -313,12 +309,7 @@ function GoblinFlyby({
   })
 
   return reducedMotion || runId === 0 ? null : (
-    <GoblinFlightRun
-      delay={delay}
-      key={runId}
-      src={src}
-      variant={variant}
-    />
+    <GoblinFlightRun delay={delay} key={runId} src={src} />
   )
 }
 
@@ -375,12 +366,6 @@ export function CapabilityFrontier() {
         >
           <div aria-hidden="true" className="goblin-asset-preload">
             <img alt="" decoding="async" loading="eager" src={maleAstronautGoblin} />
-            <img
-              alt=""
-              decoding="async"
-              loading="eager"
-              src={femaleAstronautGoblin}
-            />
           </div>
 
           {PLATES.map((plate, index) => (
@@ -394,20 +379,11 @@ export function CapabilityFrontier() {
           ))}
 
           <GoblinFlyby
-            delay={0}
+            delay={1}
             progress={smoothScrollProgress}
             reducedMotion={reducedMotion}
             src={maleAstronautGoblin}
             triggerAt={0.945}
-            variant="male"
-          />
-          <GoblinFlyby
-            delay={1.25}
-            progress={smoothScrollProgress}
-            reducedMotion={reducedMotion}
-            src={femaleAstronautGoblin}
-            triggerAt={0.945}
-            variant="female"
           />
 
           <motion.p
