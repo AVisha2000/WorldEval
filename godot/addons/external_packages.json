@@ -1,0 +1,50 @@
+{
+  "manifest_version": 1,
+  "engine_target": "Godot 4.5 stable, macOS (Apple Silicon and Intel where applicable), Compatibility renderer",
+  "packages": [
+    {
+      "id": "terrain3d",
+      "repository": "https://github.com/TokisanGames/Terrain3D",
+      "license": "MIT",
+      "purpose": "Optional organic/sculpted terrain; not needed for the first compact arena.",
+      "installation": "installed",
+      "pin": {
+        "release_tag": "v1.0.1-stable",
+        "commit": "630eb4179d2daf4a262b0b34fd3b9415f81ab43a",
+        "release_url": "https://github.com/TokisanGames/Terrain3D/releases/download/v1.0.1-stable/Terrain3D_v1.0.1.zip",
+        "sha256_archive": "f9b2663f35340f17d4fe9dd7a90b0969d067b6317c6e7bf5dd6696b35c4dde0f",
+        "archive_size_bytes": 42377949,
+        "published_at": "2025-06-27T18:41:23Z"
+      },
+      "install_path": "godot/addons/terrain_3d",
+      "status": "installed-release-archive",
+      "acceptance": [
+        "Use a release explicitly tested against Godot 4.5; never track a branch or 'latest'.",
+        "On each supported macOS architecture, clear quarantine only after provenance review and open a minimal Compatibility-renderer scene.",
+        "Commit only reviewed addon source/approved release contents and retain the release URL, tag, commit, and archive checksum in this file."
+      ]
+    },
+    {
+      "id": "limboai",
+      "repository": "https://github.com/limbonaut/limboai",
+      "license": "MIT",
+      "purpose": "Optional behaviour-tree/state-machine tooling for cosmetic wildlife or NPCs only; never authoritative benchmark decisions.",
+      "installation": "installed",
+      "pin": {
+        "release_tag": "v1.6.0",
+        "commit": "91b22a187f7cd701e25eedd6dcff34179795e687",
+        "release_url": "https://github.com/limbonaut/limboai/releases/download/v1.6.0/limboai%2Bv1.6.0.gdextension-4.4.zip",
+        "sha256_archive": "20e2559d4000efee4495a2e361b0c3cc1d0c51d38a9cc062d335e020de1a405f",
+        "archive_size_bytes": 30436828,
+        "published_at": "2026-01-28T18:38:51Z"
+      },
+      "install_path": "godot/addons/limboai",
+      "status": "installed-gdextension-4.4-build-for-godot-4.5",
+      "acceptance": [
+        "Use a release explicitly tested against Godot 4.5; never track a branch or 'latest'.",
+        "Smoke-test editor startup, export, and a cosmetic-only scene on macOS before committing it.",
+        "Record the release URL, tag, immutable commit, and archive checksum before installation."
+      ]
+    }
+  ]
+}

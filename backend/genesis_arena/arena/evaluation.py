@@ -5,10 +5,10 @@ from typing import Dict, List, Literal, Optional
 
 from pydantic import Field, model_validator
 
-from .models import ArenaModel, FactionId, HashHex, Identifier, UsageRecord
+from .models import ArenaModel, FactionId, HashHex, Identifier, UsageRecord, MAX_CONQUEST_ROUNDS
 
 CognitionTrack = Literal["standard", "agentic", "open"]
-FormulaVersion = Literal["worldarena-score/1.0.0"]
+FormulaVersion = Literal["worldarena-score/1.1.0"]
 EvidenceCategory = Literal[
     "objective_control",
     "planning_adaptation",
@@ -18,7 +18,7 @@ EvidenceCategory = Literal[
     "reliability_safety",
 ]
 
-FORMULA_VERSION: FormulaVersion = "worldarena-score/1.0.0"
+FORMULA_VERSION: FormulaVersion = "worldarena-score/1.1.0"
 CATEGORY_WEIGHTS: Dict[str, float] = {
     "objective_control": 0.35,
     "planning_adaptation": 0.20,
@@ -62,9 +62,21 @@ class TerritoryMetrics(ArenaModel):
     max_supplied_points: int = Field(gt=0)
     territory_time: int = Field(ge=0)
     max_territory_time: int = Field(gt=0)
-    crown_hold_rounds: int = Field(default=0, ge=0)
-    scoring_rounds: int = Field(gt=0, le=48)
+    enemy_strongholds_destroyed: int = Field(default=0, ge=0, le=2)
+    districts_discovered: int = Field(default=0, ge=0)
+    max_districts: int = Field(default=13, gt=0)
+    tech_tier: int = Field(default=0, ge=0, le=3)
+    max_tech_tier: int = Field(default=3, gt=0, le=3)
+    scoring_rounds: int = Field(gt=0, le=MAX_CONQUEST_ROUNDS)
     supply_cuts_inflicted: int = Field(default=0, ge=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_center_score(cls, value: object) -> object:
+        if isinstance(value, dict) and "crown_hold_rounds" in value:
+            value = dict(value)
+            value.pop("crown_hold_rounds", None)
+        return value
 
     @model_validator(mode="after")
     def validate_caps(self) -> TerritoryMetrics:
@@ -72,8 +84,10 @@ class TerritoryMetrics(ArenaModel):
             raise ValueError("final supplied points exceed the map maximum")
         if self.territory_time > self.max_territory_time:
             raise ValueError("territory time exceeds the match maximum")
-        if self.crown_hold_rounds > self.scoring_rounds:
-            raise ValueError("Crown hold rounds exceed scoring rounds")
+        if self.districts_discovered > self.max_districts:
+            raise ValueError("discovered districts exceed the map maximum")
+        if self.tech_tier > self.max_tech_tier:
+            raise ValueError("technology tier exceeds the scenario maximum")
         return self
 
 
@@ -318,7 +332,7 @@ class CategoryEvidence(ArenaModel):
 
 class DecisionEvidence(ArenaModel):
     plan_id: Identifier
-    round: int = Field(ge=1, le=48)
+    round: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     three_round_objective_value_delta: float = Field(ge=-100, le=100)
     summary: str = Field(min_length=3, max_length=240)
     event_ids: List[Identifier] = Field(min_length=1, max_length=32)
@@ -347,7 +361,9 @@ class FactionMatchMetrics(ArenaModel):
     cognition: CognitionMetrics
     reliability: ReliabilityMetrics
     evidence: List[CategoryEvidence] = Field(min_length=6, max_length=6)
-    decision_evidence: List[DecisionEvidence] = Field(default_factory=list, max_length=48)
+    decision_evidence: List[DecisionEvidence] = Field(
+        default_factory=list, max_length=MAX_CONQUEST_ROUNDS
+    )
 
     @model_validator(mode="after")
     def validate_evidence(self) -> FactionMatchMetrics:
@@ -376,8 +392,8 @@ class MatchEvaluationInput(ArenaModel):
     track: CognitionTrack
     seed: int = Field(ge=0)
     scored: bool = True
-    round_limit: int = Field(default=40, ge=1, le=48)
-    completed_rounds: int = Field(ge=1, le=48)
+    round_limit: int = Field(default=120, ge=1, le=MAX_CONQUEST_ROUNDS)
+    completed_rounds: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     rules_hash: HashHex
     map_hash: HashHex
     tool_hash: HashHex
@@ -416,7 +432,7 @@ class CategoryScore(ArenaModel):
 
 class DecisionHighlight(ArenaModel):
     plan_id: Identifier
-    round: int = Field(ge=1, le=48)
+    round: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     three_round_objective_value_delta: float = Field(ge=-100, le=100)
     summary: str
     event_ids: List[Identifier]
@@ -527,7 +543,7 @@ class MatchEvaluationResult(ArenaModel):
     rules_hash: HashHex
     map_hash: HashHex
     tool_hash: HashHex
-    completed_rounds: int = Field(ge=1, le=48)
+    completed_rounds: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     factions: List[FactionEvaluation] = Field(min_length=3, max_length=3)
     weights: Dict[str, float]
 
@@ -667,11 +683,13 @@ def _category_values(metrics: FactionMatchMetrics) -> Dict[str, float]:
     placement = (3 - outcome.placement) / 2
     core = 0.5 * float(outcome.core_survived) + 0.5 * _ratio(outcome.core_health, 1_000)
     objective_control = (
-        0.35 * _ratio(territory.territory_time, territory.max_territory_time)
-        + 0.20 * _ratio(territory.final_supplied_points, territory.max_supplied_points)
-        + 0.15 * _ratio(territory.crown_hold_rounds, territory.scoring_rounds, neutral=0)
-        + 0.15 * core
-        + 0.15 * placement
+        0.35 * placement
+        + 0.20 * core
+        + 0.20 * _ratio(territory.enemy_strongholds_destroyed, 2, neutral=0)
+        + 0.10 * _ratio(territory.territory_time, territory.max_territory_time)
+        + 0.05 * _ratio(territory.final_supplied_points, territory.max_supplied_points)
+        + 0.05 * _ratio(territory.districts_discovered, territory.max_districts)
+        + 0.05 * _ratio(territory.tech_tier, territory.max_tech_tier)
     )
     return {
         "objective_control": objective_control,

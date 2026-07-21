@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "preset_name": "WorldArena Duel Dedicated Server",
+  "engine_build": "4.5.stable.official.876b29033",
+  "platform": "Linux",
+  "architecture": "x86_64",
+  "renderer": "gl_compatibility",
+  "custom_features": [
+    "worldarena_duel",
+    "worldarena_godot_4_5_876b29033"
+  ],
+  "authority_source_root": "godot/scripts/duel",
+  "authority_export_root": "scripts/duel",
+  "authority_excluded_subtrees": [
+    "godot/scripts/duel/app",
+    "godot/scripts/duel/presentation"
+  ],
+  "nonvisual_entrypoint_files": [
+    "scripts/duel/match/duel_headless_cli.tscn"
+  ],
+  "protocol_source_root": "game/duel_protocol",
+  "protocol_stage_root": "data/duel_protocol",
+  "protocol_ignored_files": [
+    "README.md"
+  ],
+  "source_path_rewrites": {
+    "res://../game/duel_protocol": "res://data/duel_protocol"
+  },
+  "required_authority_sentinels": [
+    "scripts/duel/duel_match_controller.gd",
+    "scripts/duel/match/duel_headless_cli.gd",
+    "scripts/duel/match/duel_headless_match_runner.gd",
+    "scripts/duel/match/duel_managed_authority_cli.gd",
+    "scripts/duel/match/duel_match_session.gd",
+    "scripts/duel/match/duel_public_event_projector.gd",
+    "scripts/duel/match/duel_gateway_session_host.gd",
+    "scripts/duel/protocol/duel_gateway_frame_codec.gd",
+    "scripts/duel/protocol/duel_protocol_codec.gd",
+    "scripts/duel/simulation/duel_simulation.gd",
+    "scripts/duel/simulation/duel_tick_ledger.gd",
+    "scripts/duel/simulation/duel_replay.gd"
+  ],
+  "required_protocol_sentinels": [
+    "data/duel_protocol/VERSION",
+    "data/duel_protocol/protocol-lock.json",
+    "data/duel_protocol/catalogs/rules.duel-v1.json",
+    "data/duel_protocol/maps/crossroads-duel-v1.json",
+    "data/duel_protocol/prompts/commander-system.v1.txt",
+    "data/duel_protocol/schemas/action-batch.v1.schema.json",
+    "data/duel_protocol/schemas/observation.v1.schema.json",
+    "data/duel_protocol/conformance/golden-hashes.json"
+  ],
+  "allowed_export_prefixes": [
+    "data/duel_protocol/",
+    "scripts/duel/"
+  ],
+  "allowed_export_files": [
+    ".godot/global_script_class_cache.cfg",
+    ".godot/uid_cache.bin",
+    "project.binary",
+    "project.godot"
+  ],
+  "required_archive_files": [
+    ".godot/global_script_class_cache.cfg",
+    ".godot/uid_cache.bin",
+    "project.binary"
+  ],
+  "forbidden_export_prefixes": [
+    "addons/",
+    "art/",
+    "assets/",
+    "data/arena/",
+    "scenes/",
+    "scripts/arena/",
+    "scripts/duel/app/",
+    "scripts/duel/presentation/",
+    "showcases/",
+    "tests/"
+  ],
+  "forbidden_path_fragments": [
+    "/addons/",
+    "/app/",
+    "/assets/",
+    "/presentation/",
+    "limboai",
+    "terrain_3d"
+  ],
+  "forbidden_export_suffixes": [
+    ".anim",
+    ".blend",
+    ".bmp",
+    ".ctex",
+    ".dds",
+    ".dll",
+    ".dylib",
+    ".exr",
+    ".fbx",
+    ".flac",
+    ".glb",
+    ".gdextension",
+    ".gdshader",
+    ".gdshaderinc",
+    ".gltf",
+    ".hdr",
+    ".jpeg",
+    ".jpg",
+    ".ktx",
+    ".material",
+    ".mesh",
+    ".mp3",
+    ".obj",
+    ".ogg",
+    ".otf",
+    ".png",
+    ".res",
+    ".scn",
+    ".so",
+    ".svg",
+    ".tga",
+    ".tres",
+    ".ttf",
+    ".wasm",
+    ".wav",
+    ".webp",
+    ".woff",
+    ".woff2"
+  ],
+  "editor_only_plugins": [
+    "res://addons/terrain_3d/plugin.cfg"
+  ],
+  "stage_project_overrides": {
+    "application/run/main_scene": "res://scripts/duel/match/duel_headless_cli.tscn",
+    "debug/file_logging/enable_file_logging": false,
+    "debug/file_logging/enable_file_logging.pc": false,
+    "editor/export/convert_text_resources_to_binary": false,
+    "editor_plugins/enabled": []
+  }
+}

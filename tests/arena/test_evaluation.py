@@ -96,17 +96,16 @@ def faction_metrics(
         territory=TerritoryMetrics(
             final_supplied_points=strength * 3,
             max_supplied_points=15,
-            territory_time=strength * 150,
-            max_territory_time=600,
-            crown_hold_rounds=strength * 3,
-            scoring_rounds=40,
+            territory_time=strength * 450,
+            max_territory_time=1800,
+            scoring_rounds=120,
             supply_cuts_inflicted=strength,
         ),
         planning=PlanningMetrics(
             objectives_declared=10,
             objectives_completed=strength * 3,
-            planned_rounds=40,
-            coherent_plan_rounds=strength * 10,
+            planned_rounds=120,
+            coherent_plan_rounds=strength * 30,
             disclosed_threats=6,
             prepared_threats=strength * 2,
             repeated_failed_orders=placement - 1,
@@ -115,16 +114,16 @@ def faction_metrics(
             resources_gathered=strength * 300,
             resources_productively_spent=strength * 220,
             resources_wasted=(4 - strength) * 30,
-            mine_active_rounds=strength * 8,
-            mine_available_rounds=32,
-            supply_active_rounds=strength * 10,
-            supply_possible_rounds=40,
+            mine_active_rounds=strength * 24,
+            mine_available_rounds=96,
+            supply_active_rounds=strength * 30,
+            supply_possible_rounds=120,
             structures_started=8,
             structures_completed=strength * 2,
             starvation_unit_rounds=(4 - strength) * 3,
-            total_unit_rounds=40,
-            idle_stockpile_rounds=(4 - strength) * 4,
-            stockpile_observation_rounds=40,
+            total_unit_rounds=120,
+            idle_stockpile_rounds=(4 - strength) * 12,
+            stockpile_observation_rounds=120,
         ),
         combat=CombatMetrics(
             enemy_value_destroyed=strength * 250,
@@ -184,8 +183,8 @@ def faction_metrics(
             ),
         ),
         reliability=ReliabilityMetrics(
-            decisions=40,
-            submitted_orders=80,
+            decisions=120,
+            submitted_orders=240,
             invalid_orders=placement - 1,
             contradictory_orders=placement - 1,
             repeated_impossible_orders=placement - 1,
@@ -206,8 +205,8 @@ def match_input(*, diplomacy_enabled: bool = True) -> MatchEvaluationInput:
         track="agentic",
         seed=42,
         scored=True,
-        round_limit=40,
-        completed_rounds=40,
+        round_limit=120,
+        completed_rounds=120,
         rules_hash="a" * 64,
         map_hash="b" * 64,
         tool_hash="d" * 64,
@@ -224,7 +223,7 @@ def test_exact_six_category_formula_is_auditable_and_does_not_change_winner() ->
     result = evaluate_match(source)
     by_competitor = {item.competitor_id: item for item in result.factions}
 
-    assert result.formula_version == "worldarena-score/1.0.0"
+    assert result.formula_version == "worldarena-score/1.1.0"
     assert result.outcome_authority == "godot"
     assert result.llm_judge_used is False
     assert result.weights == {

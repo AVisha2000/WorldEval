@@ -3,6 +3,7 @@ import {
   WorldArenaIntro,
   type WorldArenaIntroProps,
 } from './WorldArenaIntro';
+import {WorldArenaExplainer} from './WorldArenaExplainer';
 
 const defaultIntroProps: WorldArenaIntroProps = {
   title: 'WORLD ARENA',
@@ -12,6 +13,7 @@ const defaultIntroProps: WorldArenaIntroProps = {
 
 export const RemotionRoot = () => {
   return (
+    <>
     <Composition
       id="WorldArenaIntro"
       component={WorldArenaIntro}
@@ -21,5 +23,14 @@ export const RemotionRoot = () => {
       height={1080}
       defaultProps={defaultIntroProps}
     />
+    <Composition
+      id="WorldArenaExplainer"
+      component={WorldArenaExplainer}
+      durationInFrames={3600}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+    </>
   );
 };

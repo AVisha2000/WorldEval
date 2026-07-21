@@ -1,10 +1,16 @@
 # WorldArena — Competitive Arena v1 Feature Plan
 
-**Status:** Decision-complete implementation source of truth; prototype work in progress
+**Status:** Historical v0.3 design archive; not the current implementation source of truth
 **Target:** Local Apple Silicon prototype using Godot 4 + FastAPI + OpenAI APIs
 **Primary outcome:** A readable three-model arena in which commanders expand, negotiate,
 delegate, trade, betray, build defenses, and fight through simultaneous physically resolved
 actions.
+
+> **Historical reference.** The current default is `world-arena/0.4`: a 120-round
+> conquest match with stronghold elimination or truncation, and no Crown, World Seed, or
+> sudden-death extension. See `README.md`, `docs/architecture.md`, and
+> `docs/CONQUEST_DESIGN_SYSTEM.md`. The v0.3 terms below are intentionally retained as
+> design history.
 
 ## 1. Product goal
 

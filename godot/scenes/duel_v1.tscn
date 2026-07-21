@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/duel/app/duel_app_coordinator.gd" id="1_app"]
+[ext_resource type="Script" path="res://scripts/duel/presentation/duel_presentation.gd" id="2_presentation"]
+[ext_resource type="Script" path="res://scripts/duel/duel_match_controller.gd" id="3_controller"]
+[ext_resource type="Script" path="res://scripts/duel/app/duel_launch_client.gd" id="4_launch"]
+
+[node name="WorldArenaDuel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_app")
+
+[node name="Presentation" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_presentation")
+
+[node name="DuelMatchController" type="Node" parent="."]
+script = ExtResource("3_controller")
+
+[node name="DuelLaunchClient" type="Node" parent="."]
+script = ExtResource("4_launch")

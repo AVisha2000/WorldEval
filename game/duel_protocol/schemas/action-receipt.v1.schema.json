@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/action-receipt.v1.schema.json",
+  "title": "WorldArena Duel action receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "batch_id",
+    "observation_seq",
+    "received_tick",
+    "apply_tick",
+    "batch_status",
+    "commands"
+  ],
+  "properties": {
+    "batch_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "received_tick": {"type": "integer", "minimum": 0},
+    "apply_tick": {"type": ["integer", "null"], "minimum": 1},
+    "batch_status": {
+      "enum": [
+        "applied",
+        "partially_applied",
+        "rejected",
+        "expired",
+        "timed_out",
+        "no_op"
+      ]
+    },
+    "code": {"$ref": "#/$defs/nullableCode"},
+    "commands": {
+      "type": "array",
+      "maxItems": 16,
+      "x-canonical-order": "model-array-order",
+      "items": {"$ref": "#/$defs/commandReceipt"}
+    }
+  },
+  "$defs": {
+    "rejectionCode": {
+      "enum": [
+        "invalid_json",
+        "schema_mismatch",
+        "unsupported_version",
+        "wrong_match",
+        "wrong_observation",
+        "observation_hash_mismatch",
+        "expired_batch",
+        "duplicate_batch",
+        "duplicate_command_id",
+        "too_many_commands",
+        "atomic_budget_exceeded",
+        "too_many_actors",
+        "unknown_entity",
+        "actor_unavailable",
+        "not_owner",
+        "target_unavailable",
+        "invalid_target_type",
+        "out_of_bounds",
+        "unexplored_location",
+        "requirement_not_met",
+        "insufficient_resources",
+        "food_cap_blocked",
+        "queue_full",
+        "ability_unavailable",
+        "cooldown_active",
+        "invalid_placement",
+        "conflicting_order",
+        "unsupported_operation",
+        "execution_failed",
+        "provider_timeout"
+      ]
+    },
+    "nullableCode": {
+      "oneOf": [{"$ref": "#/$defs/rejectionCode"}, {"type": "null"}]
+    },
+    "commandReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command_id", "status", "code"],
+      "properties": {
+        "command_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "status": {"enum": ["applied", "partially_applied", "rejected"]},
+        "code": {"$ref": "#/$defs/nullableCode"},
+        "requested_quantity": {"type": "integer", "minimum": 1, "maximum": 24},
+        "accepted_quantity": {"type": "integer", "minimum": 0, "maximum": 24},
+        "atomic_cost": {"type": "integer", "minimum": 0, "maximum": 64},
+        "compiled_order_ids": {
+          "type": "array",
+          "maxItems": 24,
+          "x-canonical-order": "ascending-id",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          }
+        }
+      }
+    }
+  }
+}

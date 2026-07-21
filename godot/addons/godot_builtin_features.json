@@ -1,0 +1,24 @@
+{
+  "engine_target": "Godot 4.5 stable, macOS, Compatibility renderer",
+  "features": [
+    {
+      "id": "navigation_agent_3d",
+      "class": "NavigationAgent3D",
+      "source": "Godot engine built-in",
+      "external_package": false
+    },
+    {
+      "id": "fast_noise_lite",
+      "class": "FastNoiseLite",
+      "source": "Godot engine built-in",
+      "external_package": false
+    },
+    {
+      "id": "world_environment_lighting",
+      "classes": ["WorldEnvironment", "Environment", "DirectionalLight3D"],
+      "source": "Godot engine built-in",
+      "external_package": false,
+      "project_setup": "Runtime procedural sky, filmic tonemap, glow, distance fog, and warm-key/cool-fill directional lights."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "kenney_ui_pack_adventure",
+  "source_url": "https://www.kenney.nl/assets/ui-pack-adventure",
+  "archive_url": "https://www.kenney.nl/media/pages/assets/ui-pack-adventure/9a877376bc-1723597274/kenney_ui-pack-adventure.zip",
+  "version": "1.1",
+  "upstream_creation_date": "2024-08-13",
+  "downloaded_at": "2026-07-19",
+  "license": "CC0 1.0 Universal",
+  "attribution_required": false,
+  "archive_sha256": "982e8ab66842509ee9214f9c2038e594cbe029f19d1dc177fecaad3b41a67ed3",
+  "archive_size_bytes": 576833,
+  "imported_subset": ["Vector/", "License.txt"],
+  "notice": "The full verified upstream archive remains only in ignored godot/assets/.intake/downloads/."
+}

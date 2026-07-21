@@ -1,0 +1,9 @@
+{
+  "message_type": "action_batch",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "match_id": "m_0042",
+  "observation_seq": 18,
+  "client_batch_id": "bad_missing_hash",
+  "valid_until_tick": 1801,
+  "commands": []
+}

@@ -46,10 +46,10 @@ class SeasonSpec(FrozenArenaModel):
     def validate_competitors(self) -> SeasonSpec:
         if len({item.competitor_id for item in self.competitors}) != 3:
             raise ValueError("season requires three unique competitor IDs")
-        if self.track == "standard" and self.cognition_units < 80:
-            raise ValueError("standard track must reserve 40 commander calls")
-        if self.track == "agentic" and self.cognition_units < 120:
-            raise ValueError("agentic track requires its 120-unit cognition budget")
+        if self.track == "standard" and self.cognition_units < 240:
+            raise ValueError("standard track must reserve 120 commander calls")
+        if self.track == "agentic" and self.cognition_units < 360:
+            raise ValueError("agentic track requires its 360-unit cognition budget")
         return self
 
 

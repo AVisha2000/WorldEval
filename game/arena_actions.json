@@ -1,20 +1,56 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "protocol": "world-arena/0.2",
-  "schema_version": "arena-v1",
+  "protocol": "world-arena/0.4",
+  "schema_version": "arena-v2",
+  "objective": "last_faction_surviving",
   "command_points_per_round": 4,
   "maximum_physical_orders": 3,
   "actions": {
-    "assign_workers": {"command_points": 1, "requires": ["actor_ids", "target_id", "resource"], "resources": ["food", "wood", "stone", "iron", "crystal"]},
-    "hunt": {"command_points": 1, "requires": ["actor_ids", "target_id"]},
-    "scout": {"command_points": 1, "requires": ["actor_ids", "target_id"]},
-    "repair": {"command_points": 1, "requires": ["actor_ids", "target_id"], "prototype_status": "typed_rejection_until_wave_3"},
-    "build": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "options": ["outpost", "shelter", "farm", "storage", "mine", "wall", "tower", "workshop"]},
-    "train": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "options": ["worker", "scout", "militia", "guard", "siege"]},
-    "research": {"command_points": 1, "requires": ["actor_ids", "target_id", "option"], "prototype_status": "typed_rejection_until_wave_3"},
-    "mobilize": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"], "stances": ["raid", "assault", "hold", "avoid"]},
-    "reinforce": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"], "prototype_status": "translated_to_mobilize"},
-    "retreat": {"command_points": 2, "requires": ["actor_ids", "target_id", "stance"]}
+    "Move": {
+      "command_points": 2,
+      "requires": ["actor_ids", "target_id"],
+      "modes": ["advance", "scout", "retreat", "hold"]
+    },
+    "Gather": {
+      "command_points": 1,
+      "requires": ["actor_ids", "target_id", "resource"],
+      "resources": ["food", "wood", "stone", "iron", "crystal"],
+      "persistent": true,
+      "worker_scaled": true
+    },
+    "Build": {
+      "command_points": 1,
+      "requires": ["actor_ids", "target_id", "option", "mode"],
+      "modes": ["construct", "train", "repair"],
+      "structures": ["outpost", "shelter", "farm", "storage", "mine", "wall", "tower", "workshop"],
+      "units": ["worker", "scout", "militia", "guard", "siege"],
+      "persistent": true,
+      "worker_scaled": true
+    },
+    "Attack": {
+      "command_points": 2,
+      "requires": ["actor_ids", "target_id"],
+      "modes": ["raid", "assault", "hold"],
+      "persistent": true
+    },
+    "Research": {
+      "command_points": 1,
+      "requires": ["actor_ids", "target_id", "option"],
+      "technologies": ["fieldcraft", "ironworking", "siegecraft"],
+      "persistent": true,
+      "worker_scaled": true
+    },
+    "Negotiate": {
+      "command_points": 0,
+      "requires": ["communication"],
+      "modes": ["offer", "respond"]
+    },
+    "Think": {
+      "command_points": 0,
+      "world_mutation": false,
+      "modes": ["deliberate"],
+      "specialist_operations": ["create", "update", "pause", "resume", "dismiss"]
+    }
   },
   "communication": {
     "maximum_utterances": 2,
@@ -25,8 +61,13 @@
   },
   "specialists": {
     "maximum_defined": 3,
+    "default_defined": 2,
+    "minimum_defined": 0,
     "maximum_calls_per_round": 2,
-    "roles": ["scout", "economy", "military", "diplomacy"],
-    "operations": ["create", "update", "pause", "resume", "dismiss"]
+    "roles": ["scout", "economy", "military", "diplomacy"]
+  },
+  "termination": {
+    "terminated": "exactly one stronghold survives",
+    "truncated": "the declared round cap expires without a winner"
   }
 }

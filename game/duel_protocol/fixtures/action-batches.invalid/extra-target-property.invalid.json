@@ -1,0 +1,18 @@
+{
+  "message_type": "action_batch",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "match_id": "m_0042",
+  "observation_seq": 18,
+  "based_on_observation_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "client_batch_id": "bad_target_property",
+  "valid_until_tick": 1801,
+  "commands": [
+    {
+      "command_id": "c1",
+      "op": "attack_entity",
+      "actor_ids": ["e_unit1"],
+      "target": {"kind": "entity", "entity_id": "e_enemy7", "if_missing": "nearest"},
+      "queue": "replace"
+    }
+  ]
+}

@@ -17,9 +17,16 @@ Godot resolves the world, while FastAPI validates plans, enforces budgets, and r
 evaluator, replay artifacts, and season scheduler are implemented. No official model leaderboard or
 completed 99-match benchmark season is published yet.
 
-**Rendered showcase:** The local demo recording is a pre-rendered showcase generated through the
-full simulation compute path. The recording stays local for upload, while its deterministic replay
-source and one-click renderer are published here as the fast presentation path.
+**Rendered showcase:** The local 90-second recording is an authored, deterministic gameplay cut
+that exercises the same presentation adapters as saved matches. It is explicitly labelled as an
+unverified local demo. A separate authoritative headless runner writes real tick-by-tick replay
+bundles, terminal results, and state hashes under the ignored `runs/` directory.
+
+The visual stack now uses a reviewed Quaternius Medieval Village CC0 building subset, Kenney's CC0
+Adventure UI vectors, FastNoiseLite terrain variation, WorldEnvironment lighting, and
+NavigationAgent3D movement hooks. Terrain3D and LimboAI are pinned and loaded behind deterministic
+presentation-only boundaries. The newer Quaternius MegaKit and Mixamo clips retain their official
+interactive-download steps; import contracts are included, but no gated asset was bypassed.
 
 > [!NOTE]
 > This repository is independent of the 2026 paper
@@ -62,9 +69,11 @@ decisions are grounded in a persistent simulated world with irreversible consequ
 This commit/lock/reveal protocol prevents provider latency from granting initiative. Rendering,
 camera movement, and playback speed cannot change a result.
 
-The arena contains 13 districts, finite resources, wildlife, construction, supply lines, territory
-capture, combat, public/private messages, atomic trades, non-binding pacts, and visible pact
-violations. A match ends by Core elimination or after 40 rounds plus deterministic tie-break rules.
+The compact arena contains 13 districts, finite resources, fogged scouting, persistent gathering,
+worker-scaled construction and repair, supply lines, technology, walls, towers, armies, siege,
+public/private messages, atomic trades, non-binding pacts, and visible pact violations. The only
+victory is the last surviving stronghold. Reaching the 120-round cap truncates the run and publishes
+diagnostic standings without declaring a winner.
 
 ## Evaluation methodology
 
@@ -158,14 +167,18 @@ encoder into the ignored `.video-tools/` folder; it never uploads footage or rea
 
 See [`docs/HIGHLIGHT_EXPORT.md`](docs/HIGHLIGHT_EXPORT.md) for the command-line options.
 
-### GitHub action preview
-
-This 20-second cut is taken from the same deterministic showcase and keeps the
-negotiation, Crown clash, and reversal beats visible without requiring a local render:
-
-![WorldArena open-world action highlight](docs/assets/worldarena-highlight.gif)
-
 ## Verify
+
+For the fast default pass, use the fixed scripted policy. It makes no model calls and exercises the
+Python contracts, persistent task timings, conquest rules, offline controller, and a short real
+replay bundle:
+
+```bash
+./run_fast_deterministic_tests.command
+```
+
+Set `WORLD_ARENA_FAST_ROUNDS=12` if you want a slightly longer batch smoke while keeping it fully
+deterministic.
 
 Run the Python contract, concurrency, privacy, scoring, and scheduling tests:
 
@@ -199,10 +212,10 @@ genesis-season-schedule docs/season-spec.example.json runs/season-schedule.json
 LLM Commanders / deterministic demo policy
                  ↓
 FastAPI: isolation · validation · budgets · commit/reveal · artifacts
-                 ↓  world-arena/0.2
-Godot controller: private observations · verification · receipts
+                 ↓  world-arena/0.4
+Godot controller: semantic/vision tracks · task receipts · verification
                  ↓
-Deterministic simulation: economy · movement · combat · diplomacy · score
+Deterministic simulation: tick work · fog · research · fortification · siege · conquest
                  ↓
 Presentation-only 3D world · HUD · replay · evidence podium
 ```

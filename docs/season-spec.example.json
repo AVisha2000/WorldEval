@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "formula_version": "worldarena-score/1.0.0",
+  "formula_version": "worldarena-score/1.1.0",
   "season_id": "example-season-v1",
   "track": "agentic",
   "base_seed": 20260718,
@@ -27,7 +27,7 @@
   "rules_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "map_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "tool_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-  "cognition_units": 120,
+  "cognition_units": 360,
   "decision_timeout_ms": 45000,
   "specialist_timeout_ms": 12000
 }

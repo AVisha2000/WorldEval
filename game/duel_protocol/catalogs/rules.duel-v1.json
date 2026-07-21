@@ -1,0 +1,437 @@
+{
+  "catalog_id": "rules.duel-v1",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "ruleset_id": "duel-rules-v1",
+  "numeric_units": {
+    "simulation_hz": 10,
+    "tick_ms": 100,
+    "tile_mt": 1000,
+    "position_unit": "milli_tile",
+    "facing_unit": "millidegree",
+    "percentage_unit": "basis_point",
+    "percent_full_bp": 10000,
+    "armor_unit": "centi_armor",
+    "authoritative_numbers": "integer_only"
+  },
+  "official_profiles": {
+    "fixed_simultaneous": {
+      "decision_period_ticks": 100,
+      "response_deadline_ms": 45000,
+      "maximum_in_flight_calls_per_player": 1,
+      "maximum_batch_age_ticks": 1,
+      "maximum_command_objects": 16,
+      "maximum_atomic_order_cost": 64,
+      "maximum_output_bytes": 16384,
+      "simulation_during_inference": "paused",
+      "activation_offset_ticks": 1,
+      "commit_reveal": true
+    },
+    "continuous_realtime": {
+      "decision_period_ticks": 50,
+      "response_deadline_ms": 8000,
+      "maximum_in_flight_calls_per_player": 1,
+      "maximum_batch_age_ticks": 100,
+      "maximum_command_objects": 16,
+      "maximum_atomic_order_cost": 64,
+      "maximum_output_bytes": 16384,
+      "simulation_during_inference": "continuous_exactly_1x",
+      "command_gate_ns": 100000000,
+      "dispatch_skew_max_ticks": 1
+    }
+  },
+  "match_start": {
+    "gold": 500,
+    "lumber": 200,
+    "food_used": 5,
+    "food_cap": 20,
+    "technology_tier": 1,
+    "stronghold_count": 1,
+    "food_structure_count": 1,
+    "worker_count": 5,
+    "hero_count": 0,
+    "home_mine_gold": 12000,
+    "minimum_reachable_home_lumber": 3000
+  },
+  "termination": {
+    "maximum_match_ticks": 18000,
+    "no_progress_draw_ticks": 3000,
+    "victory_condition": "destroy_enemy_stronghold",
+    "stronghold_rebuildable": false,
+    "same_tick_double_stronghold_destruction": "draw",
+    "time_limit_result": "draw",
+    "material_tiebreak": false,
+    "progress_events": [
+      "construction",
+      "damage",
+      "healing",
+      "hero_xp",
+      "item_transfer",
+      "known_objective_change",
+      "production",
+      "research",
+      "resource_depletion",
+      "resource_deposit",
+      "unit_death"
+    ]
+  },
+  "model_failure": {
+    "consecutive_hard_failures_forfeit": 3,
+    "cumulative_hard_failures_forfeit": 10,
+    "valid_envelope_resets_consecutive": true,
+    "same_evaluation_double_forfeit": "draw_double_technical_forfeit",
+    "organizer_infrastructure_result": "void_infrastructure",
+    "configuration_failure_result": "void_infrastructure",
+    "hard_failure_kinds": [
+      "invalid_json_or_schema",
+      "invalid_utf8",
+      "output_limit",
+      "participant_endpoint_error",
+      "provider_refusal",
+      "provider_timeout",
+      "transport_disconnect",
+      "worker_crash",
+      "wrong_match_observation_or_hash"
+    ]
+  },
+  "tick_phases": [
+    "activate_accepted_orders",
+    "expire_status_stock_and_cooldowns",
+    "compile_deterministic_actor_intents",
+    "compute_scheduled_paths",
+    "resolve_movement_reservations",
+    "start_windups",
+    "resolve_impacts_and_work",
+    "accumulate_typed_deltas",
+    "apply_delta_ledger",
+    "resolve_deaths_corpses_summons_destruction_and_drops",
+    "resolve_xp_inventory_stock_and_revival",
+    "update_fog_knowledge_and_observable_events",
+    "test_terminal_conditions",
+    "emit_events_and_optional_checkpoint"
+  ],
+  "exclusive_claims": {
+    "resolver": "hmac_sha256_protected_tie_key",
+    "group_key_fields": ["tick", "claim_kind", "object_internal_id", "charge_index"],
+    "ranking_fields": ["group_key", "canonical_command_digest", "internal_actor_id"],
+    "charge_only_accepted": true,
+    "ordinary_rejection_codes": ["execution_failed", "target_unavailable"],
+    "kinds": [
+      "corpse_consumption",
+      "expansion_or_build_site",
+      "field_revival_slot",
+      "finite_resource_remainder",
+      "ground_item",
+      "shop_or_hire_charge",
+      "transport_seat"
+    ]
+  },
+  "randomness": {
+    "algorithm": "sha256_keyed_counter",
+    "key_components": ["ruleset_hash", "match_seed", "stream", "tick", "subject_id", "contest_id"],
+    "streams": ["item_drop", "map", "neutral", "tie_break"],
+    "attack_damage_randomness": false,
+    "miss_randomness": false,
+    "critical_randomness": false
+  },
+  "canonical_state": {
+    "serialization": "RFC8785-JCS",
+    "strings": "NFC",
+    "duplicate_keys": false,
+    "explicit_defaults": true,
+    "floating_point": false,
+    "checkpoint_interval_ticks": 300,
+    "array_order_classes": {
+      "commands_and_command_actor_lists": "model_array_order",
+      "entities_structures_squads_sites_offers_upgrades_statuses": "ascending_id",
+      "events": "ascending_audience_event_seq",
+      "map_polygon_vertices": "clockwise_from_lexicographic_y_x",
+      "paths_and_patrol_points": "traversal_order",
+      "production_and_order_queues": "fifo",
+      "simultaneous_delta_entries": "internal_entity_id_delta_kind_source_id",
+      "tags_and_unordered_sets": "ascending_nfc_codepoint"
+    }
+  },
+  "pathfinding": {
+    "grid_cell_size_mt": 500,
+    "neighbor_order": [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]],
+    "cardinal_cost": 1000,
+    "diagonal_cost": 1414,
+    "diagonal_corner_cutting": false,
+    "astar_tie_key": ["f_cost", "h_cost", "turn_count", "node_y", "node_x", "node_id"],
+    "heuristic": "octile_static_terrain",
+    "ordinary_repath_period_ticks": 20,
+    "repath_offset": "internal_entity_id_mod_20",
+    "goal_cell_tie_key": ["distance_squared", "y", "x"],
+    "authoritative_navigation_server": false
+  },
+  "movement_and_collision": {
+    "ground_radius_mt_by_food": [
+      {"minimum_food": 0, "maximum_food": 2, "radius_mt": 350},
+      {"minimum_food": 3, "maximum_food": 4, "radius_mt": 450},
+      {"minimum_food": 5, "maximum_food": 100, "radius_mt": 650}
+    ],
+    "hero_radius_mt": 450,
+    "neutral_radius_mt_level_1_to_4": 350,
+    "neutral_radius_mt_level_5_to_6": 650,
+    "summon_and_ward_radius_mt": 350,
+    "flying_altitude_slots_per_cell": 4,
+    "overlap_allowed": false,
+    "swap_conflict_initial_result": "all_wait",
+    "identical_conflict_ticks_before_keyed_resolution": 3,
+    "speed_conversion_divisor": 10,
+    "position_interpolation": "integer_remainder"
+  },
+  "building_footprints": {
+    "altar": [3, 3],
+    "barracks": [4, 3],
+    "food": [2, 2],
+    "forge": [3, 3],
+    "hall": [5, 5],
+    "mystic": [4, 3],
+    "range": [4, 3],
+    "shop": [2, 2],
+    "stronghold": [6, 6],
+    "tower": [2, 2],
+    "workshop": [4, 4]
+  },
+  "terrain": {
+    "road_movement_bp": 900,
+    "grass_movement_bp": 1000,
+    "shallow_water_movement_bp": 1250,
+    "rubble_movement_bp": 1400,
+    "ground_elevation_levels": [0, 1, 2],
+    "ranged_low_to_high_damage_bp": 8000,
+    "high_to_low_sight_bp": 11000,
+    "melee_ignores_high_ground_penalty": true,
+    "flying_terrain_movement_bp": 1000
+  },
+  "fog": {
+    "grid_cell_size_mt": 500,
+    "update_tick_phase": 12,
+    "distance_test": "squared_cell_center",
+    "ray_algorithm": "integer_supercover_bresenham",
+    "ray_tie_order": ["y", "x"],
+    "forest_los_block_height": 2,
+    "ordinary_building_los_block_height": 1,
+    "flying_elevation": 2,
+    "exploration_persists": true,
+    "invisibility_requires_detection": true
+  },
+  "resources": {
+    "types": ["gold", "lumber"],
+    "food_is_currency": false,
+    "regeneration": false,
+    "gold_mines": {
+      "home": 12000,
+      "natural": 9000,
+      "contested": 6000,
+      "worker_slots": 5
+    },
+    "standard_tree_lumber": 100,
+    "tree_face_worker_slots": 1,
+    "worker_gather": {
+      "gold_cargo": 10,
+      "gold_work_ticks": 20,
+      "lumber_cargo": 10,
+      "lumber_work_ticks": 30,
+      "deposit_roles": ["expansion_hall", "stronghold"]
+    }
+  },
+  "food_and_upkeep": {
+    "maximum_food": 100,
+    "upkeep": [
+      {"minimum_used": 0, "maximum_used": 50, "tier": "none", "gold_delivery_bp": 10000},
+      {"minimum_used": 51, "maximum_used": 80, "tier": "low", "gold_delivery_bp": 7000},
+      {"minimum_used": 81, "maximum_used": 100, "tier": "high", "gold_delivery_bp": 4000}
+    ],
+    "lumber_reduced_by_upkeep": false,
+    "reserved_food_counts_for_upkeep": false
+  },
+  "reservation_and_refunds": {
+    "reserve_full_cost_on_acceptance": true,
+    "cancel_before_2500_bp_refund_bp": 9000,
+    "cancel_2500_to_7499_bp_refund_bp": 7500,
+    "cancel_at_or_above_7500_bp_refund_bp": 5000,
+    "incomplete_building_destroyed_refund_bp": 2500,
+    "destroyed_producer_queue_refund_bp": 2500,
+    "rounding": "floor_per_resource_once"
+  },
+  "construction": {
+    "work_bp_per_worker_tick": 100,
+    "cooperative_total_speed_bp": [
+      {"workers": 1, "speed_bp": 10000},
+      {"workers": 2, "speed_bp": 16000},
+      {"workers": 3, "speed_bp": 21000},
+      {"workers": 4, "speed_bp": 25000},
+      {"workers": 5, "speed_bp": 28000}
+    ],
+    "cooperative_worker_cap": 5,
+    "minimum_incomplete_hp_bp": 1000,
+    "incomplete_functions_enabled": false,
+    "repair_hp_per_worker_tick": 2,
+    "repair_worker_cap": 5,
+    "full_repair_cost_bp_of_original": 3000,
+    "repair_cost_rounding": "integer_accumulators"
+  },
+  "shared_structures": {
+    "stronghold": {"hp": 3000, "armor_centi": 500, "armor_class": "fortified", "cost_gold": 0, "cost_lumber": 0, "build_ticks": 0, "tier": 1, "food_provided": 10},
+    "expansion_hall": {"hp": 1800, "armor_centi": 400, "armor_class": "fortified", "cost_gold": 450, "cost_lumber": 250, "build_ticks": 700, "tier": 1, "food_provided": 10},
+    "food": {"hp": 500, "armor_centi": 0, "armor_class": "fortified", "cost_gold": 100, "cost_lumber": 40, "build_ticks": 250, "tier": 1, "food_provided": 10},
+    "hero_altar": {"hp": 900, "armor_centi": 200, "armor_class": "fortified", "cost_gold": 180, "cost_lumber": 60, "build_ticks": 450, "tier": 1, "food_provided": 0},
+    "barracks": {"hp": 1200, "armor_centi": 300, "armor_class": "fortified", "cost_gold": 220, "cost_lumber": 100, "build_ticks": 600, "tier": 1, "food_provided": 0},
+    "range": {"hp": 1000, "armor_centi": 200, "armor_class": "fortified", "cost_gold": 200, "cost_lumber": 120, "build_ticks": 550, "tier": 1, "food_provided": 0},
+    "mystic_hall": {"hp": 900, "armor_centi": 200, "armor_class": "fortified", "cost_gold": 180, "cost_lumber": 150, "build_ticks": 600, "tier": 2, "food_provided": 0},
+    "workshop": {"hp": 1100, "armor_centi": 300, "armor_class": "fortified", "cost_gold": 260, "cost_lumber": 180, "build_ticks": 700, "tier": 2, "food_provided": 0},
+    "forge": {"hp": 900, "armor_centi": 300, "armor_class": "fortified", "cost_gold": 180, "cost_lumber": 120, "build_ticks": 500, "tier": 1, "food_provided": 0},
+    "faction_shop": {"hp": 700, "armor_centi": 100, "armor_class": "fortified", "cost_gold": 130, "cost_lumber": 80, "build_ticks": 400, "tier": 1, "food_provided": 0},
+    "tower": {"hp": 650, "armor_centi": 400, "armor_class": "fortified", "cost_gold": 120, "cost_lumber": 80, "build_ticks": 450, "tier": 1, "food_provided": 0, "attack_damage": 20, "attack_type": "pierce", "attack_cooldown_ticks": 15, "attack_range_mt": 18000, "acquisition_range_mt": 18000, "windup_ticks": 5, "projectile_speed_mt_per_tick": 1500, "target_layers": ["air", "ground"], "detection_radius_mt": 12000}
+  },
+  "technology": {
+    "tier_2": {"cost_gold": 650, "cost_lumber": 250, "duration_ticks": 750, "hero_slots": 2},
+    "tier_3": {"cost_gold": 900, "cost_lumber": 350, "duration_ticks": 900, "hero_slots": 3},
+    "stronghold_can_deposit_while_upgrading": true,
+    "stronghold_can_train_worker_while_upgrading": false,
+    "damaged_stronghold_can_upgrade": true
+  },
+  "heroes": {
+    "slots_by_tier": [1, 2, 3],
+    "named_archetype_limit": 1,
+    "first_hero": {"cost_gold": 0, "cost_lumber": 0, "food": 5, "train_ticks": 450},
+    "later_hero": {"cost_gold": 425, "cost_lumber": 100, "food": 5, "train_ticks": 550},
+    "inventory_slots": 6,
+    "maximum_level": 10,
+    "xp_thresholds": [0, 200, 500, 900, 1400, 2000, 2700, 3500, 4400, 5400],
+    "normal_ability_rank_level_requirements": [1, 3, 5],
+    "ultimate_level_requirement": 6,
+    "xp_proximity_radius_mt": 20000,
+    "attribute_effects": {
+      "strength_hp_per_point": 25,
+      "strength_hp_regen_per_100_ticks": 1,
+      "agility_armor_centi_per_point": 15,
+      "agility_attack_speed_bp_per_point": 100,
+      "intellect_mana_per_point": 15,
+      "intellect_mana_regen_per_200_ticks": 1,
+      "primary_damage_per_point": 1
+    },
+    "revival": {
+      "altar_base_gold": 150,
+      "altar_gold_per_level": 35,
+      "altar_base_ticks": 200,
+      "altar_ticks_per_level": 50,
+      "altar_return_hp_bp": 10000,
+      "altar_return_mana_bp": 2500,
+      "tavern_available_after_death_ticks": 300,
+      "tavern_cost_bp_of_altar": 15000,
+      "tavern_return_hp_bp": 5000,
+      "tavern_return_mana_bp": 0
+    },
+    "item_pickup_range_mt": 1500,
+    "item_transfer_range_mt": 2000,
+    "dropped_item_despawn_ticks": 1800,
+    "item_sale_return_bp": 5000
+  },
+  "production": {
+    "queue_capacity": 5,
+    "produce_quantity_maximum": 5,
+    "one_fifo_queue_per_producer": true,
+    "blocked_completed_unit_waits_inside": true
+  },
+  "shared_upgrades": {
+    "melee_attack": [
+      {"level": 1, "tier": 1, "gold": 150, "lumber": 75, "ticks": 400, "base_damage_bp": 1000},
+      {"level": 2, "tier": 2, "gold": 225, "lumber": 125, "ticks": 500, "base_damage_bp": 1000},
+      {"level": 3, "tier": 3, "gold": 300, "lumber": 175, "ticks": 600, "base_damage_bp": 1000}
+    ],
+    "ranged_attack": [
+      {"level": 1, "tier": 1, "gold": 150, "lumber": 100, "ticks": 400, "base_damage_bp": 1000},
+      {"level": 2, "tier": 2, "gold": 225, "lumber": 150, "ticks": 500, "base_damage_bp": 1000},
+      {"level": 3, "tier": 3, "gold": 300, "lumber": 200, "ticks": 600, "base_damage_bp": 1000}
+    ],
+    "unit_armor": [
+      {"level": 1, "tier": 1, "gold": 150, "lumber": 75, "ticks": 400, "armor_centi": 100},
+      {"level": 2, "tier": 2, "gold": 225, "lumber": 125, "ticks": 500, "armor_centi": 100},
+      {"level": 3, "tier": 3, "gold": 300, "lumber": 175, "ticks": 600, "armor_centi": 100}
+    ],
+    "caster_mastery": [
+      {"level": 1, "tier": 1, "gold": 175, "lumber": 125, "ticks": 450, "mana": 50},
+      {"level": 2, "tier": 2, "gold": 250, "lumber": 175, "ticks": 550, "mana": 50},
+      {"level": 3, "tier": 3, "gold": 325, "lumber": 225, "ticks": 650, "mana": 50}
+    ],
+    "siege_engineering": {"tier": 2, "gold": 250, "lumber": 200, "ticks": 600, "structure_damage_bp": 2000, "range_mt": 2000},
+    "air_training": {"tier": 2, "gold": 250, "lumber": 200, "ticks": 600, "hp_bp": 1500, "movement_bp": 1500}
+  },
+  "combat": {
+    "armor_positive_formula": "floor(10000*10000/(10000+6*armor_centi))",
+    "armor_negative_formula": "min(20000,10000+6*abs(armor_centi))",
+    "valid_nonzero_hit_minimum_damage": 1,
+    "shields_before_hp": true,
+    "cooldown_starts": "impact",
+    "projectile_travel_rounding": "ceil_distance_div_speed",
+    "simultaneous_damage_and_healing": true,
+    "ordinary_attack_default_windup_melee_ticks": 5,
+    "ordinary_attack_default_windup_projectile_ticks": 6,
+    "siege_default_windup_ticks": 10,
+    "siege_minimum_range_mt": 4000,
+    "attack_speed_modifier_min_bp": -5000,
+    "attack_speed_modifier_max_bp": 10000,
+    "movement_speed_modifier_min_bp": -5000,
+    "movement_speed_modifier_max_bp": 10000,
+    "effective_cooldown_formula": "ceil(base_cooldown*10000/(10000+net_attack_speed_bp))",
+    "summon_dispel_damage_bp": 40000,
+    "mechanical_biological_healing": false,
+    "mechanical_poison_disease_corpse_effects": false
+  },
+  "stances": {
+    "aggressive": {"pursuit_from_order_path_mt": 8000},
+    "defensive": {"threat_radius_mt": 4000, "return_to_anchor": true},
+    "hold_position": {"pursuit_mt": 0},
+    "hold_fire": {"ordinary_attacks": false}
+  },
+  "target_priority": ["explicit_target", "attacker_threatening_self", "enemy_hero", "healer_or_caster", "siege", "anti_air_when_flying", "lowest_hp_ratio", "shortest_path", "opaque_entity_id"],
+  "formations": {
+    "allowed": ["compact", "line", "none", "spread", "wedge"],
+    "default_separation_mt": 1500,
+    "spread_separation_mt": 3000,
+    "choke_failure": "compress_deterministically"
+  },
+  "statuses": {
+    "same_stacking_key": "highest_magnitude_longest_remaining",
+    "stun_interrupts": true,
+    "root_prevents_ground_movement": true,
+    "silence_blocks_spells_not_items": true,
+    "ordinary_magical_dispellable": true,
+    "ultimate_undispellable_when_marked": true,
+    "autocast_default": false,
+    "autocast_target_order": ["closest", "lowest_hp_ratio", "opaque_internal_id"],
+    "autocast_paths_to_target": false
+  },
+  "day_night": {
+    "cycle_ticks": 4800,
+    "day_ticks": 2400,
+    "night_ticks": 2400,
+    "start_cycle_tick": 0,
+    "start_phase": "day",
+    "forced_night_underlying_clock_continues": true
+  },
+  "observation": {
+    "profile": "full-belief-v1",
+    "maximum_canonical_input_bytes": 262144,
+    "hash_scope": "legal_observation_without_observation_hash_field",
+    "world_hash_model_visible": false,
+    "knowledge_states": ["destroyed", "owned", "remembered", "unlocated", "visible"],
+    "deterministic_truncation_order": ["brief", "oldest_remembered_ordinary_units", "oldest_remembered_ordinary_buildings", "redundant_local_context_paths"],
+    "never_truncate": ["current_local_context", "current_visible_contacts", "economy", "heroes", "owned_entities", "production_queues", "receipts", "terminal_state"]
+  },
+  "security": {
+    "provider_memory": false,
+    "external_tools": false,
+    "filesystem": false,
+    "network": false,
+    "player_chat": false,
+    "custom_names": false,
+    "model_free_text_fields": ["intent_summary", "working_memory"],
+    "free_text_normalization": "NFC_reject_control_and_bidi",
+    "same_window_retry": false,
+    "json_repair": false
+  }
+}

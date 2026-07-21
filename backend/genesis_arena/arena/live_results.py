@@ -31,6 +31,7 @@ from .models import (
     ArenaEvent,
     DecisionDiagnostic,
     FactionPlan,
+    PhysicalAction,
     RoundReceipt,
     TerminalOutcome,
     UsageRecord,
@@ -124,7 +125,12 @@ def build_live_match_result(
         accepted_orders = sum(1 for event in own_events if _order_accepted(event))
         rejected_orders = sum(1 for event in own_events if _order_rejected(event))
         plan_orders = len(action_ids)
-        build_orders = sum(1 for plan in plans for order in plan.orders if order.action == "build")
+        build_orders = sum(
+            1
+            for plan in plans
+            for order in plan.orders
+            if order.canonical_action == PhysicalAction.BUILD and order.mode != "train"
+        )
         killed = sum(
             1
             for event in events
@@ -139,7 +145,7 @@ def build_live_match_result(
         message_events = sum(1 for event in own_events if event.kind == "message")
         runtime = runtimes[faction]
         budget = runtime.budget
-        budget_units = budget.total_units + (budget.sudden_death_rounds * budget.commander_cost)
+        budget_units = budget.total_units
         spent_units = (
             budget.commander_calls * budget.commander_cost
             + budget.specialist_calls * budget.specialist_cost
@@ -175,7 +181,11 @@ def build_live_match_result(
                     max_supplied_points=13,
                     territory_time=final.territory_time,
                     max_territory_time=13 * terminal.completed_rounds,
-                    crown_hold_rounds=final.crown_hold_rounds,
+                    enemy_strongholds_destroyed=final.enemy_strongholds_destroyed,
+                    districts_discovered=final.districts_discovered,
+                    max_districts=13,
+                    tech_tier=final.tech_tier,
+                    max_tech_tier=3,
                     scoring_rounds=terminal.completed_rounds,
                     supply_cuts_inflicted=sum(1 for event in own_events if event.kind == "supply"),
                 ),
@@ -246,7 +256,7 @@ def build_live_match_result(
             track=track,
             seed=seed,
             scored=False,
-            round_limit=48,
+            round_limit=120,
             completed_rounds=terminal.completed_rounds,
             rules_hash=terminal.rules_hash,
             map_hash=terminal.map_hash,

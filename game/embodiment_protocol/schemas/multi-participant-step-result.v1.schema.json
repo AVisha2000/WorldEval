@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/multi-participant-step-result.v1.schema.json",
+  "title": "LLM Controller multi-participant step result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observations", "receipts", "public_events", "state_hash", "terminal"],
+  "properties": {
+    "observations": {"$ref": "#/$defs/observations"},
+    "receipts": {"$ref": "#/$defs/receipts"},
+    "public_events": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "authority-event.v1.schema.json"}
+    },
+    "state_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "terminal": {"$ref": "#/$defs/terminal"}
+  },
+  "$defs": {
+    "observations": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2,
+      "propertyNames": {"pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "additionalProperties": {"$ref": "observation.v1.schema.json"}
+    },
+    "receipts": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2,
+      "propertyNames": {"pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "additionalProperties": {"$ref": "action-receipt.v1.schema.json"}
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ended", "outcome", "reason"],
+      "properties": {
+        "ended": {"type": "boolean"},
+        "outcome": {"enum": ["running", "success", "failure", "win", "loss", "draw", "void"]},
+        "reason": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"}
+      }
+    }
+  }
+}

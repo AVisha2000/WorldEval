@@ -5,11 +5,26 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Dict
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
+from .arena.simulation_jobs import (
+    ReplayBundle,
+    ReplaySummary,
+    SimulationJob,
+    SimulationJobManager,
+    SimulationRequest,
+)
 from .arena_api import arena_socket
-from .config import Settings
+from .config import REPOSITORY_ROOT, Settings
+from .duel.api import router as duel_router
+from .duel.match_service import default_duel_match_service
+from .embodiment.api import router as embodiment_router
+from .embodiment.dashboard import mount_built_dashboard
+from .embodiment.duel.live_runtime import default_duel_series_service
+from .embodiment.live_runtime import default_episode_service
+from .embodiment.readiness import PilotReadinessStore
+from .embodiment.transport import ManagedWebSocketEndpoint
 from .models import Observation, SimulationConfig
 from .orchestrator import Orchestrator
 
@@ -19,7 +34,39 @@ settings = Settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.orchestrator = Orchestrator(settings)
-    yield
+    app.state.simulation_jobs = SimulationJobManager(settings)
+    app.state.duel_matches = default_duel_match_service(
+        port=settings.port,
+        runs_dir=settings.runs_dir,
+        godot_executable=settings.godot_executable,
+        godot_project_path=settings.godot_project_path,
+    )
+    app.state.embodiment_gateway = ManagedWebSocketEndpoint()
+    app.state.embodiment_readiness = PilotReadinessStore(
+        settings.embodiment_readiness_path
+    )
+    app.state.embodiment_episodes = default_episode_service(
+        repository_root=REPOSITORY_ROOT,
+        godot_executable=settings.godot_executable,
+        godot_project_path=settings.godot_project_path,
+        gateway_port=settings.port,
+        endpoint=app.state.embodiment_gateway,
+        provider_timeout_s=settings.decision_timeout_seconds,
+    )
+    app.state.embodiment_series = default_duel_series_service(
+        repository_root=REPOSITORY_ROOT,
+        godot_executable=settings.godot_executable,
+        godot_project_path=settings.godot_project_path,
+        gateway_port=settings.port,
+        endpoint=app.state.embodiment_gateway,
+        provider_timeout_s=settings.decision_timeout_seconds,
+    )
+    try:
+        yield
+    finally:
+        await app.state.embodiment_series.aclose()
+        await app.state.embodiment_episodes.aclose()
+        await app.state.duel_matches.aclose()
 
 
 app = FastAPI(
@@ -30,6 +77,13 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+app.include_router(duel_router)
+app.include_router(embodiment_router)
+
+
+@app.websocket("/ws/embodiment/{ticket}")
+async def embodiment_socket(ticket: str, websocket: WebSocket) -> None:
+    await app.state.embodiment_gateway.handle(ticket, websocket)
 
 
 @app.get("/health")
@@ -39,7 +93,12 @@ async def health() -> Dict[str, object]:
         "status": "ok",
         "brain": orchestrator.provider_name,
         "catalog_version": orchestrator.catalog.version,
-        "protocols": ["genesis-arena/0.1", "world-arena/0.2"],
+        "protocols": [
+            "genesis-arena/0.1",
+            "world-arena/0.2",
+            "world-arena/0.3",
+            "world-arena/0.4",
+        ],
     }
 
 
@@ -56,6 +115,60 @@ async def catalog() -> Dict[str, Any]:
 async def state() -> Dict[str, object]:
     orchestrator: Orchestrator = app.state.orchestrator
     return orchestrator.state()
+
+
+def _simulation_jobs() -> SimulationJobManager:
+    return app.state.simulation_jobs
+
+
+@app.post("/api/simulations", response_model=SimulationJob, status_code=202)
+async def create_simulation(request: SimulationRequest) -> SimulationJob:
+    return _simulation_jobs().create(request)
+
+
+@app.get("/api/simulations", response_model=list[SimulationJob])
+async def list_simulations(limit: int = Query(default=50, ge=1, le=100)) -> list[SimulationJob]:
+    return _simulation_jobs().list_jobs(limit)
+
+
+@app.get("/api/simulations/{job_id}", response_model=SimulationJob)
+async def get_simulation(job_id: str) -> SimulationJob:
+    try:
+        job = _simulation_jobs().get(job_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="simulation not found") from exc
+    if job is None:
+        raise HTTPException(status_code=404, detail="simulation not found")
+    return job
+
+
+@app.get("/api/replays", response_model=list[ReplaySummary])
+async def list_replays(limit: int = Query(default=50, ge=1, le=100)) -> list[ReplaySummary]:
+    return _simulation_jobs().list_replays(limit)
+
+
+@app.get("/api/replays/{replay_id}", response_model=ReplaySummary)
+async def get_replay(replay_id: str) -> ReplaySummary:
+    try:
+        replay = _simulation_jobs().get_replay(replay_id, full=False)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="replay not found") from exc
+    if replay is None:
+        raise HTTPException(status_code=404, detail="replay not found")
+    assert isinstance(replay, ReplaySummary)
+    return replay
+
+
+@app.get("/api/replays/{replay_id}/bundle", response_model=ReplayBundle)
+async def get_replay_bundle(replay_id: str) -> ReplayBundle:
+    try:
+        replay = _simulation_jobs().get_replay(replay_id, full=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="replay not found") from exc
+    if replay is None:
+        raise HTTPException(status_code=404, detail="replay not found")
+    assert isinstance(replay, ReplayBundle)
+    return replay
 
 
 @app.websocket("/ws/world")
@@ -138,9 +251,15 @@ async def world_socket(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/arena")
 async def arena_v1_socket(websocket: WebSocket) -> None:
-    """WorldArena v0.2 simultaneous three-faction protocol."""
+    """WorldArena v0.3 simultaneous three-faction protocol (with v0.2 support)."""
 
     await arena_socket(websocket, settings)
+
+
+# Static presentation is mounted after every API and WebSocket route. A source checkout without a
+# completed Vite build remains a valid API server; `pnpm build` makes the local dashboard available
+# from the same origin without introducing a second credential-handling process.
+mount_built_dashboard(app, REPOSITORY_ROOT / "dashboard" / "dist")
 
 
 def run() -> None:
@@ -149,6 +268,9 @@ def run() -> None:
         host=settings.host,
         port=settings.port,
         reload=False,
+        # Duel's one-use Godot attachment capability is carried in a WebSocket path. Never allow
+        # the server's generic request logger to persist that protected path.
+        access_log=False,
     )
 
 

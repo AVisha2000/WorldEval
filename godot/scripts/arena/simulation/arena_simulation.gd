@@ -11,6 +11,8 @@ var _map: Dictionary = {}
 var _rng_state: int = 1
 var _unit_serial := 0
 var _structure_serial := 0
+var _task_serial := 0
+var _event_serial := 0
 
 func _init(seed: int = 1, map_path: String = MAP_PATH) -> void:
 	_map = _load_map(map_path)
@@ -21,6 +23,8 @@ func start_match(seed: int = 1) -> Dictionary:
 	_rng_state = max(1, seed % RNG_MOD)
 	_unit_serial = 0
 	_structure_serial = 0
+	_task_serial = 0
+	_event_serial = 0
 	state = _initial_state(seed)
 	_hash_state()
 	return get_snapshot()
@@ -28,6 +32,14 @@ func start_match(seed: int = 1) -> Dictionary:
 # Applies one simultaneous 15-second round and returns the authoritative snapshot.
 func apply_round(plans: Dictionary = {}) -> Dictionary:
 	return resolve_round(plans)
+
+# Applies one round while sampling the authoritative state every `stride_ticks`.
+# This is a replay/export surface only: the normal resolver stays allocation-light,
+# and sampled states never feed back into rules or rendering.
+func apply_round_with_trace(plans: Dictionary = {}, stride_ticks: int = 10) -> Dictionary:
+	var trace: Array = []
+	var resolved := _resolve_round_internal(plans, trace, clampi(stride_ticks, 1, Rules.ROUND_TICKS))
+	return {"snapshot": resolved, "trace": trace}
 
 func get_snapshot() -> Dictionary:
 	return snapshot()
@@ -39,7 +51,7 @@ func get_state_hash() -> String:
 	return state_hash()
 
 # Public terminal-result helpers. Consumers can read authoritative ranking/value data
-# without re-implementing the simulation's tie-break or structure-cost rules.
+# without re-implementing the simulation's diagnostic standings or structure-cost rules.
 func get_faction_ranking_metrics(faction: String) -> Array:
 	assert(Rules.FACTIONS.has(faction), "Unknown faction: %s" % faction)
 	return _ranking_metrics(faction).duplicate()
@@ -56,9 +68,9 @@ func _load_map(path: String) -> Dictionary:
 func _initial_state(seed: int) -> Dictionary:
 	var result := {
 		"schema_version": Rules.VERSION,
-		"match": {"id": "tri_13_%d" % seed, "seed": seed, "round": 1, "tick": 0, "phase": "planning", "sudden_death": false, "sudden_death_started_round": 0, "ended": false, "winner": "", "state_hash": ""},
+		"match": {"id": "conquest_%d" % seed, "seed": seed, "round": 1, "tick": 0, "phase": "planning", "narrative_phase": "Opening", "ended": false, "truncated": false, "termination": "", "winner": "", "state_hash": ""},
 		"map": {"id": str(_map.id), "version": int(_map.version), "adjacency": _map.adjacency.duplicate(true)},
-		"factions": {}, "districts": {}, "units": {}, "structures": {}, "build_queue": [], "train_queue": [], "events": [], "rng_state": _rng_state
+		"factions": {}, "districts": {}, "units": {}, "structures": {}, "tasks": {}, "receipts": [], "build_queue": [], "train_queue": [], "events": [], "rng_state": _rng_state
 	}
 	for district_id in _map.districts.keys():
 		var template: Dictionary = _map.districts[district_id]
@@ -67,12 +79,10 @@ func _initial_state(seed: int) -> Dictionary:
 	for faction in Rules.FACTIONS:
 		var core := "core_%s" % faction
 		var home := "home_%s" % faction
-		result.factions[faction] = {"id": faction, "core_id": core, "core_hp": 1000.0, "eliminated": false, "commander_respawn_round": -1, "stockpile": {"food": 120, "wood": 90, "stone": 70, "iron": 0, "crystal": 0}, "supply": {"used": 5, "capacity": 8, "external_capacity": 2, "priority": [home], "supplied_districts": [core, home]}, "territory": {"owned": [core, home], "control_point_rounds": 0, "crown_hold_rounds": 0}, "cognition": {"scheduled_used": 0, "interrupt_used": 0, "advisor_used": 0}, "starving_rounds": 0}
+		result.factions[faction] = {"id": faction, "core_id": core, "core_hp": 900.0, "eliminated": false, "commander_respawn_round": -1, "stockpile": Rules.STARTING_STOCKPILE.duplicate(true), "supply": {"used": 1, "capacity": 4, "external_capacity": 1, "priority": [home], "supplied_districts": [core, home]}, "territory": {"owned": [core, home], "control_point_rounds": 0}, "tech": {"tier": 0, "completed": []}, "knowledge": {"seen_districts": {core: 0, home: 0}, "contacts": {}}, "diplomacy": {"offers": {}, "treaties": {}}, "cognition": {"scheduled_used": 0, "interrupt_used": 0, "advisor_used": 0}, "starving_rounds": 0}
 		_add_structure_to(result, faction, "outpost", home, true)
-		_add_structure_to(result, faction, "tower", core, true)
 		_add_unit_to(result, faction, "commander", home)
-		for i in 3: _add_unit_to(result, faction, "worker", home)
-		for i in 2: _add_unit_to(result, faction, "militia", home)
+		_add_unit_to(result, faction, "worker", home)
 	return result
 
 func snapshot() -> Dictionary:
@@ -87,29 +97,63 @@ func rng_next() -> float:
 	return float(_rng_state) / float(RNG_MOD)
 
 func resolve_round(plans: Dictionary = {}) -> Dictionary:
+	return _resolve_round_internal(plans, [], 0)
+
+func _resolve_round_internal(plans: Dictionary, trace: Array, trace_stride: int) -> Dictionary:
 	if bool(state.match.ended): return snapshot()
 	state.events = []
 	state.match.phase = "resolving"
+	var trace_event_cursor := 0
 	var accepted: Dictionary = {}
 	for faction in Rules.FACTIONS:
 		accepted[faction] = _validate_plan(faction, plans.get(faction, []))
 	for faction in Rules.FACTIONS:
 		_apply_orders(faction, accepted[faction])
 	_advance_movement()
-	_resolve_combat()
+	for local_tick in Rules.ROUND_TICKS:
+		state.match.tick = (int(state.match.round) - 1) * Rules.ROUND_TICKS + local_tick + 1
+		_advance_work_tasks()
+		_resolve_combat(1)
+		if trace_stride > 0 and ((local_tick + 1) % trace_stride == 0 or local_tick == Rules.ROUND_TICKS - 1):
+			var sampled_events: Array = state.events.slice(trace_event_cursor)
+			trace.append({
+				"tick": int(state.match.tick),
+				"round_tick": local_tick + 1,
+				"snapshot": snapshot(),
+				"events": sampled_events.duplicate(true)
+			})
+			trace_event_cursor = state.events.size()
 	_advance_queues()
 	_harvest_and_farms()
 	_resolve_hunts()
 	_consume_food()
 	_recompute_supply()
 	_resolve_capture()
+	_update_territory_metrics()
 	_regenerate()
-	_crown_surge()
-	_score_and_end()
+	_update_visibility()
+	_update_narrative_phase()
+	_check_conquest_end()
 	state.match.round = int(state.match.round) + 1
-	state.match.tick = int(state.match.round) * Rules.ROUND_TICKS
+	# Tick is the absolute authoritative tick just resolved.  Do not derive it from
+	# the next planning round: presentation replays this exact stream.
 	if not bool(state.match.ended): state.match.phase = "planning"
 	_hash_state()
+	# Queue completion, harvesting, capture, scoring, and terminal events happen
+	# after the final 10 Hz work/combat tick. Fold those results into the last
+	# sample at the same authoritative tick instead of inventing a new physics tick.
+	if trace_stride > 0:
+		var trailing_events: Array = state.events.slice(trace_event_cursor)
+		if trace.is_empty():
+			trace.append({
+				"tick": int(state.match.tick),
+				"round_tick": Rules.ROUND_TICKS,
+				"snapshot": snapshot(),
+				"events": trailing_events.duplicate(true)
+			})
+		else:
+			trace[-1]["snapshot"] = snapshot()
+			trace[-1]["events"].append_array(trailing_events.duplicate(true))
 	return snapshot()
 
 func _validate_plan(faction: String, raw_orders: Variant) -> Array:
@@ -121,8 +165,8 @@ func _validate_plan(faction: String, raw_orders: Variant) -> Array:
 	if not raw_orders is Array: return valid
 	for raw in raw_orders:
 		if valid.size() >= Rules.MAX_ORDERS or not raw is Dictionary: break
-		var order: Dictionary = raw
-		var kind := str(order.get("kind", ""))
+		var order := _normalize_order(faction, raw)
+		var kind := _order_kind(order)
 		var cost := Rules.order_cost(kind)
 		if cp + cost > Rules.COMMAND_POINTS or not _order_is_valid(faction, order):
 			_event("order_rejected", faction, {"kind": kind, "reason": _rejection_reason(faction, order)})
@@ -133,26 +177,33 @@ func _validate_plan(faction: String, raw_orders: Variant) -> Array:
 	return valid
 
 func _order_is_valid(faction: String, order: Dictionary) -> bool:
-	var kind := str(order.get("kind", ""))
+	var kind := _order_kind(order)
 	var faction_state: Dictionary = state.factions[faction]
 	match kind:
-		"assign_workers":
-			return _owned_supplied(faction, str(order.get("district", ""))) and Rules.HARVEST.has(str(order.get("node", "")))
+		"Gather":
+			return _owned_supplied(faction, str(order.get("district", ""))) and Rules.HARVEST.has(str(order.get("node", ""))) and not _eligible_worker_ids(faction, str(order.get("district", "")), order.get("unit_ids", [])).is_empty()
 		"hunt":
 			return _valid_hunt(faction, order)
-		"build":
+		"Build":
 			var structure := str(order.get("structure", ""))
 			var district := str(order.get("district", ""))
+			if str(order.get("mode", "")) == "repair": return _valid_repair(faction, order)
 			if not Rules.STRUCTURES.has(structure) or not _can_pay(faction_state.stockpile, Rules.STRUCTURES[structure].cost):
 				return false
 			if structure == "outpost":
 				return _can_build(faction, structure, district) and _has_supplied_neighbor(faction, district) and _has_worker_at(faction, district)
-			return _owned_supplied(faction, district) and _can_build(faction, structure, district)
+			return _owned_supplied(faction, district) and _can_build(faction, structure, district) and _has_worker_at(faction, district)
 		"train":
 			var unit_kind := str(order.get("unit", ""))
 			return Rules.TRAINING.has(unit_kind) and _can_pay(faction_state.stockpile, Rules.TRAINING[unit_kind].cost) and _can_train(faction, unit_kind)
-		"mobilize", "retreat":
+		"Move":
 			return order.get("unit_ids", []) is Array and _valid_unit_move(faction, order)
+		"Attack":
+			return _valid_attack(faction, order)
+		"Research":
+			return Rules.RESEARCH.has(str(order.get("technology_id", order.get("technology", "")))) and _can_pay(faction_state.stockpile, Rules.RESEARCH[str(order.get("technology_id", order.get("technology", "")))].cost)
+		"Negotiate", "Think":
+			return true
 		"set_supply_priority":
 			return order.get("districts", []) is Array
 		"reinforce", "repair", "research":
@@ -162,23 +213,36 @@ func _order_is_valid(faction: String, order: Dictionary) -> bool:
 
 func _apply_orders(faction: String, orders: Array) -> void:
 	for order in orders:
-		match str(order.kind):
-			"assign_workers":
-				for unit_id in order.get("unit_ids", []):
-					if state.units.has(unit_id) and state.units[unit_id].faction == faction and state.units[unit_id].kind == "worker": state.units[unit_id].harvest = str(order.node)
+		var kind := _order_kind(order)
+		match kind:
+			"Gather":
+				_assign_gather_tasks(faction, str(order.get("district", "")), str(order.get("node", "")), order.get("unit_ids", []))
 			"hunt":
 				for unit_id in order.get("unit_ids", []):
 					if state.units.has(unit_id): state.units[unit_id].hunt = str(order.species)
-			"build":
+			"Build":
+				if str(order.get("mode", "")) == "repair":
+					_create_repair_task(faction, order)
+					continue
 				var spec: Dictionary = Rules.STRUCTURES[str(order.structure)]
 				_pay(state.factions[faction].stockpile, spec.cost)
-				state.build_queue.append({"faction": faction, "kind": str(order.structure), "district": str(order.district), "remaining": int(spec.rounds)})
+				_create_build_task(faction, str(order.structure), str(order.district), order.get("worker_ids", order.get("unit_ids", [])), spec.cost)
 			"train":
 				var training: Dictionary = Rules.TRAINING[str(order.unit)]; _pay(state.factions[faction].stockpile, training.cost)
 				state.train_queue.append({"faction": faction, "kind": str(order.unit), "remaining": int(training.rounds)})
-			"mobilize", "retreat":
+			"Move":
 				for unit_id in order.unit_ids:
 					if state.units.has(unit_id): state.units[unit_id].target = str(order.get("target", state.factions[faction].core_id))
+			"Attack":
+				_event("order_started", faction, {"action": "Attack", "target_id": str(order.get("target_id", order.get("target", "")))})
+				for unit_id in order.get("unit_ids", order.get("actor_ids", [])):
+					if state.units.has(unit_id):
+						state.units[unit_id].attack_target = str(order.get("target_id", order.get("target", "")))
+						state.units[unit_id].target = str(order.get("target", order.get("target_id", "")))
+			"Research":
+				_start_research_task(faction, order)
+			"Negotiate": _event("negotiation_recorded", faction, {"state": "accepted"})
+			"Think": _event("think_recorded", faction, {"state": "accepted"})
 			"set_supply_priority": state.factions[faction].supply.priority = order.districts.duplicate()
 
 func _advance_movement() -> void:
@@ -200,6 +264,7 @@ func _resolve_combat(ticks: int = Rules.ROUND_TICKS) -> void:
 		var core_damage: Dictionary = {}
 		for attacker_id in state.units.keys():
 			var attacker: Dictionary = state.units[attacker_id]
+			if not str(attacker.get("attack_target", "")).is_empty(): _event("attack_progress", str(attacker.faction), {"unit_id": attacker_id, "target_id": attacker.attack_target})
 			var structure_id := _hostile_structure_target(attacker)
 			if attacker.kind == "siege" and not structure_id.is_empty():
 				structure_damage[structure_id] = float(structure_damage.get(structure_id, 0.0)) + _unit_damage(attacker, true)
@@ -225,9 +290,11 @@ func _resolve_combat(ticks: int = Rules.ROUND_TICKS) -> void:
 		for structure_id in structure_damage.keys():
 			if state.structures.has(structure_id):
 				state.structures[structure_id].hp -= structure_damage[structure_id]
+				_event("structure_damaged", str(state.structures[structure_id].faction), {"structure_id": structure_id, "damage": structure_damage[structure_id]})
 				if state.structures[structure_id].hp <= 0.0: _destroy_structure(structure_id)
 		for faction in core_damage.keys():
 			state.factions[faction].core_hp -= core_damage[faction]
+			_event("core_damaged", str(faction), {"damage": core_damage[faction], "remaining_hp": state.factions[faction].core_hp})
 			if state.factions[faction].core_hp <= 0.0: _eliminate_faction(str(faction))
 
 func _unit_damage(attacker: Dictionary, target_is_structure: bool = false) -> float:
@@ -269,30 +336,171 @@ func _target_rank(unit: Dictionary) -> int:
 	return {"commander": 0, "worker": 1, "guard": 2, "militia": 3, "scout": 4}.get(str(unit.kind), 9)
 
 func _advance_queues() -> void:
-	for queue_name in ["build_queue", "train_queue"]:
+	# Build work lives in state.tasks in v0.3.  Keep build_queue as a compatibility
+	# projection for callers that displayed the old round-count queue.
+	state.build_queue = _build_queue_projection()
+	for queue_name in ["train_queue"]:
 		var next_queue: Array = []
 		for job in state[queue_name]:
 			if bool(state.factions[job.faction].eliminated): continue
 			job.remaining = int(job.remaining) - 1
 			if int(job.remaining) > 0:
 				next_queue.append(job)
-			elif queue_name == "build_queue": _add_structure_to(state, str(job.faction), str(job.kind), str(job.district), false)
 			else: _add_unit_to(state, str(job.faction), str(job.kind), str(state.factions[job.faction].core_id))
 		state[queue_name] = next_queue
 	_respawn_commanders()
 
+# v0.3 work tasks -----------------------------------------------------------
+# Tasks, rather than the renderer or a round queue, own all worker progress.
+# Work is deliberately integer-valued: each eligible worker contributes one work
+# unit per 10 Hz tick, up to the task's staffing cap.
+func _assign_gather_tasks(faction: String, district: String, node: String, raw_worker_ids: Variant) -> void:
+	var worker_ids := _eligible_worker_ids(faction, district, raw_worker_ids)
+	if worker_ids.is_empty(): return
+	for worker_id in worker_ids: _unassign_worker(worker_id)
+	var task := _new_task("gather", faction, district, worker_ids, Rules.GATHER_CYCLE_WORK)
+	task.node = node
+	task.resource = str(Rules.HARVEST[node].resource)
+	task.amount = int(Rules.HARVEST[node].amount)
+	state.tasks[task.id] = task
+	for worker_id in worker_ids: state.units[worker_id].task_id = task.id
+	_event("task_started", faction, {"task_id": task.id, "task_kind": "gather", "actor_id": worker_ids[0], "target_ids": worker_ids, "district": district, "node": node, "required_work": task.required_work, "completed_work": 0, "state": "start"})
+
+func _create_build_task(faction: String, kind: String, district: String, raw_worker_ids: Variant, reserved_cost: Dictionary) -> void:
+	var requested: Array = raw_worker_ids if raw_worker_ids is Array else []
+	if requested.is_empty():
+		for unit_id in state.units.keys():
+			var unit: Dictionary = state.units[unit_id]
+			if unit.faction == faction and unit.kind == "worker" and unit.district == district: requested.append(unit_id)
+	var worker_ids := _eligible_worker_ids(faction, district, requested)
+	worker_ids = worker_ids.slice(0, Rules.BUILD_STAFFING_CAP)
+	for worker_id in worker_ids: _unassign_worker(worker_id)
+	var task := _new_task("build", faction, district, worker_ids, int(Rules.STRUCTURES[kind].rounds) * Rules.ROUND_TICKS)
+	task.structure_kind = kind
+	task.reserved_cost = reserved_cost.duplicate(true)
+	task.staffing_cap = Rules.BUILD_STAFFING_CAP
+	state.tasks[task.id] = task
+	for worker_id in worker_ids: state.units[worker_id].task_id = task.id
+	_event("task_started", faction, {"task_id": task.id, "task_kind": "build", "actor_id": worker_ids[0] if not worker_ids.is_empty() else "", "target_ids": worker_ids, "district": district, "structure": kind, "required_work": task.required_work, "completed_work": 0, "state": "start"})
+
+func _new_task(kind: String, faction: String, district: String, worker_ids: Array, required_work: int) -> Dictionary:
+	_task_serial += 1
+	return {"id": "task_%04d" % _task_serial, "kind": kind, "faction": faction, "district": district, "worker_ids": worker_ids.duplicate(), "required_work": required_work, "completed_work": 0, "state": "active", "pause_reason": ""}
+
+func _advance_work_tasks() -> void:
+	var task_ids: Array = state.tasks.keys()
+	task_ids.sort()
+	for task_id in task_ids:
+		if not state.tasks.has(task_id): continue
+		var task: Dictionary = state.tasks[task_id]
+		var workers := _active_task_workers(task)
+		if workers.is_empty():
+			if task.state != "paused":
+				task.state = "paused"; task.pause_reason = "no_eligible_workers"
+				_event("task_paused", str(task.faction), {"task_id": task_id, "task_kind": task.kind, "required_work": task.required_work, "completed_work": task.completed_work, "state": "paused", "reason": task.pause_reason})
+			continue
+		if task.state == "paused":
+			task.state = "active"; task.pause_reason = ""
+			_event("task_resumed", str(task.faction), {"task_id": task_id, "task_kind": task.kind, "required_work": task.required_work, "completed_work": task.completed_work, "state": "progress"})
+		var contribution := mini(workers.size(), int(task.get("staffing_cap", workers.size())))
+		task.completed_work = int(task.completed_work) + contribution
+		_event("task_progress", str(task.faction), {"task_id": task_id, "task_kind": task.kind, "actor_id": workers[0], "target_ids": workers, "required_work": task.required_work, "completed_work": task.completed_work, "work_delta": contribution, "state": "progress"})
+		if int(task.completed_work) >= int(task.required_work):
+			if task.kind == "gather": _complete_gather_task(task_id, task, workers)
+			elif task.kind == "build": _complete_build_task(task_id, task, workers)
+			elif task.kind == "research": _complete_research_task(task_id, task, workers)
+			elif task.kind == "repair": _complete_repair_task(task_id, task, workers)
+
+func _complete_gather_task(task_id: String, task: Dictionary, workers: Array) -> void:
+	if not _can_gather_task(task):
+		task.state = "paused"; task.pause_reason = "gather_precondition_failed"
+		_event("task_paused", str(task.faction), {"task_id": task_id, "task_kind": "gather", "required_work": task.required_work, "completed_work": task.completed_work, "state": "paused", "reason": task.pause_reason})
+		return
+	var district: Dictionary = state.districts[task.district]
+	var amount := mini(int(task.amount), int(district.resources.get(task.node, 0)))
+	if amount <= 0:
+		task.state = "paused"; task.pause_reason = "resource_depleted"
+		_event("task_paused", str(task.faction), {"task_id": task_id, "task_kind": "gather", "required_work": task.required_work, "completed_work": task.completed_work, "state": "paused", "reason": task.pause_reason})
+		return
+	district.resources[task.node] -= amount
+	_add_stockpile(str(task.faction), str(task.resource), amount)
+	task.completed_work = 0
+	task.cycles_completed = int(task.get("cycles_completed", 0)) + 1
+	_event("task_impact", str(task.faction), {"task_id": task_id, "task_kind": "gather", "actor_id": workers[0], "target_ids": workers, "district": task.district, "node": task.node, "resource": task.resource, "resource_delta": amount, "required_work": task.required_work, "completed_work": 0, "state": "impact"})
+
+func _complete_build_task(task_id: String, task: Dictionary, workers: Array) -> void:
+	_add_structure_to(state, str(task.faction), str(task.structure_kind), str(task.district), false)
+	for worker_id in workers:
+		if state.units.has(worker_id) and str(state.units[worker_id].get("task_id", "")) == task_id: state.units[worker_id].erase("task_id")
+	state.tasks.erase(task_id)
+	_event("task_completed", str(task.faction), {"task_id": task_id, "task_kind": "build", "actor_id": workers[0], "target_ids": workers, "district": task.district, "structure": task.structure_kind, "required_work": task.required_work, "completed_work": task.required_work, "state": "complete"})
+
+func _complete_research_task(task_id: String, task: Dictionary, workers: Array) -> void:
+	var faction := str(task.faction)
+	state.factions[faction].tech.completed.append(str(task.technology))
+	state.factions[faction].tech.tier = max(int(state.factions[faction].tech.tier), int(Rules.RESEARCH[task.technology].tier))
+	for worker_id in workers:
+		if state.units.has(worker_id): state.units[worker_id].erase("task_id")
+	state.tasks.erase(task_id)
+	_event("research_completed", faction, {"task_id": task_id, "technology": task.technology, "tier": state.factions[faction].tech.tier})
+
+func _complete_repair_task(task_id: String, task: Dictionary, workers: Array) -> void:
+	if state.structures.has(str(task.target_id)):
+		var structure: Dictionary = state.structures[str(task.target_id)]
+		structure.hp = float(Rules.STRUCTURES[structure.kind].hp)
+		_event("repair_completed", str(task.faction), {"task_id": task_id, "structure_id": task.target_id})
+	for worker_id in workers:
+		if state.units.has(worker_id): state.units[worker_id].erase("task_id")
+	state.tasks.erase(task_id)
+
+func _eligible_worker_ids(faction: String, district: String, raw_worker_ids: Variant) -> Array:
+	var result: Array = []
+	if not raw_worker_ids is Array: return result
+	for raw_id in raw_worker_ids:
+		var worker_id := str(raw_id)
+		if not state.units.has(worker_id) or result.has(worker_id): continue
+		var unit: Dictionary = state.units[worker_id]
+		if unit.faction == faction and unit.kind == "worker" and unit.district == district: result.append(worker_id)
+	result.sort()
+	return result
+
+func _active_task_workers(task: Dictionary) -> Array:
+	var workers: Array = []
+	for worker_id in task.worker_ids:
+		if not state.units.has(worker_id): continue
+		var unit: Dictionary = state.units[worker_id]
+		if unit.faction == task.faction and unit.kind == "worker" and unit.district == task.district and str(unit.get("task_id", "")) == str(task.id): workers.append(worker_id)
+	workers.sort()
+	return workers
+
+func _unassign_worker(worker_id: String) -> void:
+	if not state.units.has(worker_id): return
+	var old_task_id := str(state.units[worker_id].get("task_id", ""))
+	if old_task_id.is_empty() or not state.tasks.has(old_task_id): return
+	var old_task: Dictionary = state.tasks[old_task_id]
+	old_task.worker_ids.erase(worker_id)
+	state.units[worker_id].erase("task_id")
+	_event("task_worker_removed", str(old_task.faction), {"task_id": old_task_id, "task_kind": old_task.kind, "actor_id": worker_id, "state": "progress"})
+
+func _can_gather_task(task: Dictionary) -> bool:
+	if not _owned_supplied(str(task.faction), str(task.district)): return false
+	if task.node == "iron" and not _has_structure_at(str(task.faction), str(task.district), "mine"): return false
+	if task.node == "crystal" and (not _has_structure_at(str(task.faction), str(task.district), "mine") or not _has_workshop(str(task.faction))): return false
+	return true
+
+func _build_queue_projection() -> Array:
+	var queue: Array = []
+	for task_id in state.tasks.keys():
+		var task: Dictionary = state.tasks[task_id]
+		if task.kind != "build": continue
+		var remaining_work := maxi(0, int(task.required_work) - int(task.completed_work))
+		queue.append({"id": task_id, "faction": task.faction, "kind": task.structure_kind, "district": task.district, "worker_ids": task.worker_ids.duplicate(), "required_work": task.required_work, "completed_work": task.completed_work, "remaining": ceili(float(remaining_work) / float(Rules.ROUND_TICKS))})
+	queue.sort_custom(func(left, right): return str(left.id) < str(right.id))
+	return queue
+
 func _harvest_and_farms() -> void:
-	for unit in state.units.values():
-		if unit.kind != "worker" or not unit.has("harvest") or not _owned_supplied(str(unit.faction), str(unit.district)): continue
-		var node := str(unit.harvest)
-		if not Rules.HARVEST.has(node): continue
-		if node == "iron" and not _has_structure_at(str(unit.faction), str(unit.district), "mine"): continue
-		if node == "crystal" and (not _has_structure_at(str(unit.faction), str(unit.district), "mine") or not _has_workshop(str(unit.faction))): continue
-		var district: Dictionary = state.districts[unit.district]
-		var amount: int = min(int(Rules.HARVEST[node].amount), int(district.resources.get(node, 0)))
-		if amount > 0:
-			district.resources[node] -= amount
-			_add_stockpile(str(unit.faction), str(Rules.HARVEST[node].resource), amount)
+	# Worker harvesting is advanced every tick by _advance_work_tasks(). Farms stay
+	# round-based for now because they are passive structures rather than worker work.
 	for structure in state.structures.values():
 		if structure.kind == "farm" and _owned_supplied(str(structure.faction), str(structure.district)): _add_stockpile(str(structure.faction), "food", 18)
 
@@ -349,6 +557,19 @@ func _recompute_supply() -> void:
 				district.unsupplied_rounds += 1
 				if int(district.unsupplied_rounds) >= 3: _neutralize_district(district_id)
 
+func _update_territory_metrics() -> void:
+	for faction in Rules.FACTIONS:
+		var faction_state: Dictionary = state.factions[faction]
+		var owned: Array = []
+		for district_id in state.districts.keys():
+			if state.districts[district_id].owner == faction:
+				owned.append(str(district_id))
+		owned.sort()
+		faction_state.territory.owned = owned
+		if not bool(faction_state.eliminated):
+			var held_land := maxi(0, owned.size() - 1)
+			faction_state.territory.control_point_rounds = int(faction_state.territory.get("control_point_rounds", 0)) + held_land
+
 func _resolve_capture() -> void:
 	for district_id in state.districts.keys():
 		var district: Dictionary = state.districts[district_id]
@@ -372,43 +593,19 @@ func _regenerate() -> void:
 			for species in district.wildlife.keys():
 				if rng_next() < 0.35: district.wildlife[species].count += 1
 
-func _crown_surge() -> void:
-	if int(state.match.round) != 20: return
-	var crown: Dictionary = state.districts.crown
-	crown.resources.crystal = int(crown.resources.get("crystal", 0)) + 150
-	crown.max_resources.crystal = max(int(crown.max_resources.get("crystal", 0)), int(crown.resources.crystal))
-	_event("crown_surge", "", {"district": "crown", "crystal": 150})
-
-func _score_and_end() -> void:
+func _check_conquest_end() -> void:
 	var survivors: Array = []
 	for faction_id in Rules.FACTIONS:
 		if float(state.factions[faction_id].core_hp) > 0.0: survivors.append(faction_id)
 	if survivors.size() <= 1:
-		_finish_match(str(survivors[0]) if survivors.size() == 1 else "draw")
+		_finish_match(str(survivors[0]) if survivors.size() == 1 else "", "last_stronghold")
 		return
-	for faction in Rules.FACTIONS:
-		if bool(state.factions[faction].eliminated): continue
-		var score := 0
-		for district_id in state.factions[faction].supply.supplied_districts:
-			if state.districts[district_id].kind != "core":
-				if district_id == "crown":
-					score += Rules.crown_weight(bool(state.match.sudden_death))
-					state.factions[faction].territory.crown_hold_rounds += 1
-				else: score += 1
-		state.factions[faction].territory.control_point_rounds += score
-	if not bool(state.match.sudden_death) and int(state.match.round) >= Rules.MATCH_ROUNDS:
-		var top := _top_ranked_factions()
-		if top.size() == 1: _finish_match(str(top[0]))
-		else:
-			state.match.sudden_death = true
-			state.match.sudden_death_started_round = int(state.match.round) + 1
-			_event("sudden_death_started", "", {"contenders": top})
-	elif bool(state.match.sudden_death) and int(state.match.round) >= int(state.match.sudden_death_started_round) + Rules.SUDDEN_DEATH_ROUNDS - 1:
-		var final_top := _top_ranked_factions()
-		_finish_match(str(final_top[0]) if final_top.size() == 1 else "draw")
+	if int(state.match.round) >= Rules.MATCH_ROUNDS:
+		state.match.ended = true; state.match.truncated = true; state.match.termination = "round_limit"; state.match.phase = "ended"
+		_event("match_truncated", "", {"reason": "round_limit", "standings": _top_ranked_factions()})
 
-func _finish_match(winner: String) -> void:
-	state.match.ended = true; state.match.winner = winner; state.match.phase = "ended"; _event("match_ended", winner, {})
+func _finish_match(winner: String, reason: String) -> void:
+	state.match.ended = true; state.match.winner = winner; state.match.termination = reason; state.match.phase = "ended"; _event("match_ended", winner, {"reason": reason})
 
 func _rank_winner() -> String:
 	var top := _top_ranked_factions()
@@ -429,12 +626,11 @@ func _top_ranked_factions() -> Array:
 func _ranking_metrics(faction: String) -> Array:
 	var outposts := 0
 	for district_id in state.factions[faction].supply.supplied_districts:
-		if district_id == state.factions[faction].core_id: continue
-		if state.districts[district_id].outpost_id != null: outposts += Rules.crown_weight(bool(state.match.sudden_death)) if district_id == "crown" else 1
+		if district_id != state.factions[faction].core_id and state.districts[district_id].outpost_id != null: outposts += 1
 	var structure_value := 0
 	for structure in state.structures.values():
 		if structure.faction == faction: structure_value += _structure_value(str(structure.kind))
-	return [outposts, int(state.factions[faction].territory.control_point_rounds), int(state.factions[faction].core_hp), structure_value]
+	return [outposts, state.factions[faction].territory.owned.size(), int(state.factions[faction].core_hp), structure_value]
 
 func _metrics_greater(left: Array, right: Array) -> bool:
 	for index in min(left.size(), right.size()):
@@ -457,6 +653,7 @@ func _add_structure_to(target_state: Dictionary, faction: String, kind: String, 
 
 func _kill_unit(unit_id: String) -> void:
 	var unit: Dictionary = state.units[unit_id]
+	_unassign_worker(unit_id)
 	var faction := str(unit.faction)
 	if unit.kind == "commander" and not bool(state.factions[faction].eliminated) and float(state.factions[faction].core_hp) > 0.0:
 		state.factions[faction].commander_respawn_round = int(state.match.round) + 3
@@ -492,6 +689,8 @@ func _eliminate_faction(faction: String) -> void:
 	fs.territory.owned = []
 	state.build_queue = state.build_queue.filter(func(job): return job.faction != faction)
 	state.train_queue = state.train_queue.filter(func(job): return job.faction != faction)
+	for task_id in state.tasks.keys().duplicate():
+		if state.tasks[task_id].faction == faction: state.tasks.erase(task_id)
 	_event("core_destroyed", faction, {"policy": "neutralize_holdings_remove_units"})
 
 func _destroy_structure(structure_id: String) -> void:
@@ -524,12 +723,15 @@ func _pay(stock: Dictionary, cost: Dictionary) -> void:
 	for resource in cost.keys(): stock[resource] -= int(cost[resource])
 func _add_stockpile(faction: String, resource: String, amount: int) -> void: state.factions[faction].stockpile[resource] = min(400 + 50 * _structure_count(faction, "storage"), int(state.factions[faction].stockpile.get(resource, 0)) + amount)
 func _can_build(faction: String, kind: String, district: String) -> bool:
+	if kind == "tower" and int(state.factions[faction].tech.tier) < 2: return false
 	if kind == "wall": return _wall_count(district) < 3
 	if kind == "farm": return state.districts[district].kind in ["home", "wild"] and _structure_count_at(district, "farm") == 0
 	if kind == "outpost": return state.districts[district].outpost_id == null and state.districts[district].capture.faction == faction and int(state.districts[district].capture.progress) >= 2
 	return _structure_count_at(district, kind) == 0
 func _can_train(faction: String, kind: String) -> bool:
-	return (kind != "guard" and kind != "siege") or _has_workshop(faction)
+	if kind == "guard": return _has_workshop(faction) and int(state.factions[faction].tech.tier) >= 1
+	if kind == "siege": return _has_workshop(faction) and int(state.factions[faction].tech.tier) >= 2
+	return true
 func _valid_hunt(faction: String, order: Dictionary) -> bool:
 	var district := str(order.get("district", ""))
 	var species := str(order.get("species", ""))
@@ -537,9 +739,126 @@ func _valid_hunt(faction: String, order: Dictionary) -> bool:
 	for unit_id in order.get("unit_ids", []):
 		if not state.units.has(unit_id) or state.units[unit_id].faction != faction or state.units[unit_id].kind != "worker" or state.units[unit_id].district != district: return false
 	return not order.get("unit_ids", []).is_empty()
+
+func _canonical_kind(kind: String) -> String:
+	var normalized := kind.to_lower()
+	return {"assign_workers": "Gather", "gather": "Gather", "build": "Build", "train": "train", "mobilize": "Move", "move": "Move", "retreat": "Move", "attack": "Attack", "research": "Research", "negotiate": "Negotiate", "think": "Think"}.get(normalized, kind)
+
+func _order_kind(order: Dictionary) -> String:
+	return _canonical_kind(str(order.get("kind", order.get("type", order.get("action", "")))))
+
+func _normalize_order(faction: String, raw: Dictionary) -> Dictionary:
+	var order: Dictionary = raw.duplicate(true)
+	var attributes: Dictionary = {}
+	if order.get("attributes", {}) is Dictionary: attributes = order.get("attributes", {})
+	order.kind = _order_kind(order)
+	if not order.has("unit_ids") and order.get("actor_ids", []) is Array: order.unit_ids = order.get("actor_ids", []).duplicate()
+	if not order.has("worker_ids") and order.get("actor_ids", []) is Array: order.worker_ids = order.get("actor_ids", []).duplicate()
+	var kind := str(order.kind)
+	var target_id := str(order.get("target_id", order.get("target", "")))
+	if kind == "Gather":
+		if not order.has("district"): order.district = _district_for_target(target_id)
+		if not order.has("node"):
+			order.node = str(attributes.get("resource_node_id", attributes.get("node", _node_for_resource(str(order.get("district", "")), str(order.get("resource", ""))))))
+	elif kind == "Build":
+		order.mode = str(order.get("mode", attributes.get("mode", "")))
+		if str(order.mode) == "train":
+			order.kind = "train"
+			order.unit = str(order.get("unit", order.get("option", attributes.get("unit_kind", attributes.get("unit", "")))))
+		else:
+			if not order.has("structure"): order.structure = str(order.get("option", attributes.get("structure_kind", attributes.get("structure", ""))))
+			if not order.has("district"): order.district = _district_for_target(target_id)
+	elif kind == "Research":
+		if not order.has("technology_id"): order.technology_id = str(order.get("option", attributes.get("technology_id", attributes.get("technology", ""))))
+	elif kind in ["Move", "Attack"]:
+		var target_district := _district_for_target(target_id)
+		if not target_district.is_empty(): order.target = target_district
+	return order
+
+func _district_for_target(target_id: String) -> String:
+	if state.districts.has(target_id): return target_id
+	if state.units.has(target_id): return str(state.units[target_id].district)
+	if state.structures.has(target_id): return str(state.structures[target_id].district)
+	return ""
+
+func _node_for_resource(district_id: String, resource: String) -> String:
+	if not state.districts.has(district_id): return ""
+	for node in state.districts[district_id].resources.keys():
+		if Rules.HARVEST.has(str(node)) and str(Rules.HARVEST[str(node)].resource) == resource: return str(node)
+	return ""
+
+func _valid_attack(faction: String, order: Dictionary) -> bool:
+	var target := str(order.get("target_id", order.get("target", "")))
+	if target.is_empty(): return false
+	for unit_id in order.get("unit_ids", order.get("actor_ids", [])):
+		if not state.units.has(unit_id) or state.units[unit_id].faction != faction: return false
+	return true
+
+func _valid_repair(faction: String, order: Dictionary) -> bool:
+	var target_id := str(order.get("target_id", ""))
+	if not state.structures.has(target_id): return false
+	var structure: Dictionary = state.structures[target_id]
+	return structure.faction == faction and float(structure.hp) < float(Rules.STRUCTURES[structure.kind].hp) and not _eligible_worker_ids(faction, str(structure.district), order.get("worker_ids", order.get("actor_ids", []))).is_empty()
+
+func _create_repair_task(faction: String, order: Dictionary) -> void:
+	var target_id := str(order.target_id)
+	var structure: Dictionary = state.structures[target_id]
+	var workers := _eligible_worker_ids(faction, str(structure.district), order.get("worker_ids", order.get("actor_ids", []))).slice(0, Rules.BUILD_STAFFING_CAP)
+	for worker_id in workers: _unassign_worker(worker_id)
+	var missing := ceili(float(Rules.STRUCTURES[structure.kind].hp) - float(structure.hp))
+	var task := _new_task("repair", faction, str(structure.district), workers, maxi(1, missing))
+	task.target_id = target_id; task.staffing_cap = Rules.BUILD_STAFFING_CAP
+	state.tasks[task.id] = task
+	for worker_id in workers: state.units[worker_id].task_id = task.id
+	_event("repair_started", faction, {"task_id": task.id, "structure_id": target_id, "required_work": task.required_work})
+
+func _start_research_task(faction: String, order: Dictionary) -> void:
+	var technology := str(order.get("technology_id", order.get("technology", "")))
+	if state.factions[faction].tech.completed.has(technology): return
+	var workers := _eligible_worker_ids(faction, str(order.get("district", "home_%s" % faction)), order.get("worker_ids", order.get("actor_ids", [])))
+	if workers.is_empty(): return
+	var spec: Dictionary = Rules.RESEARCH[technology]
+	_pay(state.factions[faction].stockpile, spec.cost)
+	for worker_id in workers: _unassign_worker(worker_id)
+	var task := _new_task("research", faction, str(state.units[workers[0]].district), workers.slice(0, Rules.RESEARCH_STAFFING_CAP), int(spec.work))
+	task.technology = technology; task.staffing_cap = Rules.RESEARCH_STAFFING_CAP
+	state.tasks[task.id] = task
+	for worker_id in task.worker_ids: state.units[worker_id].task_id = task.id
+	_event("research_started", faction, {"task_id": task.id, "technology": technology})
+
+func _update_visibility() -> void:
+	for faction in Rules.FACTIONS:
+		var seen: Dictionary = state.factions[faction].knowledge.seen_districts
+		for unit in state.units.values():
+			if unit.faction != faction: continue
+			seen[str(unit.district)] = int(state.match.round)
+			for neighbor in _map.adjacency[str(unit.district)]: seen[str(neighbor)] = int(state.match.round)
+		for enemy in state.units.values():
+			if seen.has(str(enemy.district)) and enemy.faction != faction:
+				state.factions[faction].knowledge.contacts[str(enemy.id)] = {"faction": enemy.faction, "kind": enemy.kind, "district": enemy.district, "last_seen_round": int(state.match.round)}
+
+func project_faction_observation(faction: String) -> Dictionary:
+	var knowledge: Dictionary = state.factions[faction].knowledge
+	var districts := {}
+	for district_id in knowledge.seen_districts.keys(): districts[district_id] = state.districts[district_id].duplicate(true)
+	return {"faction_id": faction, "round": state.match.round, "narrative_phase": state.match.narrative_phase, "districts": districts, "contacts": knowledge.contacts.duplicate(true), "tasks": state.tasks.values().filter(func(task): return task.faction == faction), "action_mask": legal_actions_for(faction)}
+
+func legal_actions_for(faction: String) -> Array:
+	var actions: Array = []
+	for action in ["Move", "Gather", "Build", "Attack", "Research", "Negotiate", "Think"]:
+		actions.append({"action": action, "enabled": not bool(state.factions[faction].eliminated), "reason": "" if not bool(state.factions[faction].eliminated) else "faction_eliminated"})
+	return actions
+
+func _update_narrative_phase() -> void:
+	var next := "Opening"
+	if int(state.match.round) >= 8: next = "Fortify"
+	if state.structures.size() >= 9: next = "Expand"
+	if state.units.size() >= 12: next = "War"
+	if Rules.FACTIONS.filter(func(faction): return not bool(state.factions[faction].eliminated)).size() <= 2: next = "Endgame"
+	if state.match.narrative_phase != next:
+		state.match.narrative_phase = next; _event("narrative_phase", "", {"phase": next})
 func _rejection_reason(_faction: String, order: Dictionary) -> String:
-	var kind := str(order.get("kind", ""))
-	if kind in ["reinforce", "repair", "research"]: return "unsupported_action"
+	var kind := _canonical_kind(str(order.get("kind", order.get("type", ""))))
 	if kind.is_empty(): return "missing_kind"
 	return "invalid_precondition"
 func _seed_wildlife(resources: Dictionary) -> Dictionary:
@@ -609,6 +928,9 @@ func _winner_without(loser: String) -> String:
 	if survivors.size() == 1: return str(survivors[0])
 	return _rank_winner() if survivors.size() > 1 else "draw"
 func _event(type: String, faction: String, payload: Dictionary) -> void:
-	var event := {"type": type, "round": int(state.match.round), "faction": faction}; event.merge(payload); state.events.append(event)
+	_event_serial += 1
+	var event := {"event_id": "event.%04d.%06d" % [int(state.match.tick), _event_serial], "type": type, "kind": type, "round": int(state.match.round), "tick": int(state.match.tick), "faction": faction, "actor_id": "", "target_ids": [], "state": ""}
+	event.merge(payload)
+	state.events.append(event)
 func _hash_state() -> void:
 	var copy := state.duplicate(true); copy.match.state_hash = ""; state.match.state_hash = JSON.stringify(copy, "", true).sha256_text()

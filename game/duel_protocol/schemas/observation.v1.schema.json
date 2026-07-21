@@ -1,0 +1,989 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/observation.v1.schema.json",
+  "title": "WorldArena Duel full-belief observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "message_type",
+    "protocol_version",
+    "match_id",
+    "observation_seq",
+    "observation_hash",
+    "tick",
+    "game_time",
+    "decision",
+    "working_memory",
+    "objective",
+    "match_state",
+    "day_phase",
+    "remaining_match_ticks",
+    "economy",
+    "food",
+    "upkeep",
+    "technology",
+    "heroes",
+    "owned_entities",
+    "owned_structures",
+    "squads",
+    "visible_contacts",
+    "remembered_contacts",
+    "visible_neutrals",
+    "visible_items",
+    "visible_shops",
+    "map_state",
+    "events_since_previous",
+    "last_action_receipt",
+    "limits_remaining",
+    "observation_truncated",
+    "omitted_counts"
+  ],
+  "properties": {
+    "message_type": {"const": "observation"},
+    "protocol_version": {"const": "worldeval-rts/1.0.0"},
+    "match_id": {"type": "string", "pattern": "^m_[A-Za-z0-9._-]{1,120}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "observation_hash": {"$ref": "#/$defs/sha256"},
+    "tick": {"type": "integer", "minimum": 0},
+    "game_time": {"$ref": "#/$defs/gameTime"},
+    "decision": {"$ref": "#/$defs/decision"},
+    "working_memory": {"type": "string", "maxLength": 4096},
+    "objective": {"$ref": "#/$defs/objective"},
+    "match_state": {"$ref": "#/$defs/matchState"},
+    "day_phase": {"enum": ["day", "night", "forced_night"]},
+    "remaining_match_ticks": {"type": "integer", "minimum": 0, "maximum": 18000},
+    "economy": {"$ref": "#/$defs/economy"},
+    "food": {"$ref": "#/$defs/food"},
+    "upkeep": {"$ref": "#/$defs/upkeep"},
+    "technology": {"$ref": "#/$defs/technology"},
+    "heroes": {
+      "type": "array",
+      "maxItems": 3,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/hero"}
+    },
+    "owned_entities": {
+      "type": "array",
+      "maxItems": 100,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/ownedEntity"}
+    },
+    "owned_structures": {
+      "type": "array",
+      "maxItems": 80,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/ownedStructure"}
+    },
+    "squads": {
+      "type": "array",
+      "maxItems": 32,
+      "x-canonical-order": "ascending-squad-id",
+      "items": {"$ref": "#/$defs/squad"}
+    },
+    "visible_contacts": {
+      "type": "array",
+      "maxItems": 180,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/visibleContact"}
+    },
+    "remembered_contacts": {
+      "type": "array",
+      "maxItems": 256,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/rememberedContact"}
+    },
+    "visible_neutrals": {
+      "type": "array",
+      "maxItems": 96,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/visibleContact"}
+    },
+    "visible_items": {
+      "type": "array",
+      "maxItems": 64,
+      "x-canonical-order": "ascending-entity-id",
+      "items": {"$ref": "#/$defs/visibleItem"}
+    },
+    "visible_shops": {
+      "type": "array",
+      "maxItems": 16,
+      "x-canonical-order": "ascending-site-id",
+      "items": {"$ref": "#/$defs/visibleShop"}
+    },
+    "map_state": {"$ref": "#/$defs/mapState"},
+    "events_since_previous": {
+      "type": "array",
+      "maxItems": 2048,
+      "x-canonical-order": "ascending-event-seq",
+      "items": {"$ref": "event.v1.schema.json"}
+    },
+    "last_action_receipt": {
+      "oneOf": [
+        {"$ref": "action-receipt.v1.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "limits_remaining": {"$ref": "#/$defs/limitsRemaining"},
+    "brief": {
+      "type": "array",
+      "maxItems": 64,
+      "x-canonical-order": "fixed-template-order",
+      "items": {"type": "string", "maxLength": 240}
+    },
+    "observation_truncated": {"type": "boolean"},
+    "omitted_counts": {"$ref": "#/$defs/omittedCounts"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "entityId": {"type": "string", "pattern": "^e_[A-Za-z0-9._-]{1,80}$"},
+    "publicId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "point": {
+      "type": "array",
+      "prefixItems": [{"type": "integer"}, {"type": "integer"}],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "coordinate-x-y"
+    },
+    "gameTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticks", "seconds", "day_phase", "cycle_tick"],
+      "properties": {
+        "ticks": {"type": "integer", "minimum": 0},
+        "seconds": {"type": "integer", "minimum": 0},
+        "day_phase": {"enum": ["day", "night", "forced_night"]},
+        "cycle_tick": {"type": "integer", "minimum": 0, "maximum": 4799}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "observation_tick",
+        "commands_apply_tick",
+        "response_deadline_ms",
+        "valid_until_tick"
+      ],
+      "properties": {
+        "mode": {"enum": ["fixed_simultaneous", "continuous_realtime"]},
+        "observation_tick": {"type": "integer", "minimum": 0},
+        "commands_apply_tick": {"type": ["integer", "null"], "minimum": 1},
+        "response_deadline_ms": {"type": "integer", "minimum": 1, "maximum": 45000},
+        "valid_until_tick": {"type": "integer", "minimum": 1},
+        "opportunity_skipped": {"type": "boolean"}
+      }
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "enemy_structure_role", "own_structure_role"],
+      "properties": {
+        "kind": {"const": "destroy_enemy_stronghold"},
+        "enemy_structure_role": {"const": "stronghold"},
+        "own_structure_role": {"const": "stronghold"}
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "reason", "terminal_tick"],
+      "properties": {
+        "result": {"enum": ["win", "loss", "draw", "forfeit", "infrastructure_void"]},
+        "reason": {"$ref": "#/$defs/publicId"},
+        "terminal_tick": {"type": "integer", "minimum": 0}
+      }
+    },
+    "matchState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "no_progress_ticks"],
+      "properties": {
+        "status": {"enum": ["active", "terminal"]},
+        "no_progress_ticks": {"type": "integer", "minimum": 0},
+        "terminal": {"$ref": "#/$defs/terminal"}
+      },
+      "if": {"properties": {"status": {"const": "terminal"}}},
+      "then": {"required": ["terminal"]}
+    },
+    "economy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gold",
+        "lumber",
+        "gold_income_last_600_ticks",
+        "lumber_income_last_600_ticks",
+        "reserved_gold",
+        "reserved_lumber",
+        "worker_summary",
+        "cargo_summary"
+      ],
+      "properties": {
+        "gold": {"type": "integer", "minimum": 0},
+        "lumber": {"type": "integer", "minimum": 0},
+        "gold_income_last_600_ticks": {"type": "integer", "minimum": 0},
+        "lumber_income_last_600_ticks": {"type": "integer", "minimum": 0},
+        "reserved_gold": {"type": "integer", "minimum": 0},
+        "reserved_lumber": {"type": "integer", "minimum": 0},
+        "worker_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "gold", "lumber", "building", "repairing", "idle"],
+          "properties": {
+            "total": {"type": "integer", "minimum": 0},
+            "gold": {"type": "integer", "minimum": 0},
+            "lumber": {"type": "integer", "minimum": 0},
+            "building": {"type": "integer", "minimum": 0},
+            "repairing": {"type": "integer", "minimum": 0},
+            "idle": {"type": "integer", "minimum": 0}
+          }
+        },
+        "cargo_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["gold", "lumber"],
+          "properties": {
+            "gold": {"type": "integer", "minimum": 0},
+            "lumber": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "food": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["used", "cap", "reserved", "maximum"],
+      "properties": {
+        "used": {"type": "integer", "minimum": 0, "maximum": 100},
+        "cap": {"type": "integer", "minimum": 0, "maximum": 100},
+        "reserved": {"type": "integer", "minimum": 0, "maximum": 100},
+        "maximum": {"const": 100}
+      }
+    },
+    "upkeep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "gold_delivery_bp"],
+      "properties": {
+        "tier": {"enum": ["none", "low", "high"]},
+        "gold_delivery_bp": {"enum": [10000, 7000, 4000]}
+      }
+    },
+    "queueEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "queue_entry_id",
+        "kind",
+        "type_id",
+        "progress_bp",
+        "remaining_ticks",
+        "paused",
+        "reserved_gold",
+        "reserved_lumber",
+        "reserved_food"
+      ],
+      "properties": {
+        "queue_entry_id": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["unit", "hero", "research", "tier", "revival"]},
+        "type_id": {"$ref": "#/$defs/publicId"},
+        "progress_bp": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "remaining_ticks": {"type": "integer", "minimum": 0},
+        "paused": {"type": "boolean"},
+        "pause_reason": {"type": ["string", "null"], "maxLength": 64},
+        "reserved_gold": {"type": "integer", "minimum": 0},
+        "reserved_lumber": {"type": "integer", "minimum": 0},
+        "reserved_food": {"type": "integer", "minimum": 0}
+      }
+    },
+    "researching": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["producer_id", "entry"],
+      "properties": {
+        "producer_id": {"$ref": "#/$defs/entityId"},
+        "entry": {"$ref": "#/$defs/queueEntry"}
+      }
+    },
+    "technology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "completed_upgrades", "researching", "hero_slots"],
+      "properties": {
+        "tier": {"type": "integer", "minimum": 1, "maximum": 3},
+        "completed_upgrades": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-upgrade-id",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "researching": {
+          "type": "array",
+          "maxItems": 32,
+          "x-canonical-order": "ascending-producer-id",
+          "items": {"$ref": "#/$defs/researching"}
+        },
+        "hero_slots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "used"],
+          "properties": {
+            "available": {"type": "integer", "minimum": 1, "maximum": 3},
+            "used": {"type": "integer", "minimum": 0, "maximum": 3}
+          }
+        }
+      }
+    },
+    "cargo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource", "amount"],
+      "properties": {
+        "resource": {"enum": ["none", "gold", "lumber"]},
+        "amount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compiled_order_id", "op", "state", "issued_tick"],
+      "properties": {
+        "compiled_order_id": {"$ref": "#/$defs/id"},
+        "batch_id": {"$ref": "#/$defs/id"},
+        "command_id": {"$ref": "#/$defs/id"},
+        "op": {"$ref": "#/$defs/publicId"},
+        "state": {"enum": ["queued", "active", "paused", "completed", "failed"]},
+        "issued_tick": {"type": "integer", "minimum": 0},
+        "target_entity_id": {"$ref": "#/$defs/entityId"},
+        "target_position_mt": {"$ref": "#/$defs/point"},
+        "target_region_id": {"$ref": "#/$defs/publicId"},
+        "target_site_id": {"$ref": "#/$defs/publicId"},
+        "route_region_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "x-canonical-order": "traversal-order",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status_id",
+        "source_entity_id",
+        "start_tick",
+        "expiry_tick",
+        "stacking_key",
+        "stacks",
+        "dispel_class"
+      ],
+      "properties": {
+        "status_id": {"$ref": "#/$defs/publicId"},
+        "source_entity_id": {"$ref": "#/$defs/entityId"},
+        "start_tick": {"type": "integer", "minimum": 0},
+        "expiry_tick": {"type": ["integer", "null"], "minimum": 0},
+        "stacking_key": {"$ref": "#/$defs/publicId"},
+        "stacks": {"type": "integer", "minimum": 1},
+        "magnitude": {"type": "integer"},
+        "dispel_class": {"enum": ["none", "ordinary_magical", "ultimate"]}
+      }
+    },
+    "abilityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ability_id", "rank", "cooldown_remaining_ticks", "autocast_enabled"],
+      "properties": {
+        "ability_id": {"$ref": "#/$defs/publicId"},
+        "rank": {"type": "integer", "minimum": 0, "maximum": 3},
+        "cooldown_remaining_ticks": {"type": "integer", "minimum": 0},
+        "autocast_enabled": {"type": "boolean"}
+      }
+    },
+    "inventoryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_instance_id", "item_type_id", "slot", "charges", "cooldown_remaining_ticks"],
+      "properties": {
+        "item_instance_id": {"$ref": "#/$defs/id"},
+        "item_type_id": {"$ref": "#/$defs/publicId"},
+        "slot": {"type": "integer", "minimum": 0, "maximum": 5},
+        "charges": {"type": "integer", "minimum": 0},
+        "cooldown_remaining_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "ownedEntityBase": {
+      "type": "object",
+      "required": [
+        "entity_id",
+        "type_id",
+        "tags",
+        "position_mt",
+        "region_id",
+        "elevation",
+        "facing_mdeg",
+        "hp",
+        "max_hp",
+        "shields",
+        "mana",
+        "max_mana",
+        "armor_centi",
+        "armor_class",
+        "movement_state",
+        "cargo",
+        "current_order",
+        "queued_orders",
+        "stance",
+        "formation",
+        "attack_cooldown_remaining_ticks",
+        "abilities",
+        "statuses",
+        "squad_ids"
+      ],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "type_id": {"$ref": "#/$defs/publicId"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "tactical_slot_id": {"type": ["string", "null"]},
+        "elevation": {"type": "integer"},
+        "facing_mdeg": {"type": "integer", "minimum": 0, "maximum": 359999},
+        "hp": {"type": "integer", "minimum": 0},
+        "max_hp": {"type": "integer", "minimum": 1},
+        "shields": {"type": "integer", "minimum": 0},
+        "mana": {"type": "integer", "minimum": 0},
+        "max_mana": {"type": "integer", "minimum": 0},
+        "armor_centi": {"type": "integer"},
+        "armor_class": {"enum": ["light", "medium", "heavy", "fortified", "hero"]},
+        "movement_state": {"enum": ["idle", "moving", "rooted", "stunned", "transported"]},
+        "cargo": {"$ref": "#/$defs/cargo"},
+        "current_order": {
+          "oneOf": [{"$ref": "#/$defs/order"}, {"type": "null"}]
+        },
+        "queued_orders": {
+          "type": "array",
+          "maxItems": 8,
+          "x-canonical-order": "fifo",
+          "items": {"$ref": "#/$defs/order"}
+        },
+        "stance": {"enum": ["aggressive", "defensive", "hold_position", "hold_fire"]},
+        "formation": {"enum": ["none", "line", "compact", "spread", "wedge"]},
+        "attack_cooldown_remaining_ticks": {"type": "integer", "minimum": 0},
+        "abilities": {
+          "type": "array",
+          "x-canonical-order": "ascending-ability-id",
+          "items": {"$ref": "#/$defs/abilityState"}
+        },
+        "statuses": {
+          "type": "array",
+          "x-canonical-order": "ascending-status-id",
+          "items": {"$ref": "#/$defs/status"}
+        },
+        "squad_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-squad-id",
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "detection_radius_mt": {"type": "integer", "minimum": 0},
+        "cargo_capacity_food": {"type": "integer", "minimum": 0},
+        "passenger_ids": {
+          "type": "array",
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/entityId"}
+        }
+      }
+    },
+    "ownedEntity": {
+      "allOf": [{"$ref": "#/$defs/ownedEntityBase"}],
+      "unevaluatedProperties": false
+    },
+    "hero": {
+      "allOf": [
+        {"$ref": "#/$defs/ownedEntityBase"},
+        {
+          "type": "object",
+          "required": [
+            "hero_type_id",
+            "level",
+            "xp",
+            "next_level_xp",
+            "unspent_skill_points",
+            "attributes_centi",
+            "inventory",
+            "life_state",
+            "death_tick",
+            "revival"
+          ],
+          "properties": {
+            "hero_type_id": {"$ref": "#/$defs/publicId"},
+            "level": {"type": "integer", "minimum": 1, "maximum": 10},
+            "xp": {"type": "integer", "minimum": 0},
+            "next_level_xp": {"type": ["integer", "null"], "minimum": 0},
+            "unspent_skill_points": {"type": "integer", "minimum": 0, "maximum": 10},
+            "attributes_centi": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["strength", "agility", "intellect"],
+              "properties": {
+                "strength": {"type": "integer", "minimum": 0},
+                "agility": {"type": "integer", "minimum": 0},
+                "intellect": {"type": "integer", "minimum": 0}
+              }
+            },
+            "inventory": {
+              "type": "array",
+              "maxItems": 6,
+              "x-canonical-order": "ascending-slot",
+              "items": {"$ref": "#/$defs/inventoryItem"}
+            },
+            "life_state": {"enum": ["alive", "dead", "reviving"]},
+            "death_tick": {"type": ["integer", "null"], "minimum": 0},
+            "revival": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["method", "progress_bp", "remaining_ticks", "reviver_id"],
+                  "properties": {
+                    "method": {"enum": ["altar", "tavern"]},
+                    "progress_bp": {"type": "integer", "minimum": 0, "maximum": 10000},
+                    "remaining_ticks": {"type": "integer", "minimum": 0},
+                    "reviver_id": {"$ref": "#/$defs/entityId"}
+                  }
+                },
+                {"type": "null"}
+              ]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ownedStructure": {
+      "allOf": [
+        {"$ref": "#/$defs/ownedEntityBase"},
+        {
+          "type": "object",
+          "required": [
+            "structure_role",
+            "complete",
+            "construction_progress_bp",
+            "builders",
+            "production_queue",
+            "rally_target",
+            "disabled",
+            "pause_reason"
+          ],
+          "properties": {
+            "structure_role": {"$ref": "#/$defs/publicId"},
+            "complete": {"type": "boolean"},
+            "construction_progress_bp": {"type": "integer", "minimum": 0, "maximum": 10000},
+            "builders": {
+              "type": "array",
+              "maxItems": 5,
+              "x-canonical-order": "ascending-entity-id",
+              "items": {"$ref": "#/$defs/entityId"}
+            },
+            "production_queue": {
+              "type": "array",
+              "maxItems": 5,
+              "x-canonical-order": "fifo",
+              "items": {"$ref": "#/$defs/queueEntry"}
+            },
+            "rally_target": {
+              "oneOf": [
+                {"$ref": "#/$defs/entityId"},
+                {"$ref": "#/$defs/point"},
+                {"type": "null"}
+              ]
+            },
+            "disabled": {"type": "boolean"},
+            "pause_reason": {"type": ["string", "null"], "maxLength": 64}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "squad": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["squad_id", "member_ids", "formation", "stance", "current_order"],
+      "properties": {
+        "squad_id": {"$ref": "#/$defs/id"},
+        "member_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/entityId"}
+        },
+        "formation": {"enum": ["none", "line", "compact", "spread", "wedge"]},
+        "stance": {"enum": ["aggressive", "defensive", "hold_position", "hold_fire"]},
+        "current_order": {
+          "oneOf": [{"$ref": "#/$defs/order"}, {"type": "null"}]
+        },
+        "retreat_hp_threshold_bp": {"type": "integer", "minimum": 0, "maximum": 10000}
+      }
+    },
+    "visibleContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "owner_category",
+        "type_id",
+        "tags",
+        "position_mt",
+        "region_id",
+        "hp",
+        "max_hp",
+        "visible_mana",
+        "hero_level",
+        "visible_statuses",
+        "observable_activity",
+        "first_seen_tick",
+        "last_seen_tick"
+      ],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "owner_category": {"enum": ["opponent", "neutral"]},
+        "type_id": {"$ref": "#/$defs/publicId"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "hp": {"type": "integer", "minimum": 0},
+        "max_hp": {"type": "integer", "minimum": 1},
+        "visible_mana": {"type": ["integer", "null"], "minimum": 0},
+        "hero_level": {"type": ["integer", "null"], "minimum": 1, "maximum": 10},
+        "visible_statuses": {
+          "type": "array",
+          "x-canonical-order": "ascending-status-id",
+          "items": {"$ref": "#/$defs/status"}
+        },
+        "observable_activity": {
+          "enum": [
+            "idle",
+            "moving",
+            "attacking",
+            "casting",
+            "gathering",
+            "building",
+            "repairing",
+            "transported",
+            "unknown"
+          ]
+        },
+        "first_seen_tick": {"type": "integer", "minimum": 0},
+        "last_seen_tick": {"type": "integer", "minimum": 0}
+      }
+    },
+    "lastObserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position_mt", "region_id", "hp", "max_hp", "observable_activity"],
+      "properties": {
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "hp": {"type": "integer", "minimum": 0},
+        "max_hp": {"type": "integer", "minimum": 1},
+        "visible_mana": {"type": ["integer", "null"], "minimum": 0},
+        "hero_level": {"type": ["integer", "null"], "minimum": 1, "maximum": 10},
+        "visible_status_ids": {
+          "type": "array",
+          "x-canonical-order": "ascending-status-id",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "observable_activity": {"$ref": "#/$defs/publicId"}
+      }
+    },
+    "rememberedContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "type_id",
+        "owner_category",
+        "first_seen_tick",
+        "last_seen_tick",
+        "memory_age_ticks",
+        "last_observed",
+        "last_location_status"
+      ],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "type_id": {"$ref": "#/$defs/publicId"},
+        "owner_category": {"enum": ["opponent", "neutral"]},
+        "first_seen_tick": {"type": "integer", "minimum": 0},
+        "last_seen_tick": {"type": "integer", "minimum": 0},
+        "memory_age_ticks": {"type": "integer", "minimum": 0},
+        "last_observed": {"$ref": "#/$defs/lastObserved"},
+        "last_location_status": {"enum": ["unverified", "unlocated"]}
+      }
+    },
+    "visibleItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_entity_id", "item_type_id", "position_mt", "region_id", "charges"],
+      "properties": {
+        "item_entity_id": {"$ref": "#/$defs/entityId"},
+        "item_type_id": {"$ref": "#/$defs/publicId"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "charges": {"type": "integer", "minimum": 0},
+        "despawn_tick": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "offer_id",
+        "kind",
+        "cost_gold",
+        "cost_lumber",
+        "stock",
+        "next_restock_tick",
+        "available"
+      ],
+      "properties": {
+        "offer_id": {"$ref": "#/$defs/publicId"},
+        "kind": {"enum": ["item", "unit", "service", "revival"]},
+        "cost_gold": {"type": "integer", "minimum": 0},
+        "cost_lumber": {"type": "integer", "minimum": 0},
+        "stock": {"type": ["integer", "null"], "minimum": 0},
+        "next_restock_tick": {"type": ["integer", "null"], "minimum": 0},
+        "available": {"type": "boolean"},
+        "requires_service_target": {"type": "boolean"}
+      }
+    },
+    "visibleShop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shop_id", "site_id", "shop_type", "position_mt", "region_id", "offers"],
+      "properties": {
+        "shop_id": {"$ref": "#/$defs/entityId"},
+        "site_id": {"$ref": "#/$defs/publicId"},
+        "shop_type": {"enum": ["merchant", "laboratory", "tavern", "faction_shop"]},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "offers": {
+          "type": "array",
+          "x-canonical-order": "ascending-offer-id",
+          "items": {"$ref": "#/$defs/offer"}
+        }
+      }
+    },
+    "exit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to_region_id",
+        "bearing",
+        "path_distance_mt",
+        "choke_width_mt",
+        "known_blockage"
+      ],
+      "properties": {
+        "to_region_id": {"$ref": "#/$defs/publicId"},
+        "bearing": {"$ref": "#/$defs/bearing"},
+        "path_distance_mt": {"type": "integer", "minimum": 0},
+        "choke_width_mt": {"type": "integer", "minimum": 0},
+        "known_blockage": {"enum": ["clear", "blocked", "unknown"]}
+      }
+    },
+    "bearing": {
+      "enum": ["north", "north_east", "east", "south_east", "south", "south_west", "west", "north_west", "same"]
+    },
+    "contextContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "bearing", "distance_mt", "known_path_distance_mt", "line_of_sight"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "bearing": {"$ref": "#/$defs/bearing"},
+        "distance_mt": {"type": "integer", "minimum": 0},
+        "known_path_distance_mt": {"type": ["integer", "null"], "minimum": 0},
+        "line_of_sight": {"type": "boolean"}
+      }
+    },
+    "rememberedThreat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "age_ticks", "bearing", "distance_mt"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "age_ticks": {"type": "integer", "minimum": 0},
+        "bearing": {"$ref": "#/$defs/bearing"},
+        "distance_mt": {"type": "integer", "minimum": 0}
+      }
+    },
+    "nearbyFeature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_id", "kind", "bearing", "path_distance_mt"],
+      "properties": {
+        "site_id": {"$ref": "#/$defs/publicId"},
+        "kind": {
+          "enum": [
+            "owned_structure",
+            "resource",
+            "creep_camp",
+            "neutral_merchant",
+            "neutral_laboratory",
+            "tavern",
+            "build_site",
+            "item",
+            "hazard"
+          ]
+        },
+        "bearing": {"$ref": "#/$defs/bearing"},
+        "path_distance_mt": {"type": "integer", "minimum": 0},
+        "state": {"type": "string", "maxLength": 64}
+      }
+    },
+    "localContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchor_id",
+        "position_mt",
+        "region_id",
+        "tactical_slot",
+        "terrain",
+        "elevation",
+        "exits",
+        "visible_contacts",
+        "remembered_threats",
+        "nearby_features",
+        "visibility_radius_mt",
+        "detection_radius_mt",
+        "retreat_route"
+      ],
+      "properties": {
+        "anchor_id": {"$ref": "#/$defs/id"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "tactical_slot": {"type": ["string", "null"]},
+        "terrain": {"$ref": "#/$defs/publicId"},
+        "elevation": {"type": "integer"},
+        "exits": {
+          "type": "array",
+          "x-canonical-order": "ascending-destination-region-id",
+          "items": {"$ref": "#/$defs/exit"}
+        },
+        "visible_contacts": {
+          "type": "array",
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/contextContact"}
+        },
+        "remembered_threats": {
+          "type": "array",
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/rememberedThreat"}
+        },
+        "nearby_features": {
+          "type": "array",
+          "x-canonical-order": "ascending-site-id",
+          "items": {"$ref": "#/$defs/nearbyFeature"}
+        },
+        "visibility_radius_mt": {"type": "integer", "minimum": 0},
+        "detection_radius_mt": {"type": "integer", "minimum": 0},
+        "retreat_route": {
+          "type": "array",
+          "x-canonical-order": "traversal-order",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "terrainChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_id", "kind", "position_mt", "observed_tick"],
+      "properties": {
+        "change_id": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["tree_depleted", "destructible_destroyed", "path_opened", "path_blocked"]},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "observed_tick": {"type": "integer", "minimum": 0}
+      }
+    },
+    "mapState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "explored_region_ids",
+        "visible_region_ids",
+        "terrain_changes",
+        "local_context"
+      ],
+      "properties": {
+        "explored_region_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-region-id",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "visible_region_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-region-id",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "terrain_changes": {
+          "type": "array",
+          "x-canonical-order": "ascending-change-id",
+          "items": {"$ref": "#/$defs/terrainChange"}
+        },
+        "local_context": {
+          "type": "array",
+          "x-canonical-order": "ascending-anchor-id",
+          "items": {"$ref": "#/$defs/localContext"}
+        }
+      }
+    },
+    "limitsRemaining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_command_objects",
+        "max_atomic_order_cost",
+        "max_actor_ids_per_command",
+        "max_queue_entries_per_entity",
+        "max_working_memory_bytes"
+      ],
+      "properties": {
+        "max_command_objects": {"const": 16},
+        "max_atomic_order_cost": {"const": 64},
+        "max_actor_ids_per_command": {"const": 24},
+        "max_queue_entries_per_entity": {"const": 8},
+        "max_working_memory_bytes": {"const": 4096}
+      }
+    },
+    "omittedCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brief", "remembered_units", "remembered_buildings", "local_context_paths"],
+      "properties": {
+        "brief": {"type": "integer", "minimum": 0},
+        "remembered_units": {"type": "integer", "minimum": 0},
+        "remembered_buildings": {"type": "integer", "minimum": 0},
+        "local_context_paths": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

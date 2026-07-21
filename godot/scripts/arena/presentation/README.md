@@ -3,7 +3,7 @@
 `arena_v1.tscn` is a standalone graybox presentation scene. It renders snapshots and events;
 it does not own authoritative rules, choose actions, or infer outcomes from node transforms.
 The scene root uses `arena_match_controller.gd` to connect this adapter to the deterministic
-`ArenaSimulation` and the local `world-arena/0.2` WebSocket backend.
+`ArenaSimulation` and the local `world-arena/0.4` WebSocket backend.
 
 ## Simulation-facing methods
 
@@ -18,6 +18,8 @@ The scene root uses `arena_match_controller.gd` to connect this adapter to the d
   `executing`.
 - `show_message(event: Dictionary)` displays a bubble without adding an event to the feed.
   Call `apply_events` when the message must also be auditable and replayable.
+- Persistent `tasks` and `construction` records project world-space progress bars and staged
+  scaffolds; the adapter never advances their work itself.
 - `mark_setup_accepted(initial_snapshot := {})`, `set_setup_status(message, state)`,
   `set_lobby_visible(value)`, and `set_perspective(id)` let the integration layer control
   setup and projection state.
@@ -41,7 +43,7 @@ presentation.configure_from_snapshot({
     "phase": "thinking",
     "thinking_status": {"sol": "locked", "terra": "thinking", "luna": "thinking"},
     "factions": [{"id": "sol", "model": "...", "core_hp": 1000}],
-    "districts": [{"id": "crown", "owner": "neutral", "contested": true}],
+    "districts": [{"id": "crossroads", "owner": "neutral", "contested": true}],
     "units": [{"id": "sol_commander", "faction_id": "sol", "unit_type": "commander", "district_id": "home_sol"}]
 })
 ```

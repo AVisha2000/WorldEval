@@ -1,9 +1,9 @@
 {
   "label": "UNVERIFIED LOCAL DEMO",
-  "notice": "Offline deterministic accelerated one-hour presentation demo; not an official benchmark result.",
-  "protocol": "world-arena/0.2",
+  "notice": "Offline deterministic conquest presentation; not an official benchmark result.",
+  "protocol": "world-arena/0.4",
   "replay_file": "replay.json",
-  "replay_sha256": "5ce60d826048091a27ea82595795fb7e43e2a9cb01526cb0d923615f3fda28bf",
+  "replay_sha256": "d720e78ca723481e33ef5ad1a821c280764895cb18da47691afb24a4afd4a87e",
   "schema_version": 1,
   "verified": false
 }

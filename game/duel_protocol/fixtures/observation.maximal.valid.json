@@ -1,0 +1,285 @@
+{
+  "message_type": "observation",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "match_id": "m_0042",
+  "observation_seq": 18,
+  "observation_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "tick": 1800,
+  "game_time": {"ticks": 1800, "seconds": 180, "day_phase": "day", "cycle_tick": 1800},
+  "decision": {"mode": "fixed_simultaneous", "observation_tick": 1800, "commands_apply_tick": 1801, "response_deadline_ms": 45000, "valid_until_tick": 1801, "opportunity_skipped": false},
+  "working_memory": "Expand after clearing natural; opponent ranged seen east.",
+  "objective": {"kind": "destroy_enemy_stronghold", "enemy_structure_role": "stronghold", "own_structure_role": "stronghold"},
+  "match_state": {"status": "active", "no_progress_ticks": 12},
+  "day_phase": "day",
+  "remaining_match_ticks": 16200,
+  "economy": {
+    "gold": 620,
+    "lumber": 310,
+    "gold_income_last_600_ticks": 520,
+    "lumber_income_last_600_ticks": 170,
+    "reserved_gold": 155,
+    "reserved_lumber": 20,
+    "worker_summary": {"total": 8, "gold": 5, "lumber": 2, "building": 0, "repairing": 0, "idle": 1},
+    "cargo_summary": {"gold": 20, "lumber": 10}
+  },
+  "food": {"used": 38, "cap": 50, "reserved": 2, "maximum": 100},
+  "upkeep": {"tier": "none", "gold_delivery_bp": 10000},
+  "technology": {
+    "tier": 2,
+    "completed_upgrades": ["ranged_attack_1"],
+    "researching": [
+      {
+        "producer_id": "e_forge1",
+        "entry": {"queue_entry_id": "q_23", "kind": "research", "type_id": "ranged_attack_2", "progress_bp": 4200, "remaining_ticks": 290, "paused": false, "pause_reason": null, "reserved_gold": 225, "reserved_lumber": 150, "reserved_food": 0}
+      }
+    ],
+    "hero_slots": {"available": 2, "used": 1}
+  },
+  "heroes": [
+    {
+      "entity_id": "e_hero1",
+      "type_id": "marshal",
+      "tags": ["biological", "ground", "hero", "melee"],
+      "position_mt": [35600, 48200],
+      "region_id": "r_self_natural",
+      "tactical_slot_id": "center",
+      "elevation": 0,
+      "facing_mdeg": 90000,
+      "hp": 840,
+      "max_hp": 975,
+      "shields": 60,
+      "mana": 220,
+      "max_mana": 305,
+      "armor_centi": 225,
+      "armor_class": "hero",
+      "movement_state": "moving",
+      "cargo": {"resource": "none", "amount": 0},
+      "current_order": {"compiled_order_id": "o_hero_move", "batch_id": "batch_17_a", "command_id": "c2", "op": "attack_move", "state": "active", "issued_tick": 1701, "target_position_mt": [48000, 52000], "target_region_id": "r_center", "route_region_ids": ["r_self_natural", "r_center"]},
+      "queued_orders": [],
+      "stance": "aggressive",
+      "formation": "spread",
+      "attack_cooldown_remaining_ticks": 0,
+      "abilities": [
+        {"ability_id": "marshal_command_aura", "rank": 1, "cooldown_remaining_ticks": 0, "autocast_enabled": false},
+        {"ability_id": "marshal_shield_strike", "rank": 2, "cooldown_remaining_ticks": 24, "autocast_enabled": false}
+      ],
+      "statuses": [
+        {"status_id": "arcanist_barrier", "source_entity_id": "e_cast1", "start_tick": 1750, "expiry_tick": 1870, "stacking_key": "arcanist_barrier", "stacks": 1, "magnitude": 180, "dispel_class": "ordinary_magical"}
+      ],
+      "squad_ids": ["squad.main"],
+      "detection_radius_mt": 0,
+      "cargo_capacity_food": 0,
+      "passenger_ids": [],
+      "hero_type_id": "marshal",
+      "level": 3,
+      "xp": 620,
+      "next_level_xp": 900,
+      "unspent_skill_points": 0,
+      "attributes_centi": {"strength": 2840, "agility": 1800, "intellect": 2060},
+      "inventory": [
+        {"item_instance_id": "item_hero1_0", "item_type_id": "lesser_vitality_draught", "slot": 0, "charges": 1, "cooldown_remaining_ticks": 0}
+      ],
+      "life_state": "alive",
+      "death_tick": null,
+      "revival": null
+    }
+  ],
+  "owned_entities": [
+    {
+      "entity_id": "e_worker1",
+      "type_id": "mason",
+      "tags": ["biological", "ground", "worker"],
+      "position_mt": [96400, 111400],
+      "region_id": "r_self_home",
+      "tactical_slot_id": null,
+      "elevation": 0,
+      "facing_mdeg": 180000,
+      "hp": 240,
+      "max_hp": 240,
+      "shields": 0,
+      "mana": 0,
+      "max_mana": 0,
+      "armor_centi": 0,
+      "armor_class": "light",
+      "movement_state": "moving",
+      "cargo": {"resource": "gold", "amount": 10},
+      "current_order": {"compiled_order_id": "o_gather1", "batch_id": "batch_2_a", "command_id": "c1", "op": "gather", "state": "active", "issued_tick": 201, "target_site_id": "res_self_home_gold", "route_region_ids": ["r_self_home"]},
+      "queued_orders": [],
+      "stance": "defensive",
+      "formation": "none",
+      "attack_cooldown_remaining_ticks": 0,
+      "abilities": [{"ability_id": "call_to_arms", "rank": 1, "cooldown_remaining_ticks": 0, "autocast_enabled": false}],
+      "statuses": [],
+      "squad_ids": [],
+      "detection_radius_mt": 0,
+      "cargo_capacity_food": 0,
+      "passenger_ids": []
+    }
+  ],
+  "owned_structures": [
+    {
+      "entity_id": "e_barr1",
+      "type_id": "garrison",
+      "tags": ["ground", "producer", "structure"],
+      "position_mt": [102000, 108000],
+      "region_id": "r_self_home",
+      "tactical_slot_id": "inner",
+      "elevation": 0,
+      "facing_mdeg": 0,
+      "hp": 1180,
+      "max_hp": 1200,
+      "shields": 0,
+      "mana": 0,
+      "max_mana": 0,
+      "armor_centi": 300,
+      "armor_class": "fortified",
+      "movement_state": "idle",
+      "cargo": {"resource": "none", "amount": 0},
+      "current_order": null,
+      "queued_orders": [],
+      "stance": "defensive",
+      "formation": "none",
+      "attack_cooldown_remaining_ticks": 0,
+      "abilities": [],
+      "statuses": [],
+      "squad_ids": [],
+      "detection_radius_mt": 0,
+      "cargo_capacity_food": 0,
+      "passenger_ids": [],
+      "structure_role": "barracks",
+      "complete": true,
+      "construction_progress_bp": 10000,
+      "builders": [],
+      "production_queue": [
+        {"queue_entry_id": "q_longbow_1", "kind": "unit", "type_id": "longbow", "progress_bp": 2300, "remaining_ticks": 216, "paused": false, "pause_reason": null, "reserved_gold": 155, "reserved_lumber": 20, "reserved_food": 2}
+      ],
+      "rally_target": [96000, 94000],
+      "disabled": false,
+      "pause_reason": null
+    }
+  ],
+  "squads": [
+    {
+      "squad_id": "squad.main",
+      "member_ids": ["e_hero1"],
+      "formation": "spread",
+      "stance": "aggressive",
+      "current_order": {"compiled_order_id": "o_squad1", "batch_id": "batch_17_a", "command_id": "c2", "op": "attack_move", "state": "active", "issued_tick": 1701, "target_position_mt": [48000, 52000], "target_region_id": "r_center", "route_region_ids": ["r_self_natural", "r_center"]},
+      "retreat_hp_threshold_bp": 2500
+    }
+  ],
+  "visible_contacts": [
+    {
+      "entity_id": "e_enemy7",
+      "owner_category": "opponent",
+      "type_id": "longbow",
+      "tags": ["biological", "ground", "ranged"],
+      "position_mt": [42100, 47900],
+      "region_id": "r_center",
+      "hp": 280,
+      "max_hp": 340,
+      "visible_mana": null,
+      "hero_level": null,
+      "visible_statuses": [],
+      "observable_activity": "attacking",
+      "first_seen_tick": 1780,
+      "last_seen_tick": 1800
+    }
+  ],
+  "remembered_contacts": [
+    {
+      "entity_id": "e_enemy3",
+      "type_id": "footguard",
+      "owner_category": "opponent",
+      "first_seen_tick": 1200,
+      "last_seen_tick": 1600,
+      "memory_age_ticks": 200,
+      "last_observed": {"position_mt": [60000, 60000], "region_id": "r_west_contested", "hp": 410, "max_hp": 520, "visible_mana": null, "hero_level": null, "visible_status_ids": [], "observable_activity": "moving"},
+      "last_location_status": "unverified"
+    }
+  ],
+  "visible_neutrals": [
+    {
+      "entity_id": "e_neutral2",
+      "owner_category": "neutral",
+      "type_id": "mire_archer",
+      "tags": ["biological", "ground", "neutral", "ranged"],
+      "position_mt": [107500, 63750],
+      "region_id": "r_center",
+      "hp": 260,
+      "max_hp": 260,
+      "visible_mana": null,
+      "hero_level": null,
+      "visible_statuses": [],
+      "observable_activity": "idle",
+      "first_seen_tick": 1790,
+      "last_seen_tick": 1800
+    }
+  ],
+  "visible_items": [
+    {"item_entity_id": "e_item1", "item_type_id": "guard_ring", "position_mt": [51500, 64500], "region_id": "r_center", "charges": 0, "despawn_tick": 3400}
+  ],
+  "visible_shops": [
+    {
+      "shop_id": "e_shop1",
+      "site_id": "neutral_west_merchant",
+      "shop_type": "merchant",
+      "position_mt": [16250, 64250],
+      "region_id": "r_west_neutral",
+      "offers": [
+        {"offer_id": "lesser_vitality_draught", "kind": "item", "cost_gold": 100, "cost_lumber": 0, "stock": 2, "next_restock_tick": null, "available": true, "requires_service_target": false}
+      ]
+    }
+  ],
+  "map_state": {
+    "explored_region_ids": ["r_center", "r_self_home", "r_self_natural"],
+    "visible_region_ids": ["r_center", "r_self_natural"],
+    "terrain_changes": [
+      {"change_id": "tc_tree_12", "kind": "tree_depleted", "position_mt": [90000, 105000], "observed_tick": 1755}
+    ],
+    "local_context": [
+      {
+        "anchor_id": "squad.main",
+        "position_mt": [35600, 48200],
+        "region_id": "r_self_natural",
+        "tactical_slot": "center",
+        "terrain": "grass",
+        "elevation": 0,
+        "exits": [
+          {"to_region_id": "r_center", "bearing": "north", "path_distance_mt": 9300, "choke_width_mt": 5200, "known_blockage": "clear"}
+        ],
+        "visible_contacts": [
+          {"entity_id": "e_enemy7", "bearing": "east", "distance_mt": 6500, "known_path_distance_mt": 7100, "line_of_sight": true}
+        ],
+        "remembered_threats": [
+          {"entity_id": "e_enemy3", "age_ticks": 200, "bearing": "north_west", "distance_mt": 24400}
+        ],
+        "nearby_features": [
+          {"site_id": "neutral_west_merchant", "kind": "neutral_merchant", "bearing": "west", "path_distance_mt": 24800, "state": "visible"}
+        ],
+        "visibility_radius_mt": 14000,
+        "detection_radius_mt": 0,
+        "retreat_route": ["r_self_natural", "r_self_home"]
+      }
+    ]
+  },
+  "events_since_previous": [
+    {"event_seq": 44, "tick": 1782, "kind": "resource_deposited", "audience": "self", "payload": {"entity_id": "e_worker1", "resource": "gold", "amount": 10}}
+  ],
+  "last_action_receipt": {
+    "batch_id": "batch_17_a",
+    "observation_seq": 17,
+    "received_tick": 1700,
+    "apply_tick": 1701,
+    "batch_status": "partially_applied",
+    "code": null,
+    "commands": [
+      {"command_id": "c1", "status": "applied", "code": null, "requested_quantity": 2, "accepted_quantity": 2, "atomic_cost": 2, "compiled_order_ids": ["o_produce1", "o_produce2"]},
+      {"command_id": "c2", "status": "rejected", "code": "target_unavailable", "atomic_cost": 1, "compiled_order_ids": []}
+    ]
+  },
+  "limits_remaining": {"max_command_objects": 16, "max_atomic_order_cost": 64, "max_actor_ids_per_command": 24, "max_queue_entries_per_entity": 8, "max_working_memory_bytes": 4096},
+  "brief": ["Self has 620 gold, 310 lumber, 38 of 50 food, and technology tier 2.", "One opponent ranged unit is visible in r_center."],
+  "observation_truncated": false,
+  "omitted_counts": {"brief": 0, "remembered_units": 0, "remembered_buildings": 0, "local_context_paths": 0}
+}

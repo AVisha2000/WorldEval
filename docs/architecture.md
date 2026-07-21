@@ -14,18 +14,18 @@ Provider or Demo policy
               ▼
 FastAPI ArenaOrchestrator
   schema validation · concurrent calls · cognition · commit/reveal
-              │  world-arena/0.2
+              │  world-arena/0.4
               ▼
 Godot ArenaMatchController
-  observation projection · commit verification · validation receipts
+  semantic/vision projection · commit verification · task receipts
               │
               ▼
 ArenaSimulation
-  seeded state · fixed ticks · economy · wildlife · combat · supply · score
+  seeded state · fixed ticks · fog · persistent work · research · fortification · siege
               │
               ▼
 Arena presentation
-  interpolated meshes · HUD · diplomacy · bubbles · replay · podium
+  persistent actors · work/build progress · HUD · replay · evidence podium
 ```
 
 `ArenaSimulation` is the only component that awards or removes world resources, ownership,
@@ -43,7 +43,7 @@ cannot secretly resolve the game.
 6. Python reveals all three plans and salts together.
 7. Godot verifies every hash and validates every plan against the frozen state.
 8. Godot applies accepted orders through one simultaneous 150-tick round.
-9. Godot resolves economy, wildlife, capture, supply, diplomacy, upkeep, and score.
+9. Godot resolves economy, scouting, research, capture, supply, diplomacy, combat, and siege.
 10. Godot sends typed receipts and the new state hash; only then can Python advance.
 
 Per-round phases are atomic. Duplicate concurrent commits/reveals, stale state hashes,
@@ -53,8 +53,8 @@ advances simulation time.
 ## Cognition isolation
 
 - `standard`: one Commander call per faction per round; no specialists.
-- `agentic`: up to three defined same-model specialists, at most two calls per round, sharing
-  a 120-unit budget while 80 Commander units remain reserved.
+- `agentic`: zero to three defined same-model specialists (two by default), at most two calls per
+  round, sharing a 360-unit budget while 240 Commander units remain reserved for a 120-round cap.
 - `open`: configurable Open Teams experiments; reported separately.
 
 Specialists are non-recursive and cannot issue actions or speech. They see a narrow brief plus

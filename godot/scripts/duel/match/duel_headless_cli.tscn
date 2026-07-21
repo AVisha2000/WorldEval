@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/duel/match/duel_headless_cli_node.gd" id="1_cli"]
+
+[node name="DuelHeadlessCli" type="Node"]
+script = ExtResource("1_cli")

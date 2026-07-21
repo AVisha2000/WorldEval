@@ -50,7 +50,7 @@ def test_faction_plan_enforces_order_and_communication_limits() -> None:
             order_id=f"order-{index}",
             action=PhysicalAction.MOBILIZE,
             actor_ids=[f"squad-{index}"],
-            target_id="crown",
+            target_id="terra-stronghold",
             stance="assault",
         )
         for index in range(3)

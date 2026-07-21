@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/replay-manifest.v1.schema.json",
+  "title": "WorldArena Duel publishable replay manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "match_id",
+    "artifacts",
+    "seed",
+    "decision",
+    "players",
+    "seat_mapping",
+    "files",
+    "checkpoints",
+    "final_state_sha256",
+    "terminal",
+    "aggregate_usage",
+    "replay_guarantees"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval-rts/replay-manifest/1.0.0"},
+    "match_id": {"type": "string", "pattern": "^m_[A-Za-z0-9._-]{1,120}$"},
+    "artifacts": {"$ref": "#/$defs/artifacts"},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "decision": {"$ref": "#/$defs/decision"},
+    "players": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "ascending-player-id",
+      "items": {"$ref": "#/$defs/player"}
+    },
+    "seat_mapping": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "ascending-seat",
+      "items": {"$ref": "#/$defs/seat"}
+    },
+    "files": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "x-canonical-order": "ascending-role-then-path",
+      "items": {"$ref": "#/$defs/file"}
+    },
+    "checkpoints": {
+      "type": "array",
+      "minItems": 1,
+      "x-canonical-order": "ascending-tick",
+      "items": {"$ref": "#/$defs/checkpoint"}
+    },
+    "final_state_sha256": {"$ref": "#/$defs/sha256"},
+    "terminal": {"$ref": "#/$defs/terminal"},
+    "aggregate_usage": {"$ref": "#/$defs/aggregateUsage"},
+    "replay_guarantees": {"$ref": "#/$defs/replayGuarantees"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "publicId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "hashRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "engine",
+        "rules",
+        "prompt",
+        "helper",
+        "map",
+        "faction",
+        "items",
+        "neutrals",
+        "display_assets"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/hashRef"},
+        "engine": {"$ref": "#/$defs/hashRef"},
+        "rules": {"$ref": "#/$defs/hashRef"},
+        "prompt": {"$ref": "#/$defs/hashRef"},
+        "helper": {"$ref": "#/$defs/hashRef"},
+        "map": {"$ref": "#/$defs/hashRef"},
+        "faction": {"$ref": "#/$defs/hashRef"},
+        "items": {"$ref": "#/$defs/hashRef"},
+        "neutrals": {"$ref": "#/$defs/hashRef"},
+        "display_assets": {
+          "type": "array",
+          "x-canonical-order": "ascending-id",
+          "items": {"$ref": "#/$defs/hashRef"}
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "control_profile", "observation_profile", "simulation_hz", "decision_period_ticks", "response_deadline_ms"],
+      "properties": {
+        "mode": {"enum": ["fixed_simultaneous", "continuous_realtime"]},
+        "control_profile": {"const": "hybrid-v1"},
+        "observation_profile": {"const": "full-belief-v1"},
+        "simulation_hz": {"const": 10},
+        "decision_period_ticks": {"type": "integer", "enum": [50, 100, 150]},
+        "response_deadline_ms": {"type": "integer", "minimum": 1, "maximum": 45000}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_id", "model_snapshot", "reasoning", "provider_tier"],
+      "properties": {
+        "player_id": {"enum": ["player_a", "player_b"]},
+        "model_snapshot": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reasoning": {"type": "string", "minLength": 1, "maxLength": 80},
+        "provider_tier": {"type": "string", "minLength": 1, "maxLength": 80}
+      }
+    },
+    "seat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seat", "player_id", "world_side"],
+      "properties": {
+        "seat": {"type": "integer", "minimum": 0, "maximum": 1},
+        "player_id": {"enum": ["player_a", "player_b"]},
+        "world_side": {"enum": ["south", "north"]}
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "path", "sha256", "bytes", "media_type"],
+      "properties": {
+        "role": {
+          "enum": [
+            "accepted_actions",
+            "compiled_orders",
+            "public_events",
+            "spectator_events",
+            "state_checkpoints",
+            "omniscient_snapshots",
+            "player_0_knowledge",
+            "player_1_knowledge",
+            "usage_timing"
+          ]
+        },
+        "path": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,239}$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"enum": ["application/json", "application/x-ndjson", "application/octet-stream"]}
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick", "state_sha256", "actions_through_index", "events_through_index"],
+      "properties": {
+        "tick": {"type": "integer", "minimum": 0},
+        "state_sha256": {"$ref": "#/$defs/sha256"},
+        "actions_through_index": {"type": "integer", "minimum": -1},
+        "events_through_index": {"type": "integer", "minimum": -1}
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tick", "result", "reason", "winner_player_id"],
+      "properties": {
+        "tick": {"type": "integer", "minimum": 0},
+        "result": {"enum": ["normal", "draw", "technical_forfeit", "infrastructure_void"]},
+        "reason": {"$ref": "#/$defs/publicId"},
+        "winner_player_id": {
+          "oneOf": [{"enum": ["player_a", "player_b"]}, {"type": "null"}]
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests", "input_tokens", "output_tokens", "failed_opportunities", "latency_ns_total"],
+      "properties": {
+        "requests": {"type": "integer", "minimum": 0},
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "failed_opportunities": {"type": "integer", "minimum": 0},
+        "latency_ns_total": {"type": "integer", "minimum": 0}
+      }
+    },
+    "aggregateUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_a", "player_b"],
+      "properties": {
+        "player_a": {"$ref": "#/$defs/usage"},
+        "player_b": {"$ref": "#/$defs/usage"}
+      }
+    },
+    "replayGuarantees": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_calls", "orders_use_recorded_application_ticks", "checkpoint_interval_ticks", "stop_on_hash_mismatch", "supports_omniscient", "supports_player_perspectives"],
+      "properties": {
+        "provider_calls": {"const": 0},
+        "orders_use_recorded_application_ticks": {"const": true},
+        "checkpoint_interval_ticks": {"const": 300},
+        "stop_on_hash_mismatch": {"const": true},
+        "supports_omniscient": {"const": true},
+        "supports_player_perspectives": {"const": true}
+      }
+    }
+  }
+}

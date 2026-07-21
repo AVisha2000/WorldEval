@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Literal
 
@@ -7,6 +8,20 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _default_godot_executable() -> Path:
+    """Choose a conventional local Godot binary without invoking a shell."""
+
+    candidates = (
+        Path("/Applications/Godot.app/Contents/MacOS/Godot"),
+        Path("/Applications/Godot.app/Godot.app/Contents/MacOS/Godot"),
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    discovered = shutil.which("godot") or shutil.which("Godot")
+    return Path(discovered) if discovered else candidates[0]
 
 
 class Settings(BaseSettings):
@@ -28,3 +43,8 @@ class Settings(BaseSettings):
     memory_dir: Path = REPOSITORY_ROOT / "memory"
     agents_dir: Path = REPOSITORY_ROOT / "agents"
     runs_dir: Path = REPOSITORY_ROOT / "runs"
+    embodiment_readiness_path: Path = (
+        REPOSITORY_ROOT / "exports/embodiment-pilot/readiness.json"
+    )
+    godot_executable: Path = Field(default_factory=_default_godot_executable)
+    godot_project_path: Path = REPOSITORY_ROOT / "godot"

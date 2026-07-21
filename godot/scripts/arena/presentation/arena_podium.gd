@@ -58,7 +58,7 @@ func show_match_result(result: Dictionary) -> void:
 	)
 	_subtitle.text = "%s  ·  %s  ·  %s" % [
 		str(result.get("match_id", "local-match")),
-		str(result.get("formula_version", "worldarena-score/1.0.0")),
+		str(result.get("formula_version", "worldarena-score/1.1.0")),
 		verification_detail
 	]
 
@@ -263,9 +263,9 @@ func _build_podium_column(faction: Dictionary, placement: int) -> Control:
 
 	var metrics: Dictionary = faction.get("metrics", {})
 	var metric_label := Label.new()
-	metric_label.text = "CORE %s   LAND %s   CROWN %s   TRADES %s\nTOKENS %s   INVALID %s   PACTS %s   BETRAYALS %s" % [
+	metric_label.text = "KEEP %s   LAND %s   STRONGHOLD %s   TRADES %s\nTOKENS %s   INVALID %s   PACTS %s   BETRAYALS %s" % [
 		_format_count(metrics.get("core", 0)), _format_count(metrics.get("territory", 0)),
-		_format_count(metrics.get("crown", 0)), _format_count(metrics.get("trades", 0)),
+		_format_count(metrics.get("strongholds", 0)), _format_count(metrics.get("trades", 0)),
 		_format_count(metrics.get("tokens", 0)), _format_count(metrics.get("invalid", 0)),
 		_format_count(metrics.get("pacts", 0)), _format_count(metrics.get("betrayals", 0))
 	]
@@ -414,7 +414,7 @@ func _normalize_metrics(raw: Dictionary) -> Dictionary:
 	return {
 		"core": metrics.get("core", outcome.get("core_health", 0)),
 		"territory": metrics.get("territory", territory.get("final_supplied_points", territory.get("territory_time", 0))),
-		"crown": metrics.get("crown", territory.get("crown_hold_rounds", 0)),
+		"strongholds": metrics.get("strongholds", metrics.get("strongholds_destroyed", territory.get("enemy_strongholds_destroyed", 0))),
 		"trades": metrics.get("trades", diplomacy.get("trades_executed", 0)),
 		"tokens": metrics.get("tokens", weighted_tokens),
 		"invalid": metrics.get("invalid", raw.get("invalid_orders", 0)),
@@ -437,7 +437,7 @@ func _calculation_details(result: Dictionary, factions: Array[Dictionary], verif
 	var formula := "35% Objective control + 20% Planning/adaptation + 15% Resource/combat efficiency + 15% Social intelligence + 10% Delegation/cognition + 5% Reliability/safety."
 	return "%s\n\nFormula version: %s\n%s\n\nEvidence accounting: %d category records · %d measurements · %d event references · %d committed-action references.\n\nNO LLM JUDGE. Scores are computed from deterministic, Godot-authoritative telemetry and versioned measurements. A model never grades itself or another competitor.\n\nVerification: %s — %s" % [
 		"WORLD ARENA SCORE = weighted sum of six 0–100 category scores.",
-		str(result.get("formula_version", "worldarena-score/1.0.0")), formula,
+		str(result.get("formula_version", "worldarena-score/1.1.0")), formula,
 		factions.size() * CATEGORY_DEFINITIONS.size(), measurements, event_references, action_references,
 		str(verification.label), str(verification.detail)
 	]

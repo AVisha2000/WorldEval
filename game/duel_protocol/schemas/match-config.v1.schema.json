@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/match-config.v1.schema.json",
+  "title": "WorldArena Duel match configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "ruleset_id",
+    "decision_mode",
+    "control_profile",
+    "observation_profile",
+    "faction_preset_id",
+    "mirror_faction",
+    "map_id",
+    "seed",
+    "simulation_hz",
+    "decision_period_ticks",
+    "response_deadline_ms",
+    "maximum_match_ticks",
+    "memory_policy",
+    "players"
+  ],
+  "properties": {
+    "protocol_version": {"const": "worldeval-rts/1.0.0"},
+    "ruleset_id": {"const": "duel-rules-v1"},
+    "decision_mode": {"enum": ["fixed_simultaneous", "continuous_realtime"]},
+    "control_profile": {"const": "hybrid-v1"},
+    "observation_profile": {"const": "full-belief-v1"},
+    "faction_preset_id": {
+      "enum": ["vanguard-v1", "warhost-v1", "grove-v1", "crypt-v1"]
+    },
+    "mirror_faction": {"const": true},
+    "map_id": {"const": "crossroads-duel-v1"},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "simulation_hz": {"const": 10},
+    "decision_period_ticks": {"type": "integer", "enum": [50, 100, 150]},
+    "response_deadline_ms": {"type": "integer", "minimum": 1, "maximum": 45000},
+    "maximum_match_ticks": {"type": "integer", "minimum": 1, "maximum": 18000},
+    "memory_policy": {
+      "enum": ["fresh-match-with-bounded-scratchpad", "adaptive-series"]
+    },
+    "cadence_profile_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+    "spectator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "initial_perspective", "record_replay"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "initial_perspective": {"enum": ["omniscient", "slot_0", "slot_1"]},
+        "record_replay": {"type": "boolean"}
+      }
+    },
+    "players": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "ascending-slot",
+      "prefixItems": [
+        {"$ref": "#/$defs/player0"},
+        {"$ref": "#/$defs/player1"}
+      ],
+      "items": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"decision_mode": {"const": "fixed_simultaneous"}}},
+      "then": {
+        "properties": {
+          "decision_period_ticks": {"enum": [50, 100, 150]},
+          "response_deadline_ms": {"maximum": 45000}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"decision_mode": {"const": "continuous_realtime"}}},
+      "then": {
+        "properties": {
+          "decision_period_ticks": {"const": 50},
+          "response_deadline_ms": {"maximum": 8000}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "playerBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "model", "reasoning"],
+      "properties": {
+        "slot": {"type": "integer", "minimum": 0, "maximum": 1},
+        "model": {"type": "string", "minLength": 1, "maxLength": 200},
+        "reasoning": {"type": "string", "minLength": 1, "maxLength": 80},
+        "provider_adapter": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        }
+      }
+    },
+    "player0": {
+      "allOf": [
+        {"$ref": "#/$defs/playerBase"},
+        {"properties": {"slot": {"const": 0}}}
+      ]
+    },
+    "player1": {
+      "allOf": [
+        {"$ref": "#/$defs/playerBase"},
+        {"properties": {"slot": {"const": 1}}}
+      ]
+    }
+  }
+}

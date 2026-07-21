@@ -1,0 +1,635 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/map-manifest.v1.schema.json",
+  "title": "WorldArena Duel map manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "map_id",
+    "display_name",
+    "ruleset_id",
+    "description",
+    "coordinate_system",
+    "rotation_transform",
+    "terrain_catalog",
+    "footprint_classes",
+    "cell_palette_fields",
+    "cell_palette",
+    "grid",
+    "regions",
+    "adjacency_edges",
+    "tactical_slots",
+    "build_sites",
+    "resource_sites",
+    "creep_camps",
+    "neutral_buildings",
+    "destructibles",
+    "spawns",
+    "static_path_distances",
+    "mirror_pairs",
+    "generation"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval-rts/map-manifest/1.0.0"},
+    "map_id": {"const": "crossroads-duel-v1"},
+    "display_name": {"type": "string", "minLength": 1, "maxLength": 80},
+    "ruleset_id": {"const": "duel-rules-v1"},
+    "description": {"type": "string", "minLength": 1, "maxLength": 400},
+    "coordinate_system": {"$ref": "#/$defs/coordinateSystem"},
+    "rotation_transform": {"$ref": "#/$defs/rotationTransform"},
+    "terrain_catalog": {
+      "type": "object",
+      "minProperties": 7,
+      "propertyNames": {"$ref": "#/$defs/publicId"},
+      "additionalProperties": {"$ref": "#/$defs/terrain"}
+    },
+    "footprint_classes": {
+      "type": "object",
+      "minProperties": 10,
+      "propertyNames": {"$ref": "#/$defs/publicId"},
+      "additionalProperties": {"$ref": "#/$defs/footprint"}
+    },
+    "cell_palette_fields": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "terrain_id"},
+        {"const": "elevation"},
+        {"const": "ground_pathable"},
+        {"const": "air_pathable"},
+        {"const": "buildable_site_id"},
+        {"const": "region_id"},
+        {"const": "los_block_height"},
+        {"const": "destructible_id"},
+        {"const": "rotated_palette_index"}
+      ],
+      "items": false,
+      "minItems": 9,
+      "maxItems": 9,
+      "x-canonical-order": "positional-cell-palette-field-order"
+    },
+    "cell_palette": {
+      "type": "array",
+      "minItems": 1,
+      "x-canonical-order": "authored-palette-index",
+      "items": {"$ref": "#/$defs/paletteCell"}
+    },
+    "grid": {"$ref": "#/$defs/grid"},
+    "regions": {
+      "type": "array",
+      "minItems": 17,
+      "maxItems": 17,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/region"}
+    },
+    "adjacency_edges": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "x-canonical-order": "ascending-a-then-b",
+      "items": {"$ref": "#/$defs/edge"}
+    },
+    "tactical_slots": {
+      "type": "array",
+      "minItems": 70,
+      "maxItems": 70,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/tacticalSlot"}
+    },
+    "build_sites": {
+      "type": "array",
+      "minItems": 62,
+      "maxItems": 62,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/buildSite"}
+    },
+    "resource_sites": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/resourceSite"}
+    },
+    "creep_camps": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/creepCamp"}
+    },
+    "neutral_buildings": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/neutralBuilding"}
+    },
+    "destructibles": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/destructible"}
+    },
+    "spawns": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "x-canonical-order": "ascending-id",
+      "items": {"$ref": "#/$defs/spawn"}
+    },
+    "static_path_distances": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "x-canonical-order": "ascending-from-then-to",
+      "items": {"$ref": "#/$defs/pathDistance"}
+    },
+    "mirror_pairs": {"$ref": "#/$defs/mirrorPairs"},
+    "generation": {"$ref": "#/$defs/generation"}
+  },
+  "$defs": {
+    "publicId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "point": {
+      "type": "array",
+      "prefixItems": [{"type": "integer"}, {"type": "integer"}],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "coordinate-x-y"
+    },
+    "cell": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0, "maximum": 383},
+        {"type": "integer", "minimum": 0, "maximum": 255}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "coordinate-x-y"
+    },
+    "boundaryCell": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer", "minimum": 0, "maximum": 384},
+        {"type": "integer", "minimum": 0, "maximum": 256}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "coordinate-x-y-boundary"
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_inclusive", "max_exclusive"],
+      "properties": {
+        "min_inclusive": {
+          "type": "array",
+          "prefixItems": [{"const": 0}, {"const": 0}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "max_exclusive": {
+          "type": "array",
+          "prefixItems": [{"const": 192000}, {"const": 128000}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit",
+        "cell_size_mt",
+        "review_tile_size_mt",
+        "width_cells",
+        "height_cells",
+        "bounds_mt",
+        "cell_origin",
+        "cell_center_offset_mt"
+      ],
+      "properties": {
+        "unit": {"const": "milli_tile"},
+        "cell_size_mt": {"const": 500},
+        "review_tile_size_mt": {"const": 1000},
+        "width_cells": {"const": 384},
+        "height_cells": {"const": 256},
+        "bounds_mt": {"$ref": "#/$defs/bounds"},
+        "cell_origin": {"const": "north_west_minimum_xy"},
+        "cell_center_offset_mt": {
+          "type": "array",
+          "prefixItems": [{"const": 250}, {"const": 250}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        }
+      }
+    },
+    "rotationTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "world_formula", "cell_formula", "review_tile_formula", "world_max_inclusive_mt", "cell_max_inclusive", "self_inverse"],
+      "properties": {
+        "id": {"const": "rotation_180_exact"},
+        "kind": {"const": "rotation_180"},
+        "world_formula": {
+          "type": "array",
+          "prefixItems": [{"const": "191999-x_mt"}, {"const": "127999-y_mt"}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "cell_formula": {
+          "type": "array",
+          "prefixItems": [{"const": "383-cell_x"}, {"const": "255-cell_y"}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "review_tile_formula": {
+          "type": "array",
+          "prefixItems": [{"const": "192-tile_x"}, {"const": "128-tile_y"}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "world_max_inclusive_mt": {
+          "type": "array",
+          "prefixItems": [{"const": 191999}, {"const": 127999}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "cell_max_inclusive": {
+          "type": "array",
+          "prefixItems": [{"const": 383}, {"const": 255}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        },
+        "self_inverse": {"const": true}
+      }
+    },
+    "terrain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["movement_basis_points", "ground_pathable", "air_pathable", "buildable", "los_block_height"],
+      "properties": {
+        "movement_basis_points": {"type": "integer", "minimum": 0},
+        "ground_pathable": {"type": "boolean"},
+        "air_pathable": {"type": "boolean"},
+        "buildable": {"type": "boolean"},
+        "los_block_height": {"type": "integer", "minimum": 0, "maximum": 3}
+      }
+    },
+    "footprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width_cells", "height_cells"],
+      "properties": {
+        "width_cells": {"type": "integer", "minimum": 1, "maximum": 6},
+        "height_cells": {"type": "integer", "minimum": 1, "maximum": 6}
+      }
+    },
+    "paletteCell": {
+      "type": "array",
+      "prefixItems": [
+        {"$ref": "#/$defs/publicId"},
+        {"type": "integer", "minimum": 0, "maximum": 2},
+        {"type": "boolean"},
+        {"type": "boolean"},
+        {"oneOf": [{"$ref": "#/$defs/publicId"}, {"type": "null"}]},
+        {"$ref": "#/$defs/publicId"},
+        {"type": "integer", "minimum": 0, "maximum": 3},
+        {"oneOf": [{"$ref": "#/$defs/publicId"}, {"type": "null"}]},
+        {"type": "integer", "minimum": 0}
+      ],
+      "items": false,
+      "minItems": 9,
+      "maxItems": 9,
+      "x-canonical-order": "cell-palette-fields"
+    },
+    "row": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 768,
+      "x-canonical-order": "left-to-right-flat-palette-index-count-rle",
+      "x-semantic-constraints": [
+        "length is even",
+        "values at even offsets are valid cell_palette indices",
+        "values at odd offsets are run counts in range 1..384",
+        "sum of run counts is exactly grid.width"
+      ],
+      "items": {"type": "integer", "minimum": 0, "maximum": 384}
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoding", "width", "height", "rows"],
+      "properties": {
+        "encoding": {"const": "row_rle_palette_v1"},
+        "width": {"const": 384},
+        "height": {"const": 256},
+        "rows": {
+          "type": "array",
+          "minItems": 256,
+          "maxItems": 256,
+          "x-canonical-order": "ascending-y",
+          "items": {"$ref": "#/$defs/row"}
+        }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "review_centroid_tile", "navigation_anchor_cells", "centroid_mt", "elevation", "tags", "boundary_cell_polygon", "cell_count"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "review_centroid_tile": {"$ref": "#/$defs/point"},
+        "navigation_anchor_cells": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-y-then-x",
+          "items": {"$ref": "#/$defs/cell"}
+        },
+        "centroid_mt": {"$ref": "#/$defs/point"},
+        "elevation": {"type": "integer", "minimum": 0, "maximum": 2},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        },
+        "boundary_cell_polygon": {
+          "type": "array",
+          "minItems": 3,
+          "x-canonical-order": "clockwise-from-min-y-x",
+          "items": {"$ref": "#/$defs/boundaryCell"}
+        },
+        "cell_count": {"type": "integer", "minimum": 1, "maximum": 98304}
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "a", "b", "distance_mt", "width_mt", "traversal_layer", "choke_id"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "a": {"$ref": "#/$defs/publicId"},
+        "b": {"$ref": "#/$defs/publicId"},
+        "distance_mt": {"type": "integer", "minimum": 1},
+        "width_mt": {"type": "integer", "minimum": 500},
+        "traversal_layer": {"enum": ["ground", "air", "ground_air"]},
+        "choke_id": {"type": ["string", "null"]}
+      }
+    },
+    "tacticalSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "region_id", "slot_id", "anchor_cell", "position_mt", "tags"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "slot_id": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "x-canonical-order": "ascending-y-then-x",
+      "items": {"$ref": "#/$defs/cell"}
+    },
+    "buildSite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "region_id", "category", "allowed_footprint_class", "anchor_cell", "footprint_cells", "production_exit_cells", "exit_order_frame", "starts_occupied_by"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "category": {"enum": ["inner", "economy", "outer", "tower", "choke", "hall", "neutral"]},
+        "allowed_footprint_class": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "footprint_cells": {"$ref": "#/$defs/cells"},
+        "production_exit_cells": {"$ref": "#/$defs/cells"},
+        "exit_order_frame": {"const": "seat_relative_north_clockwise"},
+        "starts_occupied_by": {"type": ["string", "null"]}
+      }
+    },
+    "resourceSite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "region_id", "anchor_cell", "approach_cell", "position_mt", "initial_amount", "cells", "tags"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "kind": {"enum": ["gold_mine", "lumber_cluster"]},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "approach_cell": {"$ref": "#/$defs/cell"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "initial_amount": {"type": "integer", "minimum": 1},
+        "cells": {"$ref": "#/$defs/cells"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 2,
+      "properties": {
+        "tier_1": {"type": "integer", "minimum": 0, "maximum": 100},
+        "tier_2": {"type": "integer", "minimum": 0, "maximum": 100},
+        "tier_3": {"type": "integer", "minimum": 0, "maximum": 100},
+        "tier_4": {"type": "integer", "minimum": 0, "maximum": 100},
+        "none": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "campMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "neutral_id", "level", "cell"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "neutral_id": {"$ref": "#/$defs/publicId"},
+        "level": {"type": "integer", "minimum": 1, "maximum": 6},
+        "cell": {"$ref": "#/$defs/cell"}
+      }
+    },
+    "creepCamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "tier", "region_id", "anchor_cell", "position_mt", "total_level", "item_tier_distribution_percent", "gold_bounty", "leash_radius_mt", "member_spawns", "formation"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "tier": {"enum": ["easy", "medium", "hard"]},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "total_level": {"type": "integer", "minimum": 2, "maximum": 12},
+        "item_tier_distribution_percent": {"$ref": "#/$defs/distribution"},
+        "gold_bounty": {"type": "integer", "minimum": 50, "maximum": 300},
+        "leash_radius_mt": {"const": 14000},
+        "member_spawns": {
+          "type": "array",
+          "minItems": 1,
+          "x-canonical-order": "ascending-id",
+          "items": {"$ref": "#/$defs/campMember"}
+        },
+        "formation": {"const": "authored_cells"}
+      }
+    },
+    "neutralBuilding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "building_type", "region_id", "anchor_cell", "approach_cells", "position_mt", "footprint_cells", "tags"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "building_type": {"enum": ["merchant", "laboratory", "tavern"]},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "approach_cells": {"$ref": "#/$defs/cells"},
+        "footprint_cells": {"$ref": "#/$defs/cells"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "destructible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "region_id", "hp_per_cell", "blocks_ground", "blocks_los", "cells", "opens_route_between"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "type": {"enum": ["tree_line", "rock", "gate"]},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "hp_per_cell": {"type": "integer", "minimum": 1},
+        "blocks_ground": {"type": "boolean"},
+        "blocks_los": {"type": "boolean"},
+        "cells": {"$ref": "#/$defs/cells"},
+        "opens_route_between": {
+          "type": "array",
+          "prefixItems": [{"$ref": "#/$defs/publicId"}, {"$ref": "#/$defs/publicId"}],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "ascending-region-id"
+        }
+      }
+    },
+    "spawn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "seat", "kind", "entity_type", "region_id", "anchor_cell", "position_mt", "build_site_id", "footprint_cells", "tags"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "seat": {"enum": [0, 1]},
+        "kind": {"enum": ["unit", "structure"]},
+        "entity_type": {"$ref": "#/$defs/publicId"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "anchor_cell": {"$ref": "#/$defs/cell"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "build_site_id": {
+          "oneOf": [{"$ref": "#/$defs/publicId"}, {"type": "null"}]
+        },
+        "footprint_cells": {"$ref": "#/$defs/cells"},
+        "tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "x-canonical-order": "ascending-tag",
+          "items": {"$ref": "#/$defs/publicId"}
+        }
+      }
+    },
+    "pathDistance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from_id", "to_id", "from_cell", "to_cell", "distance_mt", "path_cost_units"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "from_id": {"$ref": "#/$defs/publicId"},
+        "to_id": {"$ref": "#/$defs/publicId"},
+        "from_cell": {"$ref": "#/$defs/cell"},
+        "to_cell": {"$ref": "#/$defs/cell"},
+        "distance_mt": {"type": "integer", "minimum": 0},
+        "path_cost_units": {"type": "integer", "minimum": 0}
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b"],
+      "properties": {
+        "a": {"$ref": "#/$defs/publicId"},
+        "b": {"$ref": "#/$defs/publicId"}
+      }
+    },
+    "pairArray": {
+      "type": "array",
+      "x-canonical-order": "ascending-a-then-b",
+      "items": {"$ref": "#/$defs/pair"}
+    },
+    "mirrorPairs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regions", "adjacency_edges", "tactical_slots", "build_sites", "resource_sites", "creep_camps", "neutral_buildings", "destructibles", "spawns", "static_path_distances"],
+      "properties": {
+        "regions": {"$ref": "#/$defs/pairArray"},
+        "adjacency_edges": {"$ref": "#/$defs/pairArray"},
+        "tactical_slots": {"$ref": "#/$defs/pairArray"},
+        "build_sites": {"$ref": "#/$defs/pairArray"},
+        "resource_sites": {"$ref": "#/$defs/pairArray"},
+        "creep_camps": {"$ref": "#/$defs/pairArray"},
+        "neutral_buildings": {"$ref": "#/$defs/pairArray"},
+        "destructibles": {"$ref": "#/$defs/pairArray"},
+        "spawns": {"$ref": "#/$defs/pairArray"},
+        "static_path_distances": {"$ref": "#/$defs/pairArray"}
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script", "algorithm_version", "python_minimum", "canonical_json", "authored_half", "source_sha256"],
+      "properties": {
+        "script": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,239}$"},
+        "algorithm_version": {"const": "crossroads-duel-generator/1.0.0"},
+        "python_minimum": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+        "canonical_json": {"const": "utf8_sorted_keys_compact_lf"},
+        "authored_half": {"const": "rows_128_through_255_plus_west_centerline_sites"},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

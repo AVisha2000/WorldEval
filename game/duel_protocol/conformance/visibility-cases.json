@@ -1,0 +1,35 @@
+{
+  "conformance_id": "visibility-cases.duel-v1",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "observation_profile": "full-belief-v1",
+  "hash_scope": "player_legal_observation_without_observation_hash",
+  "cases": [
+    {"case_id": "hidden_enemy_position", "mutate_hidden_world_field": "enemy.position_mt", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_hp", "mutate_hidden_world_field": "enemy.hp", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_mana", "mutate_hidden_world_field": "enemy.mana", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_inventory", "mutate_hidden_world_field": "enemy.inventory", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_queue", "mutate_hidden_world_field": "enemy.production_queue", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_upgrade", "mutate_hidden_world_field": "enemy.completed_upgrades", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_status", "mutate_hidden_world_field": "enemy.statuses", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_order", "mutate_hidden_world_field": "enemy.current_order", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_enemy_death", "mutate_hidden_world_field": "enemy.alive", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_blocker", "mutate_hidden_world_field": "occupancy.hidden_hostile", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_corpse", "mutate_hidden_world_field": "corpse.exists", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_item_drop", "mutate_hidden_world_field": "camp.drop_item_id", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "hidden_shop_purchase", "mutate_hidden_world_field": "unseen_shop.stock", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "owned_state_changes", "mutate_hidden_world_field": "self.hp", "expected_player_observation_change": true, "expected_observation_hash_change": true},
+    {"case_id": "visible_enemy_changes", "mutate_hidden_world_field": "visible_enemy.hp", "expected_player_observation_change": true, "expected_observation_hash_change": true},
+    {"case_id": "remembered_state_frozen", "mutate_hidden_world_field": "hidden_remembered_enemy.hp", "expected_player_observation_change": false, "expected_observation_hash_change": false},
+    {"case_id": "revisit_empty_last_location", "mutate_hidden_world_field": "visibility.last_known_cell_revisited_empty", "expected_player_observation_change": true, "expected_observation_hash_change": true, "only_allowed_change": "remembered_contact.last_location_status=unlocated"}
+  ],
+  "mandatory_invariants": [
+    "observation_builder_accepts_agent_knowledge_state_not_world_state",
+    "internal_entity_ids_never_cross_boundary",
+    "each_player_has_distinct_hmac_aliases",
+    "shop_aliases_are_observer_scoped_stable_and_visible_only",
+    "shop_site_ids_are_never_entity_references",
+    "remembered_records_do_not_update_while_hidden",
+    "spectator_cache_never_feeds_player_projection",
+    "omniscient_state_hash_never_enters_model_message"
+  ]
+}

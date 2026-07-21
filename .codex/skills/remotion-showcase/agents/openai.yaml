@@ -1,0 +1,4 @@
+interface:
+  display_name: "Remotion Showcase"
+  short_description: "Build gameplay-led Remotion explainers"
+  default_prompt: "Create a clear gameplay-led Remotion explainer with no blank sections."

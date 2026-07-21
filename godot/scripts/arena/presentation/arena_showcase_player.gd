@@ -10,6 +10,7 @@ signal cue_dispatched(cue_id: String, cue_kind: String, at_seconds: float)
 signal completed
 
 const DURATION_SECONDS := 90.0
+const SUPPORTED_PROTOCOLS := ["world-arena/0.2", "world-arena/0.3", "world-arena/0.4"]
 const ALLOWED_CUE_KINDS := ["snapshot", "events", "phase", "message", "perspective", "camera", "chapter", "effect", "result"]
 const CAMERA_SHOTS := ["overview", "wide", "medium", "close"]
 const CHAPTER_ACCENTS := ["sol", "terra", "luna", "neutral"]
@@ -48,8 +49,8 @@ func load_showcase(manifest_path: String) -> Dictionary:
 		return _refuse("Manifest refused because it contains a secret-bearing field or value.")
 	if int(manifest.get("schema_version", 0)) != 1:
 		return _refuse("Manifest refused: expected schema_version 1.")
-	if str(manifest.get("protocol", "")) != "world-arena/0.2":
-		return _refuse("Manifest refused: protocol is not world-arena/0.2.")
+	if str(manifest.get("protocol", "")) not in SUPPORTED_PROTOCOLS:
+		return _refuse("Manifest refused: protocol is not supported.")
 	var replay_file := str(manifest.get("replay_file", "")).strip_edges()
 	if replay_file.is_empty() or replay_file != replay_file.get_file() or replay_file.contains("..") or replay_file.contains(":"):
 		return _refuse("Manifest refused: replay_file must name a file beside the manifest.")
@@ -102,6 +103,8 @@ func start(presentation_node: Node) -> bool:
 	is_complete = false
 	playing = true
 	_apply_verification_status()
+	if _presentation.has_method("set_showcase_time"):
+		_presentation.call("set_showcase_time", 0.0, DURATION_SECONDS)
 	var initial_snapshot: Variant = replay.get("initial_snapshot", {})
 	if initial_snapshot is Dictionary and not initial_snapshot.is_empty() and _presentation.has_method("configure_from_snapshot"):
 		_presentation.call("configure_from_snapshot", initial_snapshot.duplicate(true))
@@ -113,6 +116,8 @@ func advance(delta_seconds: float) -> void:
 	if not playing or is_complete:
 		return
 	elapsed_seconds = minf(DURATION_SECONDS, elapsed_seconds + maxf(0.0, delta_seconds))
+	if _presentation != null and _presentation.has_method("set_showcase_time"):
+		_presentation.call("set_showcase_time", elapsed_seconds, DURATION_SECONDS)
 	_dispatch_due_cues()
 	if elapsed_seconds >= DURATION_SECONDS:
 		_finish()

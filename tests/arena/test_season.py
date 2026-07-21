@@ -41,7 +41,7 @@ def season_spec() -> SeasonSpec:
         rules_hash="d" * 64,
         map_hash="e" * 64,
         tool_hash="f" * 64,
-        cognition_units=120,
+        cognition_units=360,
         decision_timeout_ms=45_000,
         specialist_timeout_ms=12_000,
     )
@@ -71,7 +71,8 @@ def scheduled_result(schedule, scheduled_match) -> MatchEvaluationResult:
             rules_hash=schedule.spec.rules_hash,
             map_hash=schedule.spec.map_hash,
             tool_hash=schedule.spec.tool_hash,
-            completed_rounds=40,
+            round_limit=120,
+            completed_rounds=120,
             factions=factions,
         )
     )
@@ -83,7 +84,7 @@ def test_schedule_is_deterministic_balanced_and_phase_locked() -> None:
 
     assert first == second
     assert verify_schedule_hash(first)
-    assert first.spec.formula_version == "worldarena-score/1.0.0"
+    assert first.spec.formula_version == "worldarena-score/1.1.0"
     assert len(first.matches) == 100
     assert sum(match.scored for match in first.matches) == 99
     assert first.matches[59].phase == "adaptation"
@@ -111,9 +112,17 @@ def test_schedule_metadata_is_frozen_and_track_budget_is_validated() -> None:
         schedule.schedule_hash = "0" * 64
 
     payload = season_spec().model_dump(mode="python")
-    payload["cognition_units"] = 119
-    with pytest.raises(ValidationError, match="120-unit"):
+    payload["cognition_units"] = 359
+    with pytest.raises(ValidationError, match="360-unit"):
         SeasonSpec.model_validate(payload)
+
+    standard_payload = season_spec().model_dump(mode="python")
+    standard_payload.update(track="standard", cognition_units=240)
+    assert SeasonSpec.model_validate(standard_payload).cognition_units == 240
+
+    standard_payload["cognition_units"] = 239
+    with pytest.raises(ValidationError, match="reserve 120 commander calls"):
+        SeasonSpec.model_validate(standard_payload)
 
     tampered_match = schedule.matches[0].model_copy(update={"seed": 1})
     tampered_schedule = schedule.model_copy(
@@ -135,7 +144,7 @@ def test_complete_season_aggregation_reports_pair_and_triple_results() -> None:
     assert by_competitor["alpha"].wins == 99
     assert by_competitor["alpha"].win_rate == 1
     assert by_competitor["alpha"].win_rate_ci.lower > 0.95
-    assert aggregate.formula_version == "worldarena-score/1.0.0"
+    assert aggregate.formula_version == "worldarena-score/1.1.0"
     assert set(by_competitor["alpha"].average_category_scores) == set(
         (
             "objective_control",

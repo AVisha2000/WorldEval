@@ -1,0 +1,843 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/action-batch.v1.schema.json",
+  "title": "WorldArena Duel action batch v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "message_type",
+    "protocol_version",
+    "match_id",
+    "observation_seq",
+    "based_on_observation_hash",
+    "client_batch_id",
+    "valid_until_tick",
+    "commands"
+  ],
+  "properties": {
+    "message_type": {"const": "action_batch"},
+    "protocol_version": {"const": "worldeval-rts/1.0.0"},
+    "match_id": {"$ref": "#/$defs/matchId"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "based_on_observation_hash": {"$ref": "#/$defs/sha256"},
+    "client_batch_id": {"$ref": "#/$defs/batchId"},
+    "valid_until_tick": {"type": "integer", "minimum": 1},
+    "intent_summary": {"type": "string", "maxLength": 240},
+    "working_memory": {"type": "string", "maxLength": 4096},
+    "commands": {
+      "type": "array",
+      "maxItems": 16,
+      "x-canonical-order": "model-array-order",
+      "items": {"$ref": "#/$defs/command"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "matchId": {"type": "string", "pattern": "^m_[A-Za-z0-9._-]{1,120}$"},
+    "batchId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "commandId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "entityId": {"type": "string", "pattern": "^e_[A-Za-z0-9._-]{1,80}$"},
+    "squadId": {"type": "string", "pattern": "^squad\\.[a-z0-9][a-z0-9._-]{0,47}$"},
+    "catalogId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "publicId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "queue": {"enum": ["replace", "append", "front"]},
+    "stance": {"enum": ["aggressive", "defensive", "hold_position", "hold_fire"]},
+    "formation": {"enum": ["none", "line", "compact", "spread", "wedge"]},
+    "entityIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24,
+      "uniqueItems": true,
+      "x-canonical-order": "model-array-order",
+      "items": {"$ref": "#/$defs/entityId"}
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "xy_mt"],
+      "properties": {
+        "kind": {"const": "point"},
+        "xy_mt": {
+          "type": "array",
+          "prefixItems": [
+            {"type": "integer", "minimum": 0},
+            {"type": "integer", "minimum": 0}
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "coordinate-x-y"
+        }
+      }
+    },
+    "regionSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "region_id", "slot_id"],
+      "properties": {
+        "kind": {"const": "region_slot"},
+        "region_id": {"$ref": "#/$defs/publicId"},
+        "slot_id": {"$ref": "#/$defs/publicId"}
+      }
+    },
+    "entityTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "entity_id"],
+      "properties": {
+        "kind": {"const": "entity"},
+        "entity_id": {"$ref": "#/$defs/entityId"}
+      }
+    },
+    "siteTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "site_id"],
+      "properties": {
+        "kind": {"const": "site"},
+        "site_id": {"$ref": "#/$defs/publicId"}
+      }
+    },
+    "moveTarget": {
+      "oneOf": [
+        {"$ref": "#/$defs/point"},
+        {"$ref": "#/$defs/regionSlot"}
+      ]
+    },
+    "anyTarget": {
+      "oneOf": [
+        {"$ref": "#/$defs/entityTarget"},
+        {"$ref": "#/$defs/point"},
+        {"$ref": "#/$defs/regionSlot"},
+        {"$ref": "#/$defs/siteTarget"}
+      ]
+    },
+    "commonCommand": {
+      "type": "object",
+      "required": ["command_id", "op"],
+      "properties": {
+        "command_id": {"$ref": "#/$defs/commandId"},
+        "op": {"type": "string"}
+      }
+    },
+    "actorsTargetQueue": {
+      "type": "object",
+      "required": ["actor_ids", "target", "queue"],
+      "properties": {
+        "actor_ids": {"$ref": "#/$defs/entityIds"},
+        "target": {"$ref": "#/$defs/moveTarget"},
+        "queue": {"$ref": "#/$defs/queue"}
+      }
+    },
+    "move": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {"$ref": "#/$defs/actorsTargetQueue"},
+        {"properties": {"op": {"const": "move"}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "attackMove": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {"$ref": "#/$defs/actorsTargetQueue"},
+        {"properties": {"op": {"const": "attack_move"}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "attackEntity": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "target", "queue"],
+          "properties": {
+            "op": {"const": "attack_entity"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "target": {"$ref": "#/$defs/entityTarget"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "attackGround": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "target", "queue"],
+          "properties": {
+            "op": {"const": "attack_ground"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "target": {"$ref": "#/$defs/point"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "stop": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids"],
+          "properties": {
+            "op": {"const": "stop"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "holdPosition": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids"],
+          "properties": {
+            "op": {"const": "hold_position"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "patrol": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "targets", "queue"],
+          "properties": {
+            "op": {"const": "patrol"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "targets": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "x-canonical-order": "traversal-order",
+              "items": {"$ref": "#/$defs/moveTarget"}
+            },
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "follow": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "target", "distance_mt", "queue"],
+          "properties": {
+            "op": {"const": "follow"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "target": {"$ref": "#/$defs/entityTarget"},
+            "distance_mt": {"type": "integer", "minimum": 0, "maximum": 50000},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "retreat": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "target", "queue"],
+          "properties": {
+            "op": {"const": "retreat"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "target": {
+              "oneOf": [
+                {"$ref": "#/$defs/entityTarget"},
+                {"$ref": "#/$defs/siteTarget"}
+              ]
+            },
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "setStance": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "stance"],
+          "properties": {
+            "op": {"const": "set_stance"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "stance": {"$ref": "#/$defs/stance"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "gather": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["worker_ids", "resource_target", "queue"],
+          "properties": {
+            "op": {"const": "gather"},
+            "worker_ids": {"$ref": "#/$defs/entityIds"},
+            "resource_target": {
+              "oneOf": [
+                {"$ref": "#/$defs/entityTarget"},
+                {"$ref": "#/$defs/siteTarget"}
+              ]
+            },
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "returnCargo": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["worker_ids", "queue"],
+          "properties": {
+            "op": {"const": "return_cargo"},
+            "worker_ids": {"$ref": "#/$defs/entityIds"},
+            "deposit_target": {"$ref": "#/$defs/entityTarget"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "repair": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["worker_ids", "target", "queue"],
+          "properties": {
+            "op": {"const": "repair"},
+            "worker_ids": {"$ref": "#/$defs/entityIds"},
+            "target": {"$ref": "#/$defs/entityTarget"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "build": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["builder_ids", "building_type_id", "build_site_id"],
+          "properties": {
+            "op": {"const": "build"},
+            "builder_ids": {"$ref": "#/$defs/entityIds"},
+            "building_type_id": {"$ref": "#/$defs/catalogId"},
+            "build_site_id": {"$ref": "#/$defs/publicId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cancelConstruction": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["building_id"],
+          "properties": {
+            "op": {"const": "cancel_construction"},
+            "building_id": {"$ref": "#/$defs/entityId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "produce": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["producer_id", "unit_type_id", "quantity"],
+          "properties": {
+            "op": {"const": "produce"},
+            "producer_id": {"$ref": "#/$defs/entityId"},
+            "unit_type_id": {"$ref": "#/$defs/catalogId"},
+            "quantity": {"type": "integer", "minimum": 1, "maximum": 5}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "research": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["producer_id", "upgrade_id"],
+          "properties": {
+            "op": {"const": "research"},
+            "producer_id": {"$ref": "#/$defs/entityId"},
+            "upgrade_id": {"$ref": "#/$defs/catalogId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "upgradeTier": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["stronghold_id", "target_tier"],
+          "properties": {
+            "op": {"const": "upgrade_tier"},
+            "stronghold_id": {"$ref": "#/$defs/entityId"},
+            "target_tier": {"type": "integer", "minimum": 2, "maximum": 3}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cancelQueue": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["producer_id", "queue_entry_id"],
+          "properties": {
+            "op": {"const": "cancel_queue"},
+            "producer_id": {"$ref": "#/$defs/entityId"},
+            "queue_entry_id": {"$ref": "#/$defs/publicId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "setRally": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["producer_id", "target"],
+          "properties": {
+            "op": {"const": "set_rally"},
+            "producer_id": {"$ref": "#/$defs/entityId"},
+            "target": {"$ref": "#/$defs/anyTarget"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "reviveHero": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["reviver_id", "hero_id", "revival_method"],
+          "properties": {
+            "op": {"const": "revive_hero"},
+            "reviver_id": {"$ref": "#/$defs/entityId"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "revival_method": {"enum": ["altar", "tavern"]}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cast": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_id", "ability_id", "queue"],
+          "properties": {
+            "op": {"const": "cast"},
+            "actor_id": {"$ref": "#/$defs/entityId"},
+            "ability_id": {"$ref": "#/$defs/catalogId"},
+            "target": {"$ref": "#/$defs/anyTarget"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "setAutocast": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["actor_ids", "ability_id", "enabled"],
+          "properties": {
+            "op": {"const": "set_autocast"},
+            "actor_ids": {"$ref": "#/$defs/entityIds"},
+            "ability_id": {"$ref": "#/$defs/catalogId"},
+            "enabled": {"type": "boolean"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "learnAbility": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["hero_id", "ability_id"],
+          "properties": {
+            "op": {"const": "learn_ability"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "ability_id": {"$ref": "#/$defs/catalogId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "useItem": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["hero_id", "item_instance_id", "queue"],
+          "properties": {
+            "op": {"const": "use_item"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "item_instance_id": {"$ref": "#/$defs/publicId"},
+            "target": {"$ref": "#/$defs/anyTarget"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pickUpItem": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["hero_id", "item_entity_id", "queue"],
+          "properties": {
+            "op": {"const": "pick_up_item"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "item_entity_id": {"$ref": "#/$defs/entityId"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "dropItem": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["hero_id", "item_instance_id", "target"],
+          "properties": {
+            "op": {"const": "drop_item"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "item_instance_id": {"$ref": "#/$defs/publicId"},
+            "target": {"$ref": "#/$defs/point"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "transferItem": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["from_hero_id", "to_hero_id", "item_instance_id"],
+          "properties": {
+            "op": {"const": "transfer_item"},
+            "from_hero_id": {"$ref": "#/$defs/entityId"},
+            "to_hero_id": {"$ref": "#/$defs/entityId"},
+            "item_instance_id": {"$ref": "#/$defs/publicId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sellItem": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["hero_id", "shop_id", "item_instance_id"],
+          "properties": {
+            "op": {"const": "sell_item"},
+            "hero_id": {"$ref": "#/$defs/entityId"},
+            "shop_id": {"$ref": "#/$defs/entityId"},
+            "item_instance_id": {"$ref": "#/$defs/publicId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "purchaseOffer": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["buyer_id", "shop_id", "offer_id", "quantity"],
+          "properties": {
+            "op": {"const": "purchase_offer"},
+            "buyer_id": {"$ref": "#/$defs/entityId"},
+            "shop_id": {"$ref": "#/$defs/entityId"},
+            "offer_id": {"$ref": "#/$defs/catalogId"},
+            "quantity": {"type": "integer", "minimum": 1, "maximum": 5},
+            "service_target": {
+              "oneOf": [
+                {"$ref": "#/$defs/point"},
+                {"$ref": "#/$defs/regionSlot"}
+              ]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "loadTransport": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["transport_id", "passenger_ids", "queue"],
+          "properties": {
+            "op": {"const": "load_transport"},
+            "transport_id": {"$ref": "#/$defs/entityId"},
+            "passenger_ids": {"$ref": "#/$defs/entityIds"},
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "unloadTransport": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["transport_id", "passengers", "target"],
+          "properties": {
+            "op": {"const": "unload_transport"},
+            "transport_id": {"$ref": "#/$defs/entityId"},
+            "passengers": {
+              "oneOf": [
+                {"const": "all"},
+                {"$ref": "#/$defs/entityIds"}
+              ]
+            },
+            "target": {"$ref": "#/$defs/point"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "defineSquad": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["squad_id", "member_ids"],
+          "properties": {
+            "op": {"const": "define_squad"},
+            "squad_id": {"$ref": "#/$defs/squadId"},
+            "member_ids": {"$ref": "#/$defs/entityIds"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "updateSquad": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["squad_id", "member_ids"],
+          "properties": {
+            "op": {"const": "update_squad"},
+            "squad_id": {"$ref": "#/$defs/squadId"},
+            "member_ids": {"$ref": "#/$defs/entityIds"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "disbandSquad": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": ["squad_id"],
+          "properties": {
+            "op": {"const": "disband_squad"},
+            "squad_id": {"$ref": "#/$defs/squadId"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "orderSquad": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": [
+            "squad_id",
+            "objective",
+            "target",
+            "formation",
+            "engagement",
+            "queue"
+          ],
+          "properties": {
+            "op": {"const": "order_squad"},
+            "squad_id": {"$ref": "#/$defs/squadId"},
+            "objective": {
+              "enum": [
+                "move_to",
+                "attack_move_to",
+                "focus_visible_entity",
+                "retreat_to",
+                "hold_area",
+                "patrol_points"
+              ]
+            },
+            "target": {"$ref": "#/$defs/anyTarget"},
+            "formation": {"$ref": "#/$defs/formation"},
+            "engagement": {
+              "enum": ["avoid", "defend_if_attacked", "engage_visible", "focus_target"]
+            },
+            "queue": {"$ref": "#/$defs/queue"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "setTactics": {
+      "allOf": [
+        {"$ref": "#/$defs/commonCommand"},
+        {
+          "type": "object",
+          "required": [
+            "subject",
+            "formation",
+            "stance",
+            "focus_tag",
+            "retreat_hp_threshold_bp"
+          ],
+          "properties": {
+            "op": {"const": "set_tactics"},
+            "subject": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "actor_ids"],
+                  "properties": {
+                    "kind": {"const": "actors"},
+                    "actor_ids": {"$ref": "#/$defs/entityIds"}
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "squad_id"],
+                  "properties": {
+                    "kind": {"const": "squad"},
+                    "squad_id": {"$ref": "#/$defs/squadId"}
+                  }
+                }
+              ]
+            },
+            "formation": {"$ref": "#/$defs/formation"},
+            "stance": {"$ref": "#/$defs/stance"},
+            "focus_tag": {
+              "enum": [
+                "none",
+                "hero",
+                "healer",
+                "caster",
+                "siege",
+                "anti_air",
+                "air",
+                "ground",
+                "structure",
+                "worker"
+              ]
+            },
+            "retreat_hp_threshold_bp": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "retreat_target": {
+              "oneOf": [
+                {"$ref": "#/$defs/entityTarget"},
+                {"$ref": "#/$defs/siteTarget"}
+              ]
+            }
+          },
+          "if": {
+            "properties": {"retreat_hp_threshold_bp": {"minimum": 1}},
+            "required": ["retreat_hp_threshold_bp"]
+          },
+          "then": {"required": ["retreat_target"]}
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "command": {
+      "oneOf": [
+        {"$ref": "#/$defs/move"},
+        {"$ref": "#/$defs/attackMove"},
+        {"$ref": "#/$defs/attackEntity"},
+        {"$ref": "#/$defs/attackGround"},
+        {"$ref": "#/$defs/stop"},
+        {"$ref": "#/$defs/holdPosition"},
+        {"$ref": "#/$defs/patrol"},
+        {"$ref": "#/$defs/follow"},
+        {"$ref": "#/$defs/retreat"},
+        {"$ref": "#/$defs/setStance"},
+        {"$ref": "#/$defs/gather"},
+        {"$ref": "#/$defs/returnCargo"},
+        {"$ref": "#/$defs/repair"},
+        {"$ref": "#/$defs/build"},
+        {"$ref": "#/$defs/cancelConstruction"},
+        {"$ref": "#/$defs/produce"},
+        {"$ref": "#/$defs/research"},
+        {"$ref": "#/$defs/upgradeTier"},
+        {"$ref": "#/$defs/cancelQueue"},
+        {"$ref": "#/$defs/setRally"},
+        {"$ref": "#/$defs/reviveHero"},
+        {"$ref": "#/$defs/cast"},
+        {"$ref": "#/$defs/setAutocast"},
+        {"$ref": "#/$defs/learnAbility"},
+        {"$ref": "#/$defs/useItem"},
+        {"$ref": "#/$defs/pickUpItem"},
+        {"$ref": "#/$defs/dropItem"},
+        {"$ref": "#/$defs/transferItem"},
+        {"$ref": "#/$defs/sellItem"},
+        {"$ref": "#/$defs/purchaseOffer"},
+        {"$ref": "#/$defs/loadTransport"},
+        {"$ref": "#/$defs/unloadTransport"},
+        {"$ref": "#/$defs/defineSquad"},
+        {"$ref": "#/$defs/updateSquad"},
+        {"$ref": "#/$defs/disbandSquad"},
+        {"$ref": "#/$defs/orderSquad"},
+        {"$ref": "#/$defs/setTactics"}
+      ]
+    }
+  }
+}

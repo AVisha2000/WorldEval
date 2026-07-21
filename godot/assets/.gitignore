@@ -1,0 +1,2 @@
+# Local intake cache and inspected vendor archives are intentionally not source-controlled.
+.intake/

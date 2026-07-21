@@ -1,0 +1,35 @@
+{
+  "format": "llm-controller/duel-baseline-conformance/1.0.0",
+  "cases": [
+    {
+      "id": "scout-diagonal-truncation",
+      "tier": "scout-v1",
+      "observation": {"episode_id": "ep_baseline_fixture", "observation_seq": 1, "self": {"health_percent": 100}, "visible_entities": [{"kind": "relay", "bearing": "front_right", "distance": "medium", "affordances": ["interactable"]}]},
+      "expected": {"move_x": 424, "move_y": 424, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": false, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}, "intent_label": "advance toward visible objective"}
+    },
+    {
+      "id": "balanced-front-attack",
+      "tier": "balanced-v1",
+      "observation": {"episode_id": "ep_baseline_fixture", "observation_seq": 2, "self": {"health_percent": 100}, "visible_entities": [{"kind": "operator", "bearing": "front", "distance": "near", "affordances": ["hostile"]}, {"kind": "relay", "bearing": "front", "distance": "medium", "affordances": ["interactable"]}]},
+      "expected": {"move_x": 0, "move_y": 0, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": true, "guard": false, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}, "intent_label": "attack visible rival"}
+    },
+    {
+      "id": "balanced-health-threshold-guard",
+      "tier": "balanced-v1",
+      "observation": {"episode_id": "ep_baseline_fixture", "observation_seq": 3, "self": {"health_percent": 40}, "visible_entities": [{"kind": "operator", "bearing": "front", "distance": "near", "affordances": ["hostile"]}]},
+      "expected": {"move_x": 0, "move_y": -450, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": true, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}, "intent_label": "guard and disengage"}
+    },
+    {
+      "id": "challenger-periodic-dash",
+      "tier": "challenger-v1",
+      "observation": {"episode_id": "ep_baseline_fixture", "observation_seq": 6, "self": {"health_percent": 100}, "visible_entities": [{"kind": "operator", "bearing": "back_right", "distance": "far", "affordances": ["hostile"]}]},
+      "expected": {"move_x": 707, "move_y": -707, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": false, "dash": true, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}, "intent_label": "advance toward visible objective"}
+    },
+    {
+      "id": "challenger-negative-truncation-guard",
+      "tier": "challenger-v1",
+      "observation": {"episode_id": "ep_baseline_fixture", "observation_seq": 7, "self": {"health_percent": 55}, "visible_entities": [{"kind": "operator", "bearing": "front_left", "distance": "near", "affordances": ["hostile"]}]},
+      "expected": {"move_x": 318, "move_y": -318, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": true, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}, "intent_label": "guard and disengage"}
+    }
+  ]
+}

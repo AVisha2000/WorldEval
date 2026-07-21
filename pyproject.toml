@@ -10,6 +10,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
   "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
+  "jsonschema>=4.24.1,<4.26",
   "openai>=1.68,<3",
   "pydantic>=2.8,<3",
   "pydantic-settings>=2.4,<3",
@@ -18,7 +20,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "httpx>=0.27,<1",
   "pytest>=8.3,<9",
   "pytest-asyncio>=0.24,<1",
   "ruff>=0.8,<1",
@@ -36,6 +37,9 @@ packages = ["backend/genesis_arena"]
 addopts = "-q"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "live_provider: opt-in external provider smoke test requiring explicit key and model env vars",
+]
 
 [tool.ruff]
 line-length = 100

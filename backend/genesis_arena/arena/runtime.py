@@ -71,28 +71,25 @@ class SpecialistAdvisor(Protocol):
 @dataclass
 class CognitionBudget:
     track: str = "agentic"
-    total_units: int = 120
-    total_rounds: int = 40
-    sudden_death_rounds: int = 8
+    total_units: int = 360
+    total_rounds: int = 120
     commander_cost: int = 2
     specialist_cost: int = 1
     remaining_units: int = field(init=False)
     commander_calls: int = 0
     specialist_calls: int = 0
-    sudden_death_remaining_units: int = field(init=False)
 
     def __post_init__(self) -> None:
         if self.track not in {"standard", "agentic", "open"}:
             raise ValueError("unknown cognition track")
         if min(self.total_units, self.total_rounds, self.commander_cost) <= 0:
             raise ValueError("cognition budget values must be positive")
-        if self.specialist_cost <= 0 or self.sudden_death_rounds < 0:
+        if self.specialist_cost <= 0:
             raise ValueError("specialist cost must be positive")
         required = self.total_rounds * self.commander_cost
         if self.track != "open" and self.total_units < required:
             raise ValueError("budget must reserve every commander call")
         self.remaining_units = self.total_units
-        self.sudden_death_remaining_units = self.sudden_death_rounds * self.commander_cost
 
     @property
     def remaining_commander_reserve(self) -> int:
@@ -104,9 +101,7 @@ class CognitionBudget:
             return True
         if self.track != "agentic":
             return False
-        return (
-            self.remaining_units - self.specialist_cost >= self.remaining_commander_reserve
-        )
+        return self.remaining_units - self.specialist_cost >= self.remaining_commander_reserve
 
     def spend_specialist(self) -> None:
         if not self.can_call_specialist():
@@ -123,10 +118,6 @@ class CognitionBudget:
             if self.remaining_units < self.commander_cost:
                 raise ArenaRuntimeError("commander cognition budget exhausted")
             self.remaining_units -= self.commander_cost
-        elif self.commander_calls < self.total_rounds + self.sudden_death_rounds:
-            if self.sudden_death_remaining_units < self.commander_cost:
-                raise ArenaRuntimeError("sudden-death cognition budget exhausted")
-            self.sudden_death_remaining_units -= self.commander_cost
         else:
             raise ArenaRuntimeError("commander round limit exhausted")
         self.commander_calls += 1
@@ -136,8 +127,6 @@ class CognitionBudget:
     ) -> CognitionView:
         if self.track == "open":
             remaining = 2_147_483_647
-        elif round_number is not None and round_number > self.total_rounds:
-            remaining = self.remaining_units + self.sudden_death_remaining_units
         else:
             remaining = self.remaining_units
         return CognitionView(
@@ -226,7 +215,7 @@ class DemoCommander:
             orders.append(
                 PhysicalOrder(
                     order_id=f"{observation.faction_id}-r{observation.round}-gather",
-                    action=PhysicalAction.ASSIGN_WORKERS,
+                    action=PhysicalAction.GATHER,
                     actor_ids=[workers.group_id],
                     target_id=resource_district.district_id,
                     resource="wood",
@@ -236,7 +225,9 @@ class DemoCommander:
             match_id=observation.match_id,
             round=observation.round,
             faction_id=observation.faction_id,
-            public_intent="Secure nearby production and preserve the supplied position.",
+            public_intent=(
+                "Gather locally, reveal uncertain approaches, and protect the stronghold."
+            ),
             orders=orders,
         )
 
@@ -329,11 +320,14 @@ class ArenaOrchestrator:
     ):
         if set(runtimes) != {"sol", "terra", "luna"}:
             raise ValueError("ArenaOrchestrator requires sol, terra, and luna runtimes")
-        if min(
-            decision_timeout_seconds,
-            specialist_timeout_seconds,
-            specialist_factory_timeout_seconds,
-        ) <= 0:
+        if (
+            min(
+                decision_timeout_seconds,
+                specialist_timeout_seconds,
+                specialist_factory_timeout_seconds,
+            )
+            <= 0
+        ):
             raise ValueError("timeouts must be positive")
         self.runtimes = dict(runtimes)
         self.decision_timeout_seconds = decision_timeout_seconds
@@ -415,6 +409,7 @@ class ArenaOrchestrator:
             )
             self._phases[key] = "committed"
             return RoundCommitHashes(
+                protocol=request.protocol,
                 match_id=request.match_id,
                 round=request.round,
                 snapshot_hash=request.snapshot_hash,
@@ -568,7 +563,12 @@ class ArenaOrchestrator:
         ]
         pending.revealed = True
         self._phases[key] = "revealed"
-        return RoundPlanReveal(match_id=match_id, round=round_number, plans=revealed)
+        return RoundPlanReveal(
+            protocol=pending.request.protocol,
+            match_id=match_id,
+            round=round_number,
+            plans=revealed,
+        )
 
     async def finalize_round(self, receipt: RoundReceipt) -> None:
         """Apply Python-owned effects only after Godot acknowledges authoritative resolution.

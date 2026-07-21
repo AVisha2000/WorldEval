@@ -1,0 +1,234 @@
+{
+  "corpus_version": "llm-controller-conformance/1",
+  "protocol_version": "llm-controller/0.1.0",
+  "action_cases": [
+    {
+      "id": "action_valid_solo_integer_controls",
+      "input": {
+        "instance": {
+          "protocol_version": "llm-controller/0.1.0",
+          "episode_id": "ep_conformance",
+          "observation_seq": 7,
+          "action_id": "act_valid",
+          "control": {
+            "move_x": 0,
+            "move_y": 1000,
+            "look_x": -250,
+            "look_y": 0,
+            "duration_ticks": 5,
+            "buttons": {"interact": false, "primary": false, "guard": false, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}
+          },
+          "intent_label": "walk forward",
+          "memory_update": ""
+        }
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "solo-curriculum-v0", "window_ticks": 5},
+      "expected": {"wire_valid": true, "disposition": "accepted", "reason": null, "advance_ticks": 5}
+    },
+    {
+      "id": "action_duplicate_key_rejected_neutral_duel",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":7,\"observation_seq\":7,\"action_id\":\"act_duplicate\",\"control\":{\"move_x\":0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_float_axis_rejected_neutral_duel",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":7,\"action_id\":\"act_float\",\"control\":{\"move_x\":0.0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_boolean_axis_rejected_strict_type",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":7,\"action_id\":\"act_bool\",\"control\":{\"move_x\":true,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_semantic_move_to_shortcut_rejected",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":7,\"action_id\":\"act_semantic\",\"control\":{\"move_x\":0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false},\"move_to\":\"v_beacon\"},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_stale_observation_neutral_duel",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":6,\"action_id\":\"act_stale\",\"control\":{\"move_x\":0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": true, "disposition": "no_input", "reason": "stale_observation", "advance_ticks": 10}
+    },
+    {
+      "id": "action_duel_non_ten_duration_neutral",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":7,\"action_id\":\"act_wrong_horizon\",\"control\":{\"move_x\":0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":9,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": true, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_memory_exact_2048_utf8_bytes",
+      "input": {
+        "instance": {
+          "protocol_version": "llm-controller/0.1.0",
+          "episode_id": "ep_conformance",
+          "observation_seq": 7,
+          "action_id": "act_memory_exact",
+          "control": {"move_x": 0, "move_y": 0, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": false, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}},
+          "intent_label": "",
+          "memory_update": ""
+        },
+        "utf8_repeat": {"pointer": "/memory_update", "text": "é", "count": 1024}
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": true, "disposition": "accepted", "reason": null, "advance_ticks": 10}
+    },
+    {
+      "id": "action_memory_2050_utf8_bytes_rejected",
+      "input": {
+        "instance": {
+          "protocol_version": "llm-controller/0.1.0",
+          "episode_id": "ep_conformance",
+          "observation_seq": 7,
+          "action_id": "act_memory_over",
+          "control": {"move_x": 0, "move_y": 0, "look_x": 0, "look_y": 0, "duration_ticks": 10, "buttons": {"interact": false, "primary": false, "guard": false, "dash": false, "ability_1": false, "ability_2": false, "cycle_item": false, "cancel": false}},
+          "intent_label": "",
+          "memory_update": ""
+        },
+        "utf8_repeat": {"pointer": "/memory_update", "text": "é", "count": 1025}
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    },
+    {
+      "id": "action_unsafe_integer_rejected",
+      "input": {
+        "raw_json": "{\"protocol_version\":\"llm-controller/0.1.0\",\"episode_id\":\"ep_conformance\",\"observation_seq\":9007199254740992,\"action_id\":\"act_unsafe_integer\",\"control\":{\"move_x\":0,\"move_y\":0,\"look_x\":0,\"look_y\":0,\"duration_ticks\":10,\"buttons\":{\"interact\":false,\"primary\":false,\"guard\":false,\"dash\":false,\"ability_1\":false,\"ability_2\":false,\"cycle_item\":false,\"cancel\":false}},\"intent_label\":\"\",\"memory_update\":\"\"}"
+      },
+      "context": {"episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "window_ticks": 10},
+      "expected": {"wire_valid": false, "disposition": "no_input", "reason": "invalid", "advance_ticks": 10}
+    }
+  ],
+  "observation_cases": [
+    {
+      "id": "observation_text_requires_semantics_and_excludes_frame",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "text-visible-v1", "goal": "Reach the beacon.", "remaining_ticks": 100,
+        "self": {"health_percent": 100, "energy_percent": 100, "facing": "north", "contact": "clear", "inventory": [], "status": []},
+        "visible_entities": [], "recent_events": [], "previous_receipt": null, "memory": "",
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": true
+    },
+    {
+      "id": "observation_text_frame_rejected",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "text-visible-v1", "goal": "Reach the beacon.", "remaining_ticks": 100,
+        "self": {"health_percent": 100, "energy_percent": 100, "facing": "north", "contact": "clear", "inventory": [], "status": []},
+        "visible_entities": [], "recent_events": [], "previous_receipt": null, "memory": "",
+        "frame": {"sensor_id": "operator-follow-v1", "mime_type": "image/png", "width": 1280, "height": 720, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "transport_ref": "frame:text"},
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": false
+    },
+    {
+      "id": "observation_hybrid_requires_visible_semantics_and_frame",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "hybrid-visible-v1", "goal": "Reach the beacon.", "remaining_ticks": 100,
+        "self": {"health_percent": 100, "energy_percent": 100, "facing": "north", "contact": "clear", "inventory": [], "status": []},
+        "visible_entities": [], "recent_events": [], "previous_receipt": null, "memory": "",
+        "frame": {"sensor_id": "operator-follow-v1", "mime_type": "image/png", "width": 1280, "height": 720, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "transport_ref": "frame:hybrid"},
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": true
+    },
+    {
+      "id": "observation_hybrid_null_frame_rejected",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "hybrid-visible-v1", "goal": "Reach the beacon.", "remaining_ticks": 100,
+        "self": {"health_percent": 100, "energy_percent": 100, "facing": "north", "contact": "clear", "inventory": [], "status": []},
+        "visible_entities": [], "recent_events": [], "previous_receipt": null, "memory": "", "frame": null,
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": false
+    },
+    {
+      "id": "observation_rgb_frame_without_semantics",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "rgb-v1", "goal": "Reach the beacon.", "remaining_ticks": 100, "previous_receipt": null,
+        "frame": {"sensor_id": "operator-follow-v1", "mime_type": "image/png", "width": 1280, "height": 720, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "transport_ref": "frame:rgb"},
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": true
+    },
+    {
+      "id": "observation_rgb_semantic_self_shortcut_rejected",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "rgb-v1", "goal": "Reach the beacon.", "remaining_ticks": 100, "previous_receipt": null,
+        "self": {"health_percent": 100, "energy_percent": 100, "facing": "north", "contact": "clear", "inventory": [], "status": []},
+        "frame": {"sensor_id": "operator-follow-v1", "mime_type": "image/png", "width": 1280, "height": 720, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "transport_ref": "frame:rgb-self"},
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": false
+    },
+    {
+      "id": "observation_rgb_memory_shortcut_rejected",
+      "instance": {
+        "protocol_version": "llm-controller/0.1.0", "episode_id": "ep_conformance", "observation_seq": 0, "tick": 0, "profile": "rgb-v1", "goal": "Reach the beacon.", "remaining_ticks": 100, "previous_receipt": null, "memory": "hidden semantic notes",
+        "frame": {"sensor_id": "operator-follow-v1", "mime_type": "image/png", "width": 1280, "height": 720, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "transport_ref": "frame:rgb-memory"},
+        "terminal": {"ended": false, "outcome": "running", "reason": "running"}
+      },
+      "expected_schema_valid": false
+    }
+  ],
+  "decision_window_cases": [
+    {
+      "id": "window_duel_joint_fixed_ten_with_neutral_fallback",
+      "instance": {
+        "episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "start_tick": 30, "duration_ticks": 10,
+        "decisions": {
+          "participant_0": {"disposition": "no_input", "action": null, "fallback": "neutral", "no_input_reason": "invalid"},
+          "participant_1": {"disposition": "no_input", "action": null, "fallback": "neutral", "no_input_reason": "timeout"}
+        }
+      },
+      "expected_schema_valid": true
+    },
+    {
+      "id": "window_duel_nine_ticks_rejected",
+      "instance": {
+        "episode_id": "ep_conformance", "observation_seq": 7, "mode": "model-duel-v0", "start_tick": 30, "duration_ticks": 9,
+        "decisions": {
+          "participant_0": {"disposition": "no_input", "action": null, "fallback": "neutral", "no_input_reason": "invalid"},
+          "participant_1": {"disposition": "no_input", "action": null, "fallback": "neutral", "no_input_reason": "timeout"}
+        }
+      },
+      "expected_schema_valid": false
+    },
+    {
+      "id": "window_no_input_without_neutral_rejected",
+      "instance": {
+        "episode_id": "ep_conformance", "observation_seq": 7, "mode": "solo-curriculum-v0", "start_tick": 30, "duration_ticks": 4,
+        "decisions": {
+          "participant_0": {"disposition": "no_input", "action": null, "fallback": "none", "no_input_reason": "invalid"}
+        }
+      },
+      "expected_schema_valid": false
+    }
+  ],
+  "reset_capability_cases": [
+    {"id": "reset_implemented_solo_text_orientation", "mode": "solo-curriculum-v0", "profile": "text-visible-v1", "task_id": "orientation-v0", "expected_accepted": true},
+    {"id": "reset_hybrid_requires_managed_presentation", "mode": "solo-curriculum-v0", "profile": "hybrid-visible-v1", "task_id": "orientation-v0", "expected_accepted": false},
+    {"id": "reset_rgb_declared_but_unimplemented", "mode": "solo-curriculum-v0", "profile": "rgb-v1", "task_id": "orientation-v0", "expected_accepted": false},
+    {"id": "reset_model_duel_declared_but_unimplemented", "mode": "model-duel-v0", "profile": "text-visible-v1", "task_id": "orientation-v0", "expected_accepted": false},
+    {"id": "reset_interaction_implemented", "mode": "solo-curriculum-v0", "profile": "text-visible-v1", "task_id": "interaction-v0", "expected_accepted": true},
+    {"id": "reset_construction_implemented", "mode": "solo-curriculum-v0", "profile": "text-visible-v1", "task_id": "construction-v0", "expected_accepted": true},
+    {"id": "reset_neutral_encounter_implemented", "mode": "solo-curriculum-v0", "profile": "text-visible-v1", "task_id": "neutral-encounter-v0", "expected_accepted": true}
+  ]
+}

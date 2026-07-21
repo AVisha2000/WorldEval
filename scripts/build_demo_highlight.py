@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build the secret-free, deterministic WorldArena 90-second demo replay.
+"""Build the deterministic 90-second world-arena/0.4 conquest showcase.
 
-This is deliberately presentation data, not an authoritative benchmark artifact.
-It exists so a local Godot capture has a repeatable story: exploration, economy,
-diplomacy, a Crown clash, betrayal, and a readable winner.
+This is an authored, presentation-only replay.  It uses the same snapshot and
+cue schema as the showcase player, while telling the current conquest loop:
+workers gather over time, collaborate on construction, unlock research and
+training, scout crossroads, and then take a defended enemy stronghold by siege.
 """
 
 from __future__ import annotations
@@ -20,339 +21,257 @@ REPLAY_PATH = OUT / "replay.json"
 MANIFEST_PATH = OUT / "manifest.json"
 DURATION_SECONDS = 90
 DISTRICTS = (
-    "core_sol", "core_terra", "core_luna", "home_sol", "home_terra", "home_luna",
-    "mine_st", "mine_tl", "mine_ls", "wild_st", "wild_tl", "wild_ls", "crown",
+    "core_sol", "home_sol", "core_terra", "home_terra", "core_luna", "home_luna",
+    "mine_ls", "mine_st", "mine_tl", "wild_ls", "wild_st", "wild_tl", "crossroads",
 )
-
-
-def unit(unit_id: str, faction: str, kind: str, district: str, position: list[float], task: str, *, health: int | None = None, combat: bool = False) -> dict:
-    max_health = {"commander": 150, "worker": 30, "scout": 40, "guard": 110, "militia": 75, "siege": 130}[kind]
-    return {
-        "id": unit_id, "faction_id": faction, "unit_type": kind, "district_id": district,
-        "position": position, "health": max_health if health is None else health,
-        "max_health": max_health, "task": task, "in_combat": combat,
-    }
-
-
-def faction(faction_id: str, model: str, *, core_hp: int, land: int, army: int, state: str, resources: dict, intent: str, orders: list[dict]) -> dict:
-    return {
-        "id": faction_id, "model": model, "core_hp": core_hp, "land_percent": land,
-        "army_strength": army, "state": state, "resources": resources,
-        "cognition": {"round_spent": 44, "round_budget": 100, "match_spent": 260 + army * 19},
-        "strategic_intent": intent, "orders": orders,
-        "specialists": [],
-    }
-
-
-def district_states(owners: dict[str, str], *, contested: str = "", progress: float = 0.0, cut: tuple[str, ...] = ()) -> list[dict]:
-    states = []
-    for district_id in DISTRICTS:
-        owner = owners.get(district_id, "neutral")
-        state = {"id": district_id, "owner": owner, "supplied": owner == "neutral" or district_id not in cut}
-        if district_id == contested:
-            state.update({"contested": True, "capture_progress": progress})
-        states.append(state)
-    return states
-
-
 BASE_OWNERS = {
-    "core_sol": "sol", "home_sol": "sol", "core_terra": "terra", "home_terra": "terra",
-    "core_luna": "luna", "home_luna": "luna",
+    "core_sol": "sol", "home_sol": "sol", "core_terra": "terra",
+    "home_terra": "terra", "core_luna": "luna", "home_luna": "luna",
+}
+CATEGORY_WEIGHTS = {
+    "objective_control": 0.35,
+    "planning_adaptation": 0.20,
+    "resource_combat_efficiency": 0.15,
+    "social_intelligence": 0.15,
+    "delegation_cognition": 0.10,
+    "reliability_safety": 0.05,
 }
 
 
-def snapshot(round_number: int, sim_time: str, phase: str, units: list[dict], factions: list[dict], owners: dict[str, str], *, contested: str = "", progress: float = 0.0, cut: tuple[str, ...] = (), relationships: list[dict] | None = None) -> dict:
+def unit(unit_id: str, faction_id: str, unit_type: str, district_id: str,
+         position: list[float], task_name: str, health: int | None = None,
+         combat: bool = False) -> dict:
+    maximum = {"commander": 150, "worker": 30, "scout": 40, "militia": 75, "guard": 110, "siege": 130}[unit_type]
     return {
-        "match_id": "local-demo-open-world-001", "round": round_number, "max_rounds": 40,
-        "phase": phase, "sim_time": sim_time,
+        "id": unit_id, "faction_id": faction_id, "unit_type": unit_type,
+        "district_id": district_id, "position": position, "health": maximum if health is None else health,
+        "max_health": maximum, "task": task_name, "in_combat": combat,
+    }
+
+
+def faction(faction_id: str, state: str, resources: dict, intent: str,
+            land: int, army: int = 0, core_hp: int = 900) -> dict:
+    return {
+        "id": faction_id, "core_hp": core_hp, "land_percent": land,
+        "army_strength": army, "state": state, "resources": resources,
+        "strategic_intent": intent, "orders": [], "specialists": [],
+    }
+
+
+def districts(owners: dict[str, str], contested: bool = False) -> list[dict]:
+    result = []
+    for district_id in DISTRICTS:
+        record = {"id": district_id, "owner": owners.get(district_id, "neutral"), "supplied": True}
+        if district_id == "crossroads":
+            record.update({"contested": contested, "capture_progress": 0.5 if contested else 0.0})
+        result.append(record)
+    return result
+
+
+def task(task_id: str, faction_id: str, actor_id: str, district_id: str,
+         resource: str, completed: int, position: list[float]) -> dict:
+    return {
+        "id": task_id, "kind": "gather", "faction_id": faction_id,
+        "actor_id": actor_id, "district_id": district_id, "resource": resource,
+        "state": "active" if completed < 100 else "complete", "completed_work": completed,
+        "required_work": 100, "position": position,
+    }
+
+
+def construction(completed: int, builders: list[str]) -> dict:
+    return {
+        "id": "sol_war_workshop", "kind": "construction", "structure": "Workshop",
+        "faction_id": "sol", "district_id": "home_sol", "position": [-88, 0.45, 58],
+        "state": "active" if completed < 100 else "complete", "completed_work": completed,
+        "required_work": 100, "builder_ids": builders,
+    }
+
+
+def snapshot(round_number: int, sim_time: str, units: list[dict], factions: list[dict],
+             owners: dict[str, str], *, work: list[dict], build: int = -1,
+             builders: list[str] | None = None, contested: bool = False,
+             phase: str = "resolution") -> dict:
+    return {
+        "match_id": "local-conquest-protocol-004", "round": round_number,
+        "max_rounds": 120, "phase": phase, "sim_time": sim_time,
         "thinking_status": {"sol": "locked", "terra": "locked", "luna": "locked"},
-        "factions": factions, "districts": district_states(owners, contested=contested, progress=progress, cut=cut),
-        "units": units, "relationships": relationships or [],
+        "factions": factions, "districts": districts(owners, contested), "units": units,
+        "tasks": work, "construction": [construction(build, builders or [])] if build >= 0 else [],
     }
 
 
-def event(event_id: str, round_number: int, kind: str, actor: str, summary: str, *, targets: list[str] | None = None, visibility: str = "public", state: str = "", payload: dict | None = None) -> dict:
-    result = {
-        "event_id": event_id, "round": round_number, "kind": kind, "actor_id": actor,
-        "target_ids": targets or [], "visibility": visibility, "summary": summary,
-    }
-    if visibility != "public":
-        result["visible_to"] = [actor, *(targets or [])]
-    if state:
-        result["state"] = state
+def event(event_id: str, round_number: int, kind: str, actor: str, summary: str,
+          payload: dict | None = None) -> dict:
+    result = {"event_id": event_id, "round": round_number, "kind": kind,
+              "actor_id": actor, "target_ids": [], "visibility": "public", "summary": summary}
     if payload:
         result["payload"] = payload
     return result
 
 
+def add(cues: list[dict], cue_id: str, at: float, kind: str, **content: object) -> None:
+    cues.append({"cue_id": cue_id, "at": at, "kind": kind, **content})
+
+
+def evaluation(faction_id: str, placement: int, scores: dict[str, float], metrics: dict,
+               best_round: int, best: str, miss_round: int, miss: str) -> dict:
+    categories = [
+        {"category": category, "score": float(scores[category]), "weight": weight,
+         "weighted_contribution": round(float(scores[category]) * weight, 2),
+         "measurement_count": 1, "event_ids": [f"demo.{faction_id}.{category}"],
+         "action_ids": [f"demo-action.{faction_id}.{category}"]}
+        for category, weight in CATEGORY_WEIGHTS.items()
+    ]
+    return {
+        "faction_id": faction_id, "placement": placement, "model": f"demo-policy · {faction_id}",
+        "worldarena_score": round(sum(item["weighted_contribution"] for item in categories), 1),
+        "categories": categories, "metrics": metrics,
+        "best_decision": {"round": best_round, "summary": best},
+        "biggest_failure": {"round": miss_round, "summary": miss},
+    }
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    sol = faction("sol", "gpt-5.6-sol", core_hp=1000, land=15, army=4, state="exploring", resources={"food": 70, "wood": 15, "stone": 8, "iron": 0, "crystal": 0}, intent="Secure wood and establish the western Crown front.", orders=[{"action": "collect", "target": "wild_ls"}])
-    terra = faction("terra", "gpt-5.6-terra", core_hp=1000, land=15, army=4, state="building", resources={"food": 62, "wood": 10, "stone": 16, "iron": 0, "crystal": 0}, intent="Build a mine economy and force the eastern Crown front.", orders=[{"action": "build", "target": "home_terra"}])
-    luna = faction("luna", "gpt-5.6-luna", core_hp=1000, land=15, army=3, state="scouting", resources={"food": 66, "wood": 8, "stone": 6, "iron": 0, "crystal": 0}, intent="Observe both fronts, map supply routes, and sell scouting intelligence.", orders=[{"action": "inspect", "target": "wild_tl"}])
-    start_units = [
-        unit("sol_commander", "sol", "commander", "home_sol", [-108, .45, 96], "rally workers"),
-        unit("sol_worker_1", "sol", "worker", "home_sol", [-114, .45, 88], "gather wood"),
-        unit("sol_guard_1", "sol", "guard", "home_sol", [-100, .45, 91], "escort"),
-        unit("terra_commander", "terra", "commander", "home_terra", [108, .45, 96], "plan workshop"),
-        unit("terra_worker_1", "terra", "worker", "home_terra", [115, .45, 87], "gather stone"),
-        unit("terra_guard_1", "terra", "guard", "home_terra", [100, .45, 91], "defend camp"),
-        unit("luna_commander", "luna", "commander", "home_luna", [0, .45, -112], "dispatch scout"),
-        unit("luna_scout_1", "luna", "scout", "home_luna", [8, .45, -107], "survey route"),
-        unit("luna_worker_1", "luna", "worker", "home_luna", [-7, .45, -106], "forage"),
+    sol = faction("sol", "opening", {"food": 40, "wood": 25, "stone": 15, "iron": 0, "crystal": 0}, "Gather, fortify, and break a rival stronghold.", 15)
+    terra = faction("terra", "opening", {"food": 40, "wood": 25, "stone": 15, "iron": 0, "crystal": 0}, "Hold the eastern stronghold and counterattack.", 15)
+    luna = faction("luna", "opening", {"food": 40, "wood": 25, "stone": 15, "iron": 0, "crystal": 0}, "Scout crossroads and preserve its stronghold.", 15)
+    units = [
+        unit("sol_commander", "sol", "commander", "home_sol", [-108, .45, 96], "lead gathering party"),
+        unit("sol_worker_1", "sol", "worker", "home_sol", [-114, .45, 88], "walk to forest"),
+        unit("terra_commander", "terra", "commander", "home_terra", [108, .45, 96], "fortify eastern route"),
+        unit("terra_worker_1", "terra", "worker", "home_terra", [114, .45, 88], "walk to quarry"),
+        unit("luna_commander", "luna", "commander", "home_luna", [0, .45, -108], "lead scout route"),
+        unit("luna_worker_1", "luna", "worker", "home_luna", [7, .45, -104], "walk to iron"),
     ]
-    initial = snapshot(1, "00:00", "thinking", start_units, [sol, terra, luna], BASE_OWNERS)
-    cues: list[dict] = [
-        {"cue_id": "intro-overview", "at": 0, "kind": "camera", "target_id": "overview", "shot": "overview"},
-        {"cue_id": "intro-phase", "at": 0, "kind": "phase", "phase": "thinking", "statuses": {"sol": "thinking", "terra": "thinking", "luna": "thinking"}},
-        {"cue_id": "intro-message", "at": 1, "kind": "message", "event": event("demo-001", 1, "message", "sol", "One accelerated hour. I will secure the western road to the Crown.")},
-    ]
+    cues: list[dict] = []
+    initial = snapshot(1, "00:00", units, [sol, terra, luna], BASE_OWNERS, work=[], phase="thinking")
+    add(cues, "opening", 0, "phase", phase="thinking", statuses={"sol": "thinking", "terra": "thinking", "luna": "thinking"})
+    add(cues, "opening-title", .2, "chapter", title="THREE STRONGHOLDS. NO SHORTCUT.", subtitle="Conquest ends only when one stronghold remains.", duration=3, accent="neutral")
+    add(cues, "opening-shot", 1, "camera", target_id="overview", shot="overview")
 
-    # 6s: agents fan out. Positions change by <35m between subsequent snapshots so
-    # the presentation's actor tweens visibly walk rather than teleport.
-    u = deepcopy(start_units)
-    u[0].update({"district_id": "home_sol", "position": [-90, .45, 93], "task": "lead west expedition"})
-    u[1].update({"district_id": "wild_ls", "position": [-121, .45, 24], "task": "chop trees"})
-    u[2].update({"district_id": "home_sol", "position": [-89, .45, 87], "task": "escort commander"})
-    u[3].update({"district_id": "home_terra", "position": [91, .45, 94], "task": "lead build team"})
-    u[4].update({"district_id": "home_terra", "position": [115, .45, 66], "task": "quarry stone"})
-    u[6].update({"district_id": "home_luna", "position": [0, .45, -93], "task": "send scout north"})
-    u[7].update({"district_id": "home_luna", "position": [17, .45, -89], "task": "survey east road"})
-    cues += [
-        {"cue_id": "fan-out", "at": 6, "kind": "snapshot", "snapshot": snapshot(4, "00:04", "resolution", u, [sol, terra, luna], BASE_OWNERS)},
-        {"cue_id": "fan-out-shot", "at": 6.1, "kind": "camera", "target_id": "sol_commander", "shot": "wide"},
-        {"cue_id": "wood-gathered", "at": 9, "kind": "events", "events": [event("demo-002", 4, "resource", "sol", "Sol workers fell trees in West Wildwood; wood reserve rising.")]},
-    ]
+    walk = deepcopy(units)
+    for index, position, district, label in [
+        (0, [-92, .45, 84], "home_sol", "lead forest route"), (1, [-98, .45, 74], "home_sol", "walk to forest"),
+        (2, [92, .45, 84], "home_terra", "lead quarry route"), (3, [98, .45, 74], "home_terra", "walk to stone"),
+        (4, [0, .45, -91], "home_luna", "lead scout route"), (5, [10, .45, -88], "home_luna", "walk to iron"),
+    ]:
+        walk[index].update(position=position, district_id=district, task=label)
+    add(cues, "walk-out", 8, "snapshot", snapshot=snapshot(5, "00:08", walk, [sol, terra, luna], BASE_OWNERS, work=[]))
+    add(cues, "walk-shot", 8.1, "camera", target_id="sol_worker_1", shot="medium")
 
-    # 14s: build/mine/scout scenes.
-    sol2, terra2, luna2 = deepcopy(sol), deepcopy(terra), deepcopy(luna)
-    sol2.update({"land_percent": 22, "army_strength": 5, "state": "expanding", "resources": {"food": 79, "wood": 49, "stone": 16, "iron": 0, "crystal": 0}, "intent": "Use the wood lead to establish a forward shelter."})
-    terra2.update({"land_percent": 25, "army_strength": 5, "state": "building", "resources": {"food": 69, "wood": 18, "stone": 48, "iron": 14, "crystal": 0}, "intent": "Convert stone and iron into a defended workshop."})
-    luna2.update({"land_percent": 18, "army_strength": 3, "state": "scouting", "resources": {"food": 78, "wood": 21, "stone": 11, "iron": 0, "crystal": 3}, "intent": "Reveal Terra's eastern route and sell the timing to Sol."})
-    u = deepcopy(u)
-    u[0].update({"district_id": "wild_ls", "position": [-111, .45, 48], "task": "raise shelter"})
-    u[1].update({"district_id": "wild_ls", "position": [-116, .45, 8], "task": "haul timber"})
-    u[2].update({"district_id": "wild_ls", "position": [-103, .45, 45], "task": "guard shelter"})
-    u[3].update({"district_id": "mine_st", "position": [77, .45, 93], "task": "build workshop"})
-    u[4].update({"district_id": "mine_st", "position": [47, .45, 93], "task": "mine iron"})
-    u[5].update({"district_id": "mine_st", "position": [82, .45, 84], "task": "guard builders"})
-    u[6].update({"district_id": "mine_tl", "position": [11, .45, -75], "task": "analyse route"})
-    u[7].update({"district_id": "mine_tl", "position": [34, .45, -70], "task": "discover Ember Mine"})
-    u[8].update({"district_id": "home_luna", "position": [-4, .45, -87], "task": "gather food"})
-    owners = {**BASE_OWNERS, "wild_ls": "sol", "mine_st": "terra"}
-    cues += [
-        {"cue_id": "economy-snapshot", "at": 14, "kind": "snapshot", "snapshot": snapshot(8, "00:10", "resolution", u, [sol2, terra2, luna2], owners)},
-        {"cue_id": "build-shot", "at": 14.1, "kind": "camera", "target_id": "terra_commander", "shot": "medium"},
-        {"cue_id": "workshop-complete", "at": 16, "kind": "events", "events": [event("demo-003", 8, "territory", "terra", "Terra's builders raise a palisade and complete a forward workshop.", payload={"district_id": "mine_st", "district_state": {"owner": "terra", "supplied": True}}), event("demo-003b", 8, "build", "terra", "Stone becomes a defended route: workshop online, guards deployed.")]},
-        {"cue_id": "scout-shot", "at": 19, "kind": "camera", "target_id": "luna_scout_1", "shot": "close"},
-        {"cue_id": "scout-report", "at": 20, "kind": "message", "event": event("demo-004", 8, "message", "luna", "Terra's eastern workshop is live. Their Crown force moves in twelve simulated minutes.")},
-    ]
+    work0 = deepcopy(walk)
+    work0[0].update(position=[-78, .45, 62], district_id="wild_ls", task="guard worker")
+    work0[1].update(position=[-82, .45, 55], district_id="wild_ls", task="gather wood · 0%")
+    work0[2].update(position=[78, .45, 62], district_id="mine_st", task="guard worker")
+    work0[3].update(position=[82, .45, 55], district_id="mine_st", task="gather stone · 0%")
+    work0[4].update(position=[-4, .45, -72], district_id="mine_tl", task="scout crossroads")
+    work0[5].update(position=[8, .45, -68], district_id="mine_tl", task="gather iron · 0%")
+    owners1 = {**BASE_OWNERS, "wild_ls": "sol", "mine_st": "terra", "mine_tl": "luna"}
+    gathering0 = [task("sol_wood", "sol", "sol_worker_1", "wild_ls", "wood", 0, [-82, .45, 55]), task("terra_stone", "terra", "terra_worker_1", "mine_st", "stone", 0, [82, .45, 55]), task("luna_iron", "luna", "luna_worker_1", "mine_tl", "iron", 0, [8, .45, -68])]
+    add(cues, "gather-zero", 16, "snapshot", snapshot=snapshot(10, "00:16", work0, [sol, terra, luna], owners1, work=gathering0))
+    add(cues, "gather-title", 16.2, "chapter", title="WORK PERSISTS", subtitle="Workers walk, gather, and deliver over time — no instant resource grant.", duration=3, accent="sol")
+    add(cues, "gather-effect", 18, "effect", effect="gather", target_id="sol_worker_1", duration=2)
 
-    # 25s: negotiation and atomic trade. Private messages remain spectator-visible.
-    u = deepcopy(u)
-    u[0].update({"district_id": "mine_ls", "position": [-67, .45, -8], "task": "meet Luna envoy"})
-    u[2].update({"district_id": "mine_ls", "position": [-79, .45, -10], "task": "protect trade"})
-    u[6].update({"district_id": "mine_ls", "position": [-39, .45, -46], "task": "negotiate"})
-    u[7].update({"district_id": "mine_tl", "position": [55, .45, -45], "task": "watch Terra"})
-    cues += [
-        {"cue_id": "negotiation-snapshot", "at": 25, "kind": "snapshot", "snapshot": snapshot(13, "00:17", "diplomacy", u, [sol2, terra2, luna2], owners)},
-        {"cue_id": "negotiation-shot", "at": 25.1, "kind": "camera", "target_id": "sol_commander", "shot": "medium"},
-        {"cue_id": "private-offer", "at": 26, "kind": "message", "event": event("demo-005", 13, "offer", "sol", "Private: 25 wood for Terra's eastern timing and the weak bridge approach.", targets=["luna"], visibility="participants", state="proposed", payload={"give": {"wood": 25}, "request": "eastern_route_report"})},
-        {"cue_id": "private-accept", "at": 28, "kind": "message", "event": event("demo-006", 13, "message", "luna", "Private: Accepted. I will keep scouting; the eastern bridge is lightly guarded.", targets=["sol"], visibility="participants")},
-        {"cue_id": "trade-executed", "at": 30, "kind": "events", "events": [event("demo-007", 13, "trade", "sol", "Atomic trade executed: Sol buys Luna's eastern-route intelligence.", targets=["luna"], visibility="participants", state="executed"), event("demo-007b", 13, "message", "luna", "Trade received. Terra commits to the eastern front; the western flank is clear.", targets=["sol"], visibility="participants")]},
-    ]
+    work55 = deepcopy(work0)
+    work55[1].update(position=[-72, .45, 47], task="gather wood · 55%")
+    work55[3].update(position=[72, .45, 47], task="gather stone · 55%")
+    work55[5].update(position=[9, .45, -57], task="gather iron · 55%")
+    sol2 = deepcopy(sol); sol2.update(state="gathering", resources={"food": 40, "wood": 61, "stone": 15, "iron": 0, "crystal": 0})
+    terra2 = deepcopy(terra); terra2.update(state="gathering", resources={"food": 40, "wood": 25, "stone": 51, "iron": 0, "crystal": 0})
+    luna2 = deepcopy(luna); luna2.update(state="scouting", resources={"food": 40, "wood": 25, "stone": 15, "iron": 18, "crystal": 0})
+    gathering55 = [task("sol_wood", "sol", "sol_worker_1", "wild_ls", "wood", 55, [-72, .45, 47]), task("terra_stone", "terra", "terra_worker_1", "mine_st", "stone", 55, [72, .45, 47]), task("luna_iron", "luna", "luna_worker_1", "mine_tl", "iron", 55, [9, .45, -57])]
+    add(cues, "gather-fifty-five", 25, "snapshot", snapshot=snapshot(16, "00:25", work55, [sol2, terra2, luna2], owners1, work=gathering55))
 
-    # 34s: centre converges, visibly walking from three approaches.
-    sol3, terra3, luna3 = deepcopy(sol2), deepcopy(terra2), deepcopy(luna2)
-    sol3.update({"land_percent": 30, "army_strength": 8, "state": "pressuring", "resources": {"food": 92, "wood": 33, "stone": 26, "iron": 9, "crystal": 0}, "intent": "Open a western Crown front before Terra's eastern force settles."})
-    terra3.update({"land_percent": 31, "army_strength": 10, "state": "attacking", "resources": {"food": 82, "wood": 25, "stone": 57, "iron": 34, "crystal": 0}, "intent": "Win the eastern Crown front with workshop reinforcements."})
-    luna3.update({"land_percent": 20, "army_strength": 3, "state": "scouting", "resources": {"food": 83, "wood": 31, "stone": 13, "iron": 4, "crystal": 5}, "intent": "Observe both fronts without committing a costly army."})
-    u = deepcopy(u)
-    u[0].update({"district_id": "mine_ls", "position": [-46, .45, -6], "task": "advance Crown road"})
-    u[1].update({"district_id": "mine_ls", "position": [-81, .45, -20], "task": "build supply cache"})
-    u[2].update({"district_id": "mine_ls", "position": [-37, .45, -8], "task": "escort advance"})
-    u[3].update({"district_id": "mine_st", "position": [54, .45, 61], "task": "march to Crown"})
-    u[4].update({"district_id": "mine_st", "position": [30, .45, 65], "task": "bring iron"})
-    u[5].update({"district_id": "mine_st", "position": [44, .45, 61], "task": "frontline"})
-    u[6].update({"district_id": "mine_tl", "position": [20, .45, -32], "task": "circle Crown"})
-    u[7].update({"district_id": "mine_tl", "position": [41, .45, -22], "task": "mark targets"})
-    u.append(unit("terra_militia_1", "terra", "militia", "mine_st", [38, .45, 49], "join assault"))
-    u.append(unit("sol_militia_1", "sol", "militia", "mine_ls", [-32, .45, -5], "join assault"))
-    owners = {**owners, "mine_ls": "neutral", "mine_tl": "neutral"}
-    cues += [
-        {"cue_id": "crown-approach", "at": 34, "kind": "snapshot", "snapshot": snapshot(19, "00:23", "resolution", u, [sol3, terra3, luna3], owners, contested="crown", progress=.22)},
-        {"cue_id": "crown-wide", "at": 34.1, "kind": "camera", "target_id": "crown", "shot": "wide"},
-        {"cue_id": "public-pact", "at": 36, "kind": "message", "event": event("demo-008", 19, "message", "luna", "Public: Scout report only. Sol takes the west; Terra owns the east until one breaks.", targets=["sol", "terra"])},
-        {"cue_id": "terra-response", "at": 38, "kind": "message", "event": event("demo-009", 19, "message", "terra", "Then watch closely. My workshop is already supplying the eastern front.")},
-    ]
+    builders = deepcopy(work55)
+    builders[1].update(position=[-88, .45, 58], district_id="home_sol", task="build workshop · 30%")
+    builders.append(unit("sol_worker_2", "sol", "worker", "home_sol", [-81, .45, 56], "build workshop · 30%"))
+    sol3 = deepcopy(sol2); sol3.update(state="building", resources={"food": 30, "wood": 5, "stone": 0, "iron": 0, "crystal": 0})
+    add(cues, "two-builders", 34, "snapshot", snapshot=snapshot(23, "00:34", builders, [sol3, terra2, luna2], owners1, work=[gathering55[1], gathering55[2]], build=30, builders=["sol_worker_1", "sol_worker_2"]))
+    add(cues, "two-builders-title", 34.2, "chapter", title="TWO WORKERS, FASTER BUILD", subtitle="The same workshop task advances faster with a second builder.", duration=3, accent="sol")
+    add(cues, "build-effect", 36, "effect", effect="build", target_id="sol_worker_2", duration=2)
 
-    # 43s: battle, close enough for equipment and walking silhouettes to read.
-    u = deepcopy(u)
-    for index, pos in {0: [-18, .45, 4], 2: [-11, .45, 6], 3: [21, .45, 8], 5: [13, .45, 4], 6: [3, .45, -20], 7: [17, .45, -12], 9: [27, .45, 13], 10: [-25, .45, 9]}.items():
-        u[index]["position"] = pos
-        u[index]["district_id"] = "crown"
-        u[index]["in_combat"] = True
-        u[index]["task"] = "fight for Crown"
-    u[0]["health"] = 120
-    u[3]["health"] = 132
-    u[6]["health"] = 108
-    cues += [
-        {"cue_id": "battle-snapshot", "at": 43, "kind": "snapshot", "snapshot": snapshot(24, "00:29", "resolution", u, [sol3, terra3, luna3], owners, contested="crown", progress=.64)},
-        {"cue_id": "battle-close", "at": 43.1, "kind": "camera", "target_id": "terra_commander", "shot": "close"},
-        {"cue_id": "battle-event", "at": 44, "kind": "events", "events": [event("demo-010", 24, "combat", "terra", "Terra's shield line clashes with Sol's vanguard at the Crown."), event("demo-011", 24, "combat", "luna", "Luna scouts a flank instead of joining the frontal fight.")]},
-        {"cue_id": "luna-betrayal", "at": 48, "kind": "message", "event": event("demo-012", 24, "message", "luna", "Public: Terra's eastern reserves are shifting to the Crown. Sol's west road is still open.", targets=["sol", "terra"])},
-    ]
+    workshop = deepcopy(builders)
+    workshop[1].update(position=[-83, .45, 54], task="workshop complete; start fieldcraft")
+    workshop[6].update(position=[-78, .45, 51], task="workshop complete; assist research")
+    workshop.append(unit("sol_scout_1", "sol", "scout", "home_sol", [-72, .45, 44], "trained scout leaves workshop"))
+    sol4 = deepcopy(sol3); sol4.update(state="researching", resources={"food": 12, "wood": 20, "stone": 5, "iron": 0, "crystal": 0}, army_strength=1)
+    add(cues, "research-training", 43, "snapshot", snapshot=snapshot(31, "00:43", workshop, [sol4, terra2, luna2], owners1, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"]))
+    add(cues, "fieldcraft-event", 44, "events", events=[event("c01", 31, "research", "sol", "Fieldcraft completes: workshop training unlocks guard units."), event("c02", 31, "train", "sol", "A scout trains and remains visible as it leaves the workshop.")])
 
-    # 52s: Terra appears to have won.  This is deliberately *not* the ending: it
-    # gives the final third of the short film a reversal rather than a static
-    # victory lap.  The replay is scripted presentation data, not a scored match.
-    sol4, terra4, luna4 = deepcopy(sol3), deepcopy(terra3), deepcopy(luna3)
-    sol4.update({"land_percent": 34, "army_strength": 8, "state": "adapting", "resources": {"food": 78, "wood": 28, "stone": 22, "iron": 14, "crystal": 12}, "intent": "Cut Terra's supply road, then retake the Crown from the flank."})
-    terra4.update({"core_hp": 900, "land_percent": 39, "army_strength": 10, "state": "leading", "resources": {"food": 69, "wood": 16, "stone": 42, "iron": 25, "crystal": 30}, "intent": "Fortify the Crown before Sol can recover."})
-    luna4.update({"land_percent": 21, "army_strength": 3, "state": "scouting", "resources": {"food": 70, "wood": 33, "stone": 14, "iron": 8, "crystal": 8}, "intent": "Keep the two fronts visible and avoid getting trapped in the centre."})
-    u = deepcopy(u)
-    u[0].update({"position": [-21, .45, -5], "health": 107, "task": "fall back and flank", "in_combat": False})
-    u[2].update({"position": [-26, .45, -8], "health": 71, "task": "cut supply trail", "in_combat": False})
-    u[3].update({"district_id": "crown", "position": [7, .45, 3], "health": 112, "task": "raise Terra banner", "in_combat": False})
-    u[5].update({"district_id": "crown", "position": [13, .45, 9], "health": 54, "task": "fortify Crown", "in_combat": False})
-    u[6].update({"district_id": "mine_tl", "position": [58, .45, -22], "health": 108, "task": "observe eastern front", "in_combat": False})
-    u[7].update({"district_id": "mine_tl", "position": [69, .45, -29], "task": "mark supply movement", "in_combat": False})
-    owners = {**owners, "crown": "terra"}
-    cues += [
-        {"cue_id": "terra-leads-snapshot", "at": 52, "kind": "snapshot", "snapshot": snapshot(31, "00:35", "resolution", u, [sol4, terra4, luna4], owners, contested="crown", progress=0.86, cut=("mine_tl",))},
-        {"cue_id": "terra-leads-shot", "at": 52.1, "kind": "camera", "target_id": "terra_commander", "shot": "close"},
-        {"cue_id": "terra-nearly-wins", "at": 53, "kind": "events", "events": [event("demo-013", 31, "territory", "terra", "Terra claims the Crown first. Sol is down to one route into the centre.", payload={"district_id": "crown", "district_state": {"owner": "terra", "supplied": True, "capture_progress": 0.86}})]},
-        {"cue_id": "sol-adapts", "at": 55, "kind": "message", "event": event("demo-014", 31, "message", "sol", "Terra holds the point, not the road. Cut the supply line; leave the banner for last.")},
-        {"cue_id": "flank-shot", "at": 57, "kind": "camera", "target_id": "sol_guard_1", "shot": "medium"},
-    ]
+    scout = deepcopy(workshop)
+    scout[7].update(position=[-12, .45, 8], district_id="crossroads", task="reveal crossroads route")
+    scout[4].update(position=[2, .45, -24], district_id="crossroads", task="spot Sol scout")
+    add(cues, "crossroads-scout", 51, "snapshot", snapshot=snapshot(39, "00:51", scout, [sol4, terra2, luna2], owners1, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"], contested=True))
+    add(cues, "crossroads-title", 51.2, "chapter", title="SCOUT CROSSROADS", subtitle="Scouting reveals the shortest approach to Terra's defended core.", duration=3, accent="luna")
+    add(cues, "crossroads-shot", 54, "camera", target_id="sol_scout_1", shot="close")
 
-    # 60–90s is a second, faster act in the accelerated one-hour match: Sol's
-    # western flank breaks Terra's eastern supply, Terra counterattacks, and Luna
-    # remains the visibly smaller scouting force between both fronts.
-    reversal_units = deepcopy(u)
-    reversal_units[0].update({"position": [-8, .45, -2], "task": "lead flank into Crown", "in_combat": True})
-    reversal_units[2].update({"position": [-3, .45, -10], "task": "break supply line", "in_combat": True})
-    reversal_units[3].update({"position": [13, .45, 5], "health": 92, "task": "hold against flank", "in_combat": True})
-    reversal_units[5].update({"position": [16, .45, 11], "health": 31, "task": "protect banner", "in_combat": True})
-    reversal_units[6].update({"district_id": "mine_tl", "position": [77, .45, -18], "task": "mark Terra reinforcements", "in_combat": False})
-    reversal_units[7].update({"district_id": "mine_tl", "position": [80, .45, -17], "task": "scan east road", "in_combat": False})
-    sol5, terra5, luna5 = deepcopy(sol4), deepcopy(terra4), deepcopy(luna4)
-    sol5.update({"land_percent": 39, "army_strength": 9, "state": "counterattacking", "resources": {"food": 72, "wood": 21, "stone": 18, "iron": 13, "crystal": 25}, "intent": "Finish the flank before Terra's workshop can resupply the Crown."})
-    terra5.update({"land_percent": 34, "army_strength": 8, "state": "under_pressure", "resources": {"food": 57, "wood": 12, "stone": 31, "iron": 16, "crystal": 19}, "intent": "Counterattack from Sunfall Mine and save second place."})
-    luna5.update({"land_percent": 20, "army_strength": 3, "state": "scouting", "resources": {"food": 61, "wood": 28, "stone": 14, "iron": 10, "crystal": 10}, "intent": "Preserve the scout team and report the two-front reversal."})
-    owners_reversal = {**owners, "crown": "sol"}
-    cues += [
-        {"cue_id": "reversal-snapshot", "at": 60, "kind": "snapshot", "snapshot": snapshot(35, "00:40", "resolution", reversal_units, [sol5, terra5, luna5], owners_reversal, contested="crown", progress=0.72, cut=("mine_st",))},
-        {"cue_id": "reversal-wide", "at": 60.1, "kind": "camera", "target_id": "crown", "shot": "wide"},
-        {"cue_id": "supply-cut", "at": 61, "kind": "events", "events": [event("demo-015", 35, "combat", "sol", "Sol's guard cuts Terra's Sunfall supply trail; the Crown defenders lose reinforcement.")]},
-        {"cue_id": "crown-captured", "at": 63, "kind": "events", "events": [event("demo-016", 35, "territory", "sol", "Sol retakes the Crown with a supply-line flank, not a frontal assault.", payload={"district_id": "crown", "district_state": {"owner": "sol", "supplied": True, "capture_progress": 1.0}})]},
-    ]
-    luna_overreach_units = deepcopy(reversal_units)
-    luna_overreach_units[6].update({"position": [91, .45, -4], "task": "confirm reserve route"})
-    luna_overreach_units[7].update({"position": [94, .45, -7], "task": "scout beyond eastern line"})
-    cues += [
-        {"cue_id": "luna-overreach-snapshot", "at": 65, "kind": "snapshot", "snapshot": snapshot(36, "00:43", "resolution", luna_overreach_units, [sol5, terra5, luna5], owners_reversal, contested="crown", progress=0.92, cut=("mine_st", "mine_tl"))},
-        {"cue_id": "luna-overextends", "at": 65.2, "kind": "message", "event": event("demo-017", 36, "message", "luna", "Public: Terra's reserve road is empty. Sol's western flank is cutting through.", targets=["sol", "terra"])},
-        {"cue_id": "luna-shot", "at": 67, "kind": "camera", "target_id": "luna_commander", "shot": "close"},
-    ]
+    assault = deepcopy(scout)
+    assault.append(unit("sol_guard_1", "sol", "guard", "mine_st", [48, .45, 34], "fieldcraft guard escorts siege"))
+    assault.append(unit("sol_siege_1", "sol", "siege", "mine_st", [55, .45, 39], "siege approaches Terra wall"))
+    assault[0].update(position=[36, .45, 31], district_id="mine_st", task="command assault")
+    assault[1].update(position=[40, .45, 28], district_id="mine_st", task="carry supplies")
+    assault[7].update(position=[35, .45, 25], district_id="mine_st", task="spot wall targets")
+    terra3 = deepcopy(terra2); terra3.update(state="fortified", resources={"food": 25, "wood": 20, "stone": 10, "iron": 0, "crystal": 0}, army_strength=1)
+    sol5 = deepcopy(sol4); sol5.update(state="sieging", army_strength=2, land_percent=31)
+    add(cues, "siege-march", 61, "snapshot", snapshot=snapshot(48, "01:01", assault, [sol5, terra3, luna2], owners1, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"]))
+    add(cues, "siege-title", 61.2, "chapter", title="SIEGE THE STRONGHOLD", subtitle="Walls absorb damage first; the core falls only after the defense breaks.", duration=3, accent="terra")
 
-    counter_units = deepcopy(reversal_units)
-    counter_units[0].update({"position": [0, .45, 3], "health": 88, "task": "fortify captured Crown", "in_combat": False})
-    counter_units[2].update({"position": [-7, .45, 10], "health": 58, "task": "hold west gate", "in_combat": False})
-    counter_units[3].update({"district_id": "mine_st", "position": [20, .45, 45], "health": 88, "task": "counterattack road", "in_combat": True})
-    counter_units[4].update({"district_id": "mine_st", "position": [29, .45, 56], "task": "repair workshop", "in_combat": False})
-    counter_units[5].update({"district_id": "mine_st", "position": [13, .45, 54], "health": 28, "task": "screen counterattack", "in_combat": True})
-    counter_units[6].update({"district_id": "mine_tl", "position": [65, .45, -5], "health": 84, "task": "escape crossfire", "in_combat": True})
-    counter_units[7].update({"district_id": "mine_tl", "position": [72, .45, -8], "health": 18, "task": "evacuate scout", "in_combat": True})
-    cues += [
-        {"cue_id": "counterattack-snapshot", "at": 70, "kind": "snapshot", "snapshot": snapshot(38, "00:47", "resolution", counter_units, [sol5, terra5, luna5], owners_reversal, contested="crown", progress=1.0, cut=("mine_st", "mine_tl"))},
-        {"cue_id": "counterattack-shot", "at": 70.1, "kind": "camera", "target_id": "terra_commander", "shot": "medium"},
-        {"cue_id": "terra-saves-second", "at": 72, "kind": "events", "events": [event("demo-018", 38, "combat", "terra", "Terra's disciplined counterattack saves Sunfall Mine and second place, but cannot reach the Crown.")]},
-        {"cue_id": "luna-collapse", "at": 74, "kind": "events", "events": [event("demo-019", 38, "combat", "luna", "Luna's small scout team is caught in the crossfire and retreats; information alone cannot win the Crown.")]},
-        {"cue_id": "sol-offer", "at": 76, "kind": "message", "event": event("demo-020", 38, "message", "sol", "Public: Withdraw from the centre. Trade is open after the score is settled.", targets=["terra", "luna"])},
-        {"cue_id": "overview-aftershock", "at": 78, "kind": "camera", "target_id": "overview", "shot": "overview"},
-    ]
+    exchange1 = deepcopy(assault)
+    exchange1[8].update(position=[77, .45, 18], district_id="home_terra", task="fire on Terra wall", combat=True, health=126)
+    exchange1[9].update(position=[70, .45, 20], district_id="home_terra", task="screen siege", combat=True, health=100)
+    exchange1[2].update(position=[84, .45, 22], district_id="home_terra", task="hold wall", combat=True, health=137)
+    add(cues, "siege-exchange-one", 68, "snapshot", snapshot=snapshot(54, "01:08", exchange1, [sol5, terra3, luna2], owners1, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"]))
+    add(cues, "siege-exchange-one-event", 69, "events", events=[event("c03", 54, "combat", "sol", "Exchange one: Sol's siege damages Terra's wall; Terra's commander answers from cover."), event("c04", 54, "structure_damaged", "terra", "Terra wall: 180 → 92 HP. The core remains untouched.")])
+    add(cues, "siege-effect-one", 69.1, "effect", effect="combat", target_id="sol_siege_1", duration=2)
 
-    final_units = deepcopy(counter_units)
-    final_units[0].update({"position": [1, .45, 4], "task": "victory patrol"})
-    final_units[2].update({"position": [-8, .45, 9], "task": "guard Crown"})
-    final_units[3].update({"district_id": "home_terra", "position": [52, .45, 77], "task": "rebuild defences", "in_combat": False})
-    final_units[4].update({"district_id": "mine_st", "position": [39, .45, 72], "task": "restore mine"})
-    final_units[6].update({"district_id": "home_luna", "position": [28, .45, -72], "task": "return from raid", "in_combat": False})
-    final_units[7].update({"district_id": "home_luna", "position": [22, .45, -79], "task": "report losses", "in_combat": False})
-    sol_final, terra_final, luna_final = deepcopy(sol5), deepcopy(terra5), deepcopy(luna5)
-    sol_final.update({"land_percent": 43, "army_strength": 9, "state": "victorious", "resources": {"food": 75, "wood": 24, "stone": 19, "iron": 16, "crystal": 48}, "intent": "Hold the Crown and convert the lead into a durable settlement."})
-    terra_final.update({"land_percent": 33, "army_strength": 8, "state": "recovering", "resources": {"food": 55, "wood": 16, "stone": 36, "iron": 21, "crystal": 8}, "intent": "Rebuild behind the Sunfall Mine line."})
-    luna_final.update({"land_percent": 18, "army_strength": 3, "state": "retreating", "resources": {"food": 54, "wood": 28, "stone": 12, "iron": 10, "crystal": 10}, "intent": "Consolidate the scout team after the two-front crossfire."})
-    final_owners = {**owners_reversal, "mine_tl": "neutral"}
-    cues += [
-        {"cue_id": "final-world-state", "at": 81, "kind": "snapshot", "snapshot": snapshot(40, "01:00", "complete", final_units, [sol_final, terra_final, luna_final], final_owners)},
-        {"cue_id": "final-sol-shot", "at": 81.1, "kind": "camera", "target_id": "sol_commander", "shot": "medium"},
-        {"cue_id": "season-summary", "at": 83, "kind": "events", "events": [event("demo-021", 40, "territory", "sol", "Accelerated one-hour match complete: Sol holds the Crown and 43% of the island."), event("demo-022", 40, "territory", "terra", "Terra's eastern workshop economy survives the two-front war in second place."), event("demo-023", 40, "territory", "luna", "Luna's valuable scouting never becomes a decisive fighting force, leaving third place." )]},
-        {"cue_id": "podium-overview", "at": 86, "kind": "camera", "target_id": "overview", "shot": "overview"},
-    ]
+    exchange2 = deepcopy(exchange1)
+    exchange2[8].update(position=[88, .45, 12], district_id="core_terra", task="breach wall; fire on core", combat=True, health=112)
+    exchange2[9].update(position=[81, .45, 14], district_id="core_terra", task="hold breach", combat=True, health=78)
+    exchange2[2].update(position=[91, .45, 14], district_id="core_terra", task="defend core", combat=True, health=112)
+    terra4 = deepcopy(terra3); terra4.update(state="stronghold under siege", core_hp=640)
+    add(cues, "siege-exchange-two", 75, "snapshot", snapshot=snapshot(60, "01:15", exchange2, [sol5, terra4, luna2], owners1, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"]))
+    add(cues, "siege-exchange-two-event", 76, "events", events=[event("c05", 60, "structure_destroyed", "sol", "Exchange two: the wall breaks. Siege fire now reaches Terra's core."), event("c06", 60, "core_damaged", "terra", "Terra core: 900 → 640 HP.")])
+
+    final = deepcopy(exchange2)
+    final[8].update(position=[96, .45, 5], task="final siege volley", combat=True, health=96)
+    final[9].update(position=[89, .45, 7], task="secure stronghold", combat=True, health=61)
+    final[2].update(position=[102, .45, 4], task="last defense", combat=True, health=74)
+    sol6 = deepcopy(sol5); sol6.update(state="leading · one rival remains", land_percent=39)
+    terra5 = deepcopy(terra4); terra5.update(state="eliminated", land_percent=0, core_hp=0, army_strength=0)
+    owners_final = {**owners1, "mine_st": "sol", "home_terra": "neutral", "core_terra": "neutral"}
+    add(cues, "siege-exchange-three", 83, "snapshot", snapshot=snapshot(67, "01:23", final, [sol6, terra5, luna2], owners_final, work=[], build=100, builders=["sol_worker_1", "sol_worker_2"], phase="resolution"))
+    add(cues, "last-stronghold", 84, "events", events=[event("c07", 67, "core_destroyed", "sol", "Exchange three: Terra's stronghold falls; its units and holdings are removed."), event("c08", 67, "conquest", "sol", "Two strongholds remain. Sol must still outlast Luna — conquest is last stronghold standing.")])
+    add(cues, "objective-title", 86, "chapter", title="ONE RIVAL REMAINS", subtitle="Sol wins this siege, but conquest ends only when a single stronghold is still standing.", duration=3, accent="sol")
+    add(cues, "final-shot", 88, "camera", target_id="core_terra", shot="wide")
 
     result = {
-        "schema_version": 2, "formula_version": "worldarena-score/demo-local-1", "match_id": "local-demo-open-world-001",
-        "result_notice": "Offline deterministic accelerated one-hour presentation demo. Not an official benchmark result.",
+        "schema_version": 2, "formula_version": "worldarena-score/1.1.0",
+        "match_id": "local-conquest-protocol-004",
+        "result_notice": "Offline deterministic conquest presentation. Not an official benchmark result.",
+        "weights": CATEGORY_WEIGHTS,
         "factions": [
-            {"faction_id": "sol", "model_id": "gpt-5.6-sol", "placement": 1, "worldarena_score": 86.0, "reason": "Crown control, resilient economy, and timely diplomacy."},
-            {"faction_id": "terra", "model_id": "gpt-5.6-terra", "placement": 2, "worldarena_score": 74.0, "reason": "Early infrastructure and a disciplined counterattack preserved second place."},
-            {"faction_id": "luna", "model_id": "gpt-5.6-luna", "placement": 3, "worldarena_score": 62.0, "reason": "Useful scouting could not match the two frontline armies."},
+            evaluation("sol", 1, {"objective_control": 94, "planning_adaptation": 90, "resource_combat_efficiency": 92, "social_intelligence": 62, "delegation_cognition": 84, "reliability_safety": 75}, {"strongholds_destroyed": 1, "strongholds_alive": 1, "territory": 39, "structures_destroyed": 1, "invalid": 0}, 60, "Committed research, guard, and siege only after the scout exposed the route.", 54, "Left the workshop workers briefly exposed while the scout crossed crossroads."),
+            evaluation("terra", 2, {"objective_control": 54, "planning_adaptation": 76, "resource_combat_efficiency": 70, "social_intelligence": 52, "delegation_cognition": 66, "reliability_safety": 80}, {"strongholds_destroyed": 0, "strongholds_alive": 0, "territory": 0, "structures_destroyed": 0, "invalid": 0}, 54, "Used its wall to absorb the first exchange and protect the core.", 60, "Could not replace the breached wall before the siege reached the core."),
+            evaluation("luna", 3, {"objective_control": 48, "planning_adaptation": 72, "resource_combat_efficiency": 66, "social_intelligence": 80, "delegation_cognition": 70, "reliability_safety": 88}, {"strongholds_destroyed": 0, "strongholds_alive": 1, "territory": 15, "structures_destroyed": 0, "invalid": 0}, 39, "Scouted crossroads without losing its initial units.", 48, "Did not contest Sol's route before the eastern siege began."),
         ],
     }
-    # Chapters and restrained world-space effects are deliberately spread across
-    # the whole runtime.  They make the upload read like a short film without
-    # adding a wall of UI or claiming that an LLM produced these decisions.
-    cues += [
-        {"cue_id": "chapter-frontier", "at": 0.2, "kind": "chapter", "title": "ONE ACCELERATED HOUR", "subtitle": "Sol and Terra race to control two routes into the Crown.", "duration": 2.8, "accent": "neutral"},
-        {"cue_id": "effect-sol-gather", "at": 8.0, "kind": "effect", "effect": "gather", "target_id": "sol_worker_1", "duration": 1.5},
-        {"cue_id": "chapter-economy", "at": 12.0, "kind": "chapter", "title": "THE OPENING", "subtitle": "Gather, build, and find the routes to power.", "duration": 2.6, "accent": "terra"},
-        {"cue_id": "effect-terra-build", "at": 15.0, "kind": "effect", "effect": "build", "target_id": "terra_commander", "duration": 2.0},
-        {"cue_id": "effect-luna-gather", "at": 19.4, "kind": "effect", "effect": "gather", "target_id": "luna_scout_1", "duration": 1.2},
-        {"cue_id": "chapter-diplomacy", "at": 24.0, "kind": "chapter", "title": "THE SCOUT REPORT", "subtitle": "Luna sells the eastern timing; Sol commits to the western front.", "duration": 2.5, "accent": "luna"},
-        {"cue_id": "effect-trade", "at": 29.5, "kind": "effect", "effect": "trade", "target_id": "sol_commander", "duration": 1.8},
-        {"cue_id": "effect-sol-build", "at": 32.0, "kind": "effect", "effect": "build", "target_id": "sol_worker_1", "duration": 1.4},
-        {"cue_id": "chapter-crown", "at": 41.0, "kind": "chapter", "title": "TWO FRONTS COLLIDE", "subtitle": "Sol attacks from the west. Terra fortifies from the east.", "duration": 2.7, "accent": "terra"},
-        {"cue_id": "effect-crown-combat-a", "at": 43.6, "kind": "effect", "effect": "combat", "target_id": "terra_commander", "duration": 2.1},
-        {"cue_id": "effect-crown-combat-b", "at": 46.0, "kind": "effect", "effect": "combat", "target_id": "sol_guard_1", "duration": 1.7},
-        {"cue_id": "effect-terra-capture", "at": 52.5, "kind": "effect", "effect": "capture", "target_id": "crown", "duration": 2.4},
-        {"cue_id": "chapter-reversal", "at": 58.5, "kind": "chapter", "title": "THE REVERSAL", "subtitle": "Sol abandons the banner and cuts the supply road.", "duration": 2.8, "accent": "sol"},
-        {"cue_id": "effect-sol-combat", "at": 60.7, "kind": "effect", "effect": "combat", "target_id": "sol_commander", "duration": 2.3},
-        {"cue_id": "effect-sol-capture", "at": 63.2, "kind": "effect", "effect": "capture", "target_id": "crown", "duration": 2.5},
-        {"cue_id": "effect-luna-greed", "at": 65.1, "kind": "effect", "effect": "gather", "target_id": "luna_commander", "duration": 1.2},
-        {"cue_id": "effect-terra-counter", "at": 70.6, "kind": "effect", "effect": "combat", "target_id": "terra_commander", "duration": 2.0},
-        {"cue_id": "effect-luna-ambush", "at": 74.2, "kind": "effect", "effect": "combat", "target_id": "luna_scout_1", "duration": 1.6},
-        {"cue_id": "chapter-verdict", "at": 80.0, "kind": "chapter", "title": "THE VERDICT", "subtitle": "Sol adapts, Terra endures, Luna scouts the aftermath.", "duration": 2.8, "accent": "sol"},
-        {"cue_id": "effect-terra-rally-east", "at": 37.0, "kind": "effect", "effect": "combat", "target_id": "terra_guard_1", "duration": 1.3},
-        {"cue_id": "effect-sol-push-west", "at": 39.4, "kind": "effect", "effect": "combat", "target_id": "sol_commander", "duration": 1.3},
-        {"cue_id": "effect-luna-scouting", "at": 49.2, "kind": "effect", "effect": "gather", "target_id": "luna_scout_1", "duration": 1.0},
-        {"cue_id": "effect-terra-fortify", "at": 55.6, "kind": "effect", "effect": "build", "target_id": "terra_guard_1", "duration": 1.4},
-        {"cue_id": "effect-sol-hold-west", "at": 68.1, "kind": "effect", "effect": "build", "target_id": "sol_guard_1", "duration": 1.3},
-        {"cue_id": "effect-final-capture", "at": 84.0, "kind": "effect", "effect": "capture", "target_id": "crown", "duration": 1.7},
-        {"cue_id": "demo-result", "at": 89, "kind": "result", "result": result},
-    ]
-    # The show player consumes cues in temporal order; sort after composing the
-    # small story blocks so chapter/effect additions cannot create accidental gaps.
+    add(cues, "demo-result", 89, "result", result=result)
     cues.sort(key=lambda cue: (float(cue["at"]), cue["cue_id"]))
     replay = {
         "schema_version": 1, "duration_seconds": DURATION_SECONDS,
-        "title": "WorldArena — Accelerated One-Hour Two-Front Highlight", "mode": "offline_deterministic_demo",
-        "notice": "UNVERIFIED LOCAL DEMO — accelerated one-hour, presentation-only story; not an official benchmark result.",
+        "title": "WorldArena — Protocol 0.4 Conquest", "mode": "offline_deterministic_demo",
+        "notice": "UNVERIFIED LOCAL DEMO — deterministic presentation-only conquest story; not an official benchmark result.",
         "initial_snapshot": initial, "cues": cues, "result": result,
     }
     assert all(0 <= float(cue["at"]) <= DURATION_SECONDS for cue in cues)
     assert [cue["cue_id"] for cue in cues] == list(dict.fromkeys(cue["cue_id"] for cue in cues))
     REPLAY_PATH.write_text(json.dumps(replay, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     digest = hashlib.sha256(REPLAY_PATH.read_bytes()).hexdigest()
-    manifest = {
-        "schema_version": 1, "protocol": "world-arena/0.2", "verified": False,
-        "label": "UNVERIFIED LOCAL DEMO", "notice": "Offline deterministic accelerated one-hour presentation demo; not an official benchmark result.",
-        "replay_file": REPLAY_PATH.name, "replay_sha256": digest,
-    }
+    manifest = {"schema_version": 1, "protocol": "world-arena/0.4", "verified": False,
+                "label": "UNVERIFIED LOCAL DEMO", "notice": "Offline deterministic conquest presentation; not an official benchmark result.",
+                "replay_file": REPLAY_PATH.name, "replay_sha256": digest}
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    # The exporter uses this friendly name while older tooling still accepts a
-    # standard manifest.json beside the replay.
     (OUT / "showcase.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Wrote {REPLAY_PATH.relative_to(ROOT)} ({len(cues)} cues, {DURATION_SECONDS}s)")
     print(f"SHA-256 {digest}")

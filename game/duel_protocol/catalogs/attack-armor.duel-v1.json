@@ -1,0 +1,82 @@
+{
+  "catalog_id": "attack-armor.duel-v1",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "ruleset_id": "duel-rules-v1",
+  "multiplier_unit": "basis_point",
+  "armor_value_unit": "centi_armor",
+  "attack_types": ["arcane", "blade", "hero", "pierce", "siege", "spell"],
+  "armor_classes": ["fortified", "heavy", "hero", "light", "medium"],
+  "matrix_bp": {
+    "arcane": {"fortified": 3500, "heavy": 15000, "hero": 7500, "light": 10000, "medium": 7500},
+    "blade": {"fortified": 5000, "heavy": 10000, "hero": 10000, "light": 8000, "medium": 12500},
+    "hero": {"fortified": 5000, "heavy": 10000, "hero": 10000, "light": 10000, "medium": 10000},
+    "pierce": {"fortified": 3500, "heavy": 7500, "hero": 7500, "light": 15000, "medium": 10000},
+    "siege": {"fortified": 15000, "heavy": 7500, "hero": 5000, "light": 7500, "medium": 7500}
+  },
+  "spell_damage": {
+    "uses_matrix": false,
+    "uses_ordinary_armor_value": false,
+    "rejected_by_magic_immunity": true
+  },
+  "arcane_damage": {
+    "rejected_by_magic_immunity": true
+  },
+  "armor_formula": {
+    "positive": "floor(10000*10000/(10000+6*armor_centi))",
+    "negative": "min(20000,10000+6*abs(armor_centi))",
+    "negative_cap_bp": 20000,
+    "final_floor_count": 1,
+    "minimum_valid_nonzero_damage": 1
+  },
+  "high_ground": {
+    "ranged_physical_low_to_high_bp": 8000,
+    "higher_to_lower_sight_bp": 11000,
+    "higher_to_lower_damage_bp": 10000,
+    "melee_ignores_damage_penalty": true
+  },
+  "ordinary_attack_defaults": {
+    "melee_windup_ticks": 5,
+    "ordinary_projectile_windup_ticks": 6,
+    "siege_windup_ticks": 10,
+    "melee_minimum_acquisition_range_mt": 8000,
+    "ranged_minimum_acquisition_range_mt": 10000,
+    "ranged_acquisition_rule": "max_10000_and_attack_range",
+    "melee_acquisition_rule": "max_8000_and_attack_range_plus_2000",
+    "siege_minimum_range_mt": 4000,
+    "cooldown_start": "impact",
+    "melee_impact_kind": "contact_check",
+    "ranged_impact_kind": "authoritative_homing_projectile",
+    "projectile_speed_mt_per_tick": {
+      "arcane": 1600,
+      "blade": 1600,
+      "hero": 2000,
+      "pierce": 2000,
+      "siege": 1000,
+      "tower": 1500
+    }
+  },
+  "default_target_layers": {
+    "arcane_range_at_least_8000": ["air", "ground"],
+    "blade_melee_or_projectile": ["ground"],
+    "hero_melee": ["ground"],
+    "hero_ranged": ["air", "ground"],
+    "pierce_range_at_least_8000": ["air", "ground"],
+    "siege": ["ground"]
+  },
+  "damage_pipeline": [
+    "base_or_attribute_value",
+    "flat_bonuses",
+    "attack_or_armor_upgrades",
+    "source_percentage_modifiers",
+    "attack_versus_armor_matrix",
+    "elevation",
+    "armor_formula",
+    "target_resistance_or_damage_taken",
+    "shields",
+    "hit_points"
+  ],
+  "percentage_rounding": "floor_after_each_stage",
+  "same_tick_impacts": "accumulate_from_pre_impact_state_then_apply_simultaneously",
+  "overkill_transfer": false,
+  "friendly_fire_default_bp": 0
+}

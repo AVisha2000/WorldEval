@@ -12,13 +12,13 @@ from .helpers import request
 def _configure_message(**overrides):
     message = {
         "type": "configure_match",
-        "protocol": "world-arena/0.2",
+        "protocol": "world-arena/0.4",
         "brain_mode": "demo",
         "mode": "demo",
         "track": "standard",
         "map_id": "tri_13_v1",
         "seed": 7,
-        "max_rounds": 40,
+        "max_rounds": 120,
         "agents": [
             {
                 "agent_id": faction,
@@ -47,8 +47,16 @@ def test_arena_websocket_commits_then_reveals_all_plans() -> None:
             connected = websocket.receive_json()
             assert connected == {
                 "type": "connected",
-                "protocol": "world-arena/0.2",
-                "supports": ["demo", "openai", "commit_reveal", "simultaneous_plans"],
+                "protocol": "world-arena/0.4",
+                "supports": [
+                    "demo",
+                    "openai",
+                    "commit_reveal",
+                    "simultaneous_plans",
+                    "world-arena/0.2",
+                    "world-arena/0.3",
+                    "world-arena/0.4",
+                ],
             }
 
             websocket.send_json(_configure_message())
@@ -68,7 +76,7 @@ def test_arena_websocket_commits_then_reveals_all_plans() -> None:
             websocket.send_json(
                 {
                     "type": "round_commits_locked",
-                    "protocol": "world-arena/0.2",
+                    "protocol": "world-arena/0.4",
                     "match_id": commits["match_id"],
                     "round": commits["round"],
                     "commit_hashes": hashes,
@@ -112,7 +120,7 @@ def test_terminal_godot_receipt_emits_a_verified_deterministic_result(
             websocket.send_json(
                 {
                     "type": "round_commits_locked",
-                    "protocol": "world-arena/0.2",
+                    "protocol": "world-arena/0.4",
                     "match_id": "match-test",
                     "round": 1,
                     "commit_hashes": {
@@ -125,7 +133,7 @@ def test_terminal_godot_receipt_emits_a_verified_deterministic_result(
             websocket.send_json(
                 {
                     "type": "round_receipts",
-                    "protocol": "world-arena/0.2",
+                    "protocol": "world-arena/0.4",
                     "match_id": "match-test",
                     "round": 1,
                     "previous_state_hash": "a" * 64,
@@ -159,7 +167,6 @@ def test_terminal_godot_receipt_emits_a_verified_deterministic_result(
                                 "core_health": 1000,
                                 "supplied_points": 1,
                                 "territory_time": 1,
-                                "crown_hold_rounds": 0,
                                 "completed_structure_value": 0,
                                 "completed_structures": 0,
                             },
@@ -171,7 +178,6 @@ def test_terminal_godot_receipt_emits_a_verified_deterministic_result(
                                 "core_health": 900,
                                 "supplied_points": 1,
                                 "territory_time": 1,
-                                "crown_hold_rounds": 0,
                                 "completed_structure_value": 0,
                                 "completed_structures": 0,
                             },
@@ -183,7 +189,6 @@ def test_terminal_godot_receipt_emits_a_verified_deterministic_result(
                                 "core_health": 800,
                                 "supplied_points": 1,
                                 "territory_time": 1,
-                                "crown_hold_rounds": 0,
                                 "completed_structure_value": 0,
                                 "completed_structures": 0,
                             },

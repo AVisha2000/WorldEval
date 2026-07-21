@@ -1,0 +1,38 @@
+{
+  "message_type": "action_batch",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "match_id": "m_0042",
+  "observation_seq": 18,
+  "based_on_observation_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "client_batch_id": "batch_18_a",
+  "valid_until_tick": 1801,
+  "intent_summary": "Add ranged units and contest center high ground.",
+  "working_memory": "Natural planned after medium camp; enemy showed heavy melee.",
+  "commands": [
+    {
+      "command_id": "c1",
+      "op": "produce",
+      "producer_id": "e_barr1",
+      "unit_type_id": "longbow",
+      "quantity": 2
+    },
+    {
+      "command_id": "c2",
+      "op": "order_squad",
+      "squad_id": "squad.main",
+      "objective": "attack_move_to",
+      "target": {"kind": "region_slot", "region_id": "r_center", "slot_id": "high_ground"},
+      "formation": "spread",
+      "engagement": "engage_visible",
+      "queue": "replace"
+    },
+    {
+      "command_id": "c3",
+      "op": "cast",
+      "actor_id": "e_hero1",
+      "ability_id": "marshal_shield_strike",
+      "target": {"kind": "entity", "entity_id": "e_enemy7"},
+      "queue": "front"
+    }
+  ]
+}

@@ -8,7 +8,7 @@ from .helpers import observation
 
 
 @pytest.mark.asyncio
-async def test_demo_policy_opens_with_movement_economy_diplomacy_and_advisors() -> None:
+async def test_demo_policy_opens_with_production_diplomacy_and_advisors() -> None:
     view = observation("sol")
     view.cognition = CognitionView(track="agentic", remaining_units=120)
     view.groups.append(
@@ -25,7 +25,20 @@ async def test_demo_policy_opens_with_movement_economy_diplomacy_and_advisors() 
     plan = await commander.plan(view, [])
 
     assert sum(order.command_points for order in plan.orders) <= 4
-    assert any(order.action == PhysicalAction.MOBILIZE for order in plan.orders)
+    assert any(
+        order.action == PhysicalAction.BUILD and order.mode == "train" for order in plan.orders
+    )
+    assert {order.action for order in plan.orders}.issubset(
+        {
+            PhysicalAction.MOVE,
+            PhysicalAction.GATHER,
+            PhysicalAction.BUILD,
+            PhysicalAction.ATTACK,
+            PhysicalAction.RESEARCH,
+            PhysicalAction.NEGOTIATE,
+            PhysicalAction.THINK,
+        }
+    )
     assert any(message.visibility == "public" for message in plan.communication.utterances)
     assert {operation.specialist_id for operation in plan.specialist_ops} == {
         "sol_economy",

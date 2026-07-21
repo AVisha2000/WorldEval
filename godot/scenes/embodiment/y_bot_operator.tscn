@@ -1,0 +1,37 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/y-bot.fbx" id="1_base"]
+[ext_resource type="Script" path="res://scripts/embodiment/presentation/scene/y_bot_operator.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/idle.fbx" id="3_idle"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/walk.fbx" id="4_walk"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/run.fbx" id="5_run"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/attack.fbx" id="6_attack"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/guard.fbx" id="7_guard"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/gather.fbx" id="8_gather"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/build.fbx" id="9_build"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/hit.fbx" id="10_hit"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/celebrate.fbx" id="11_celebrate"]
+[ext_resource type="PackedScene" path="res://assets/external/mixamo/defeat.fbx" id="12_defeat"]
+
+[sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_y_bot"]
+
+[node name="YBotOperator" instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+clip_scenes = {
+"attack": ExtResource("6_attack"),
+"build": ExtResource("9_build"),
+"celebrate": ExtResource("11_celebrate"),
+"defeat": ExtResource("12_defeat"),
+"gather": ExtResource("8_gather"),
+"guard": ExtResource("7_guard"),
+"hit": ExtResource("10_hit"),
+"idle": ExtResource("3_idle"),
+"run": ExtResource("5_run"),
+"walk": ExtResource("4_walk")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="." index="2"]
+tree_root = SubResource("AnimationNodeStateMachine_y_bot")
+anim_player = NodePath("../AnimationPlayer")
+
+[editable path="Skeleton3D"]

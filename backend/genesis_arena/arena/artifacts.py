@@ -17,7 +17,9 @@ from .models import (
     FactionPlan,
     HashHex,
     Identifier,
+    ProtocolVersion,
     UsageRecord,
+    MAX_CONQUEST_ROUNDS,
 )
 
 
@@ -42,7 +44,7 @@ class RunMetadata(ArenaModel):
 class RunManifest(ArenaModel):
     schema_version: Literal[1] = 1
     match_id: Identifier
-    protocol: Literal["world-arena/0.2"] = "world-arena/0.2"
+    protocol: ProtocolVersion = "world-arena/0.4"
     map_id: Identifier
     map_hash: HashHex
     rules_id: Identifier
@@ -50,7 +52,7 @@ class RunManifest(ArenaModel):
     tool_hash: HashHex
     seed: int = Field(ge=0)
     cognition_track: Literal["standard", "agentic", "open"]
-    round_limit: int = Field(default=40, ge=1, le=48)
+    round_limit: int = Field(default=120, ge=1, le=MAX_CONQUEST_ROUNDS)
     models: List[ModelSnapshot] = Field(min_length=3, max_length=3)
     metadata: RunMetadata = Field(default_factory=RunMetadata)
 
@@ -71,7 +73,7 @@ class CommittedPlanArtifact(ArenaModel):
 class RoundArtifact(ArenaModel):
     schema_version: Literal[1] = 1
     match_id: Identifier
-    round: int = Field(ge=1, le=48)
+    round: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     previous_state_hash: HashHex
     state_hash: Optional[HashHex] = None
     plans: List[CommittedPlanArtifact] = Field(min_length=3, max_length=3)
@@ -83,7 +85,7 @@ class RunResult(ArenaModel):
     match_id: Identifier
     placements: Dict[FactionId, int]
     final_state_hash: HashHex
-    completed_rounds: int = Field(ge=1, le=48)
+    completed_rounds: int = Field(ge=1, le=MAX_CONQUEST_ROUNDS)
     winner_id: Optional[FactionId] = None
     draw: bool = False
     usage: Dict[FactionId, UsageRecord] = Field(default_factory=dict)
@@ -157,7 +159,7 @@ class RunArtifactStore:
             self._append_jsonl(directory / "events.jsonl", event.model_dump(mode="json"))
 
     def write_checkpoint(self, match_id: str, round_number: int, state: Dict[str, object]) -> None:
-        if round_number < 0 or round_number > 48:
+        if round_number < 0 or round_number > MAX_CONQUEST_ROUNDS:
             raise ValueError("checkpoint round is outside Arena limits")
         self._assert_secret_free(state)
         directory = self._require_run(match_id)
@@ -213,9 +215,8 @@ class RunArtifactStore:
         if isinstance(value, dict):
             for key, child in value.items():
                 normalized_key = str(key).strip().lower()
-                if (
-                    normalized_key in self.FORBIDDEN_KEYS
-                    or normalized_key.endswith(("_api_key", "_password", "_secret"))
+                if normalized_key in self.FORBIDDEN_KEYS or normalized_key.endswith(
+                    ("_api_key", "_password", "_secret")
                 ):
                     raise ValueError(f"secret-bearing field cannot be persisted: {key}")
                 self._assert_secret_free(child)

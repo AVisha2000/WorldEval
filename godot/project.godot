@@ -16,6 +16,15 @@ window/size/window_width_override=1440
 window/size/window_height_override=900
 window/stretch/mode="canvas_items"
 
+[debug]
+
+file_logging/enable_file_logging=false
+file_logging/enable_file_logging.pc=false
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

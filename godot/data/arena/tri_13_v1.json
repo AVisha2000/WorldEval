@@ -14,19 +14,19 @@
     "wild_st": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
     "wild_tl": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
     "wild_ls": {"kind": "wild", "resources": {"forest": 420, "stone": 100, "animals": 180}},
-    "crown": {"kind": "crown", "resources": {"stone": 220, "iron": 160, "animals": 120, "crystal": 120}}
+    "crossroads": {"kind": "crossroads", "resources": {"stone": 220, "iron": 160, "animals": 120, "crystal": 120}}
   },
   "adjacency": {
     "core_sol": ["home_sol"], "core_terra": ["home_terra"], "core_luna": ["home_luna"],
     "home_sol": ["core_sol", "mine_st", "mine_ls", "wild_st", "wild_ls"],
     "home_terra": ["core_terra", "mine_st", "mine_tl", "wild_st", "wild_tl"],
     "home_luna": ["core_luna", "mine_ls", "mine_tl", "wild_ls", "wild_tl"],
-    "mine_st": ["home_sol", "home_terra", "wild_st", "crown"],
-    "mine_tl": ["home_terra", "home_luna", "wild_tl", "crown"],
-    "mine_ls": ["home_luna", "home_sol", "wild_ls", "crown"],
-    "wild_st": ["home_sol", "home_terra", "mine_st", "crown"],
-    "wild_tl": ["home_terra", "home_luna", "mine_tl", "crown"],
-    "wild_ls": ["home_luna", "home_sol", "mine_ls", "crown"],
-    "crown": ["mine_st", "mine_tl", "mine_ls", "wild_st", "wild_tl", "wild_ls"]
+    "mine_st": ["home_sol", "home_terra", "wild_st", "crossroads"],
+    "mine_tl": ["home_terra", "home_luna", "wild_tl", "crossroads"],
+    "mine_ls": ["home_luna", "home_sol", "wild_ls", "crossroads"],
+    "wild_st": ["home_sol", "home_terra", "mine_st", "crossroads"],
+    "wild_tl": ["home_terra", "home_luna", "mine_tl", "crossroads"],
+    "wild_ls": ["home_luna", "home_sol", "mine_ls", "crossroads"],
+    "crossroads": ["mine_st", "mine_tl", "mine_ls", "wild_st", "wild_tl", "wild_ls"]
   }
 }

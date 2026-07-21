@@ -1,5 +1,7 @@
 extends Node3D
 
+const AssetResolver := preload("res://scripts/arena/presentation/arena_asset_resolver.gd")
+
 # A deliberately small visual-only actor. The simulation owns this node's state;
 # this script only makes sparse map units read as people at the arena camera scale.
 var unit_id := ""
@@ -12,6 +14,8 @@ var _ring_material: StandardMaterial3D
 var _class_label: Label3D
 var _status_label: Label3D
 var _health_label: Label3D
+var _health_back: MeshInstance3D
+var _health_fill: MeshInstance3D
 var _model_root: Node3D
 var _left_leg: Node3D
 var _right_leg: Node3D
@@ -20,6 +24,7 @@ var _right_arm: Node3D
 var _tool: Node3D
 var _head: Node3D
 var _move_tween: Tween
+var _navigation_agent: NavigationAgent3D
 var _target_position := Vector3.ZERO
 var _walk_phase := 0.0
 var _combat_phase := 0.0
@@ -68,9 +73,17 @@ func apply_state(state: Dictionary) -> void:
 		# A brief purely visual hit reaction makes damage legible in a replay.
 		_damage_reaction = 0.42
 	_last_health = health
-	_health_label.text = "%d/%d" % [health, max_health]
-	_health_label.visible = health < max_health or selected or in_combat
-	_class_label.visible = unit_type == "commander" or selected or in_combat
+	# At spectator zoom, health/task glyphs on every worker turn settlements into
+	# an unreadable cloud. Keep world labels for selected, fighting, or damaged units.
+	var show_health := selected or in_combat or health < max_health * 0.55
+	var health_ratio := clampf(float(health) / float(max_health), 0.0, 1.0)
+	_health_label.text = "%d / %d" % [health, max_health]
+	_health_label.visible = show_health
+	_health_back.visible = show_health
+	_health_fill.visible = show_health
+	_health_fill.scale.x = maxf(0.02, health_ratio)
+	_health_fill.position.x = -2.6 + 2.6 * maxf(0.02, health_ratio)
+	_class_label.visible = selected or in_combat
 
 	# Status copy is intentionally reserved for truly exceptional conditions.
 	_status_label.visible = false
@@ -82,7 +95,7 @@ func apply_state(state: Dictionary) -> void:
 		_status_label.text = "NO SUPPLY"
 		_status_label.modulate = Color("ff7a70")
 		_status_label.visible = true
-	else:
+	elif selected or in_combat:
 		var task_badge := _task_badge(_task)
 		if not task_badge.is_empty():
 			_status_label.text = task_badge
@@ -189,6 +202,10 @@ func _move_to(next_position: Vector3) -> void:
 	if next_position.is_equal_approx(_target_position):
 		return
 	_target_position = next_position
+	if _navigation_agent != null:
+		# Authoritative replay positions remain the destination.  The agent is a
+		# cosmetic route hook for imported-world navigation meshes when available.
+		_navigation_agent.target_position = _target_position
 	if _move_tween != null and _move_tween.is_valid():
 		_move_tween.kill()
 		_is_traversing = false
@@ -228,9 +245,22 @@ func _build_visual() -> void:
 	_ring_material = _material(_faction_color.lightened(0.18), true)
 	_model_root = Node3D.new()
 	add_child(_model_root)
+	_navigation_agent = NavigationAgent3D.new()
+	_navigation_agent.path_desired_distance = 0.4
+	_navigation_agent.target_desired_distance = 0.55
+	add_child(_navigation_agent)
+	var imported_model := AssetResolver.instantiate_unit(unit_type)
+	if imported_model != null:
+		_model_root.add_child(imported_model)
+		imported_model.scale = Vector3.ONE * (1.35 if unit_type == "commander" else 1.08)
+		_build_ground_marker(1.7 if unit_type == "commander" else 1.45)
+		_build_labels(_character_height())
+		return
 
 	var height := _character_height()
-	var scale_factor := 1.22 if unit_type == "commander" else 1.0
+	# The compact battlefield keeps actors hero-sized and readable without UI-only
+	# board markers. Commanders remain slightly taller than their squads.
+	var scale_factor := 1.92 if unit_type == "commander" else 1.62
 	_build_humanoid(height, scale_factor)
 	_build_equipment(height, scale_factor)
 	_build_ground_marker(scale_factor)
@@ -291,13 +321,33 @@ func _build_ground_marker(scale_factor: float) -> void:
 
 
 func _build_labels(height: float) -> void:
-	_class_label = _label(_class_glyph(), height + 0.88, 13)
+	_class_label = _label(_class_glyph(), height + 2.35, 18)
 	_class_label.modulate = _faction_color.lightened(0.28)
 	_class_label.visible = unit_type == "commander"
-	_health_label = _label("", height + 0.52, 11)
+	_build_health_bar(height + 1.32)
+	_health_label = _label("", height + 1.67, 17)
 	_health_label.modulate = Color("edf7ed")
-	_status_label = _label("", height + 0.22, 11)
+	_status_label = _label("", height + 0.72, 17)
 	_status_label.modulate = Color("9fe3d2")
+
+
+func _build_health_bar(y_position: float) -> void:
+	_health_back = MeshInstance3D.new()
+	var back_mesh := QuadMesh.new()
+	back_mesh.size = Vector2(5.2, 0.58)
+	_health_back.mesh = back_mesh
+	_health_back.position = Vector3(0, y_position, 0)
+	_health_back.material_override = _ui_material(Color("091219"))
+	_health_back.visible = false
+	add_child(_health_back)
+	_health_fill = MeshInstance3D.new()
+	var fill_mesh := QuadMesh.new()
+	fill_mesh.size = Vector2(5.2, 0.64)
+	_health_fill.mesh = fill_mesh
+	_health_fill.position = Vector3(0, y_position, -0.02)
+	_health_fill.material_override = _ui_material(Color("65d681"))
+	_health_fill.visible = false
+	add_child(_health_fill)
 
 
 func _part(parent: Node3D, mesh: Mesh, material: Material, part_position: Vector3, part_rotation := Vector3.ZERO) -> Node3D:
@@ -316,10 +366,10 @@ func _label(text_value: String, y_position: float, font_size_value: int) -> Labe
 	var label := Label3D.new()
 	label.text = text_value
 	label.font_size = font_size_value
-	label.outline_size = 2
+	label.outline_size = 4
 	label.position.y = y_position
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.pixel_size = 0.014
+	label.pixel_size = 0.055
 	label.visible = false
 	add_child(label)
 	return label
@@ -352,12 +402,12 @@ func _tapered_mesh(top_radius: float, bottom_radius: float, height: float) -> Cy
 
 func _character_height() -> float:
 	match unit_type:
-		"commander": return 3.9
-		"scout": return 2.55
-		"guard": return 3.0
-		"militia": return 2.8
-		"siege": return 3.15
-		_: return 2.65
+		"commander": return 5.15
+		"scout": return 3.65
+		"guard": return 4.15
+		"militia": return 3.85
+		"siege": return 4.25
+		_: return 3.75
 
 
 func _class_glyph() -> String:
@@ -380,4 +430,13 @@ func _material(color: Color, emissive := false) -> StandardMaterial3D:
 		material.emission_enabled = true
 		material.emission = color
 		material.emission_energy_multiplier = 0.72
+	return material
+
+
+func _ui_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.no_depth_test = true
 	return material

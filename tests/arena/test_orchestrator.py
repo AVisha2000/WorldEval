@@ -94,7 +94,7 @@ async def test_specialists_share_budget_and_run_before_commander() -> None:
     configured["sol"] = FactionRuntime(
         faction_id="sol",
         commander=ScriptedCommander(inspecting_plan),
-        budget=CognitionBudget(total_units=82),
+        budget=CognitionBudget(total_units=242),
         specialists={
             f"sol-{role.value}": SpecialistSlot(
                 specialist_id=f"sol-{role.value}",
@@ -115,7 +115,7 @@ async def test_specialists_share_budget_and_run_before_commander() -> None:
     assert seen_recommendation_counts == [2]
     sol_commit = next(item for item in commits.commits if item.faction_id == "sol")
     assert sol_commit.specialist_calls == 2
-    assert configured["sol"].budget.remaining_units == 78
+    assert configured["sol"].budget.remaining_units == 238
 
 
 @pytest.mark.asyncio
@@ -127,11 +127,11 @@ async def test_duplicate_round_commit_is_rejected() -> None:
 
 
 def test_budget_never_spends_reserved_commander_units() -> None:
-    budget = CognitionBudget(total_units=81)
+    budget = CognitionBudget(total_units=241)
     assert budget.can_call_specialist()
     budget.spend_specialist()
     assert not budget.can_call_specialist()
-    for _ in range(40):
+    for _ in range(120):
         budget.spend_commander()
     assert budget.remaining_units == 0
 
@@ -344,23 +344,16 @@ async def test_calls_receive_authoritative_post_spend_cognition_view() -> None:
     )
     await ArenaOrchestrator(configured).commit_round(request())
 
-    assert observed == {"specialist": 119, "commander": 117}
+    assert observed == {"specialist": 359, "commander": 357}
 
 
-def test_sudden_death_commander_reserve_and_open_specialists() -> None:
+def test_120_round_cap_has_no_sudden_death_exception() -> None:
     budget = CognitionBudget()
-    for _ in range(40):
-        budget.spend_specialist()
+    assert budget.total_rounds == 120
+    assert budget.total_units == 360
+    for _ in range(120):
         budget.spend_commander()
-    assert budget.remaining_units == 0
-    for _ in range(8):
+    assert budget.commander_calls == 120
+    assert budget.remaining_units == 120
+    with pytest.raises(ArenaRuntimeError, match="round limit exhausted"):
         budget.spend_commander()
-    assert budget.sudden_death_remaining_units == 0
-    with pytest.raises(ArenaRuntimeError, match="round limit"):
-        budget.spend_commander()
-
-    open_budget = CognitionBudget(track="open")
-    assert open_budget.can_call_specialist()
-    open_budget.spend_specialist()
-    assert open_budget.specialist_calls == 1
-    assert open_budget.remaining_units == 120

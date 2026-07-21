@@ -1,16 +1,18 @@
 extends Node3D
 
-## Owns the world-arena/0.2 match lifecycle. ArenaSimulation is authoritative;
+## Owns the world-arena/0.4 conquest lifecycle. ArenaSimulation is authoritative;
 ## the presentation consumes projections only and the Python backend plans only.
 
-const PROTOCOL := "world-arena/0.2"
-const SERVER_URL := "ws://127.0.0.1:8000/ws/arena"
+const PROTOCOL := "world-arena/0.4"
+const BACKEND_HOST := "127.0.0.1"
+const BACKEND_PORT := 8000
 const FACTIONS := ["sol", "terra", "luna"]
 const ArenaSimulationScript := preload("res://scripts/arena/simulation/arena_simulation.gd")
 const ArenaShowcasePlayerScript := preload("res://scripts/arena/presentation/arena_showcase_player.gd")
+const ArenaArtifactReplayPlayerScript := preload("res://scripts/arena/presentation/arena_artifact_replay_player.gd")
 const BENCHMARK_CONTRACT_PATH := "res://data/arena/benchmark_contract.json"
-const NORMAL_ROUND_LIMIT := 40
-const ABSOLUTE_ROUND_LIMIT := 48
+const NORMAL_ROUND_LIMIT := 120
+const ABSOLUTE_ROUND_LIMIT := 120
 
 @onready var presentation: Node3D = $Presentation
 
@@ -31,9 +33,10 @@ var configured_models := {
 	"terra": "gpt-5.6-terra",
 	"luna": "gpt-5.6-luna"
 }
+var configured_observation_mode := "semantic"
 var active_specialists := {"sol": [], "terra": [], "luna": []}
 var specialist_metadata := {"sol": {}, "terra": {}, "luna": {}}
-var cognition_remaining := {"sol": 120, "terra": 120, "luna": 120}
+var cognition_remaining := {"sol": 360, "terra": 360, "luna": 360}
 var message_history: Array[Dictionary] = []
 var pending_offers: Array[Dictionary] = []
 var pending_diplomacy_effects: Array[Dictionary] = []
@@ -59,6 +62,11 @@ var _showcase_path := ""
 var _showcase_mode := false
 var _showcase_capture_mode := false
 var _showcase_player: ArenaShowcasePlayer
+var _artifact_replay_player: ArenaArtifactReplayPlayer
+var _artifact_replay_mode := false
+var _active_simulation_job_id := ""
+var _simulation_poll_at_msec := 0
+var _watching_replay_id := ""
 var _match_result_presented := false
 var _benchmark_contract_cache: Dictionary = {}
 
@@ -86,6 +94,12 @@ func _process(delta: float) -> void:
 		if _showcase_player != null and (_showcase_capture_mode or not requested_pause):
 			_showcase_player.advance(delta if _showcase_capture_mode else delta * playback_speed)
 		return
+	if _artifact_replay_mode:
+		if _artifact_replay_player != null and not requested_pause:
+			_artifact_replay_player.advance(delta * playback_speed)
+		return
+	if not _active_simulation_job_id.is_empty() and Time.get_ticks_msec() >= _simulation_poll_at_msec:
+		_poll_simulation_job()
 	if _offline_mode:
 		return
 	socket.poll()
@@ -106,7 +120,11 @@ func _connect_presentation() -> void:
 	presentation.connect("setup_submitted", Callable(self, "_on_setup_submitted"))
 	presentation.connect("pause_requested", Callable(self, "_on_pause_requested"))
 	presentation.connect("playback_speed_requested", Callable(self, "_on_speed_requested"))
+	presentation.connect("timeline_seek_requested", Callable(self, "_on_timeline_seek_requested"))
 	presentation.connect("perspective_requested", Callable(self, "_on_perspective_requested"))
+	presentation.connect("simulation_requested", Callable(self, "_on_simulation_requested"))
+	presentation.connect("replay_refresh_requested", Callable(self, "_refresh_replays"))
+	presentation.connect("replay_watch_requested", Callable(self, "_watch_replay"))
 
 
 func _parse_arguments() -> void:
@@ -130,13 +148,13 @@ func _parse_arguments() -> void:
 	if _offline_mode and _test_round_limit == 0:
 		_test_round_limit = 4
 	# Test limits stop after the requested resolved-round count; they do not alter the
-	# production 40+8 lifecycle or the 40-round cognition budget sent to the backend.
+	# production conquest cap or cognition budget sent to the backend.
 
 
 func _connect_backend() -> void:
 	socket = WebSocketPeer.new()
 	socket_state = WebSocketPeer.STATE_CONNECTING
-	var result := socket.connect_to_url(SERVER_URL)
+	var result := socket.connect_to_url(_backend_websocket_url())
 	if result != OK:
 		_retry_at_msec = Time.get_ticks_msec() + 1000
 		presentation.set_setup_status("Waiting for the local Arena backend…", "info")
@@ -159,10 +177,10 @@ func _handle_backend_message(message: Dictionary) -> void:
 	match str(message.get("type", "")):
 		"connected":
 			if str(message.get("protocol", "")) != PROTOCOL:
-				_fail_match("Backend protocol mismatch; expected world-arena/0.2.")
+				_fail_match("Backend protocol mismatch; expected %s." % PROTOCOL)
 				return
 			backend_connected = true
-			presentation.set_setup_status("Connected. Configure the three commanders.", "success")
+			presentation.set_setup_status("Connected. Configure the commanders.", "success")
 			if _autostart_demo and not configure_sent:
 				_send_configure(_default_demo_config())
 		"configured", "match_ready":
@@ -175,6 +193,8 @@ func _handle_backend_message(message: Dictionary) -> void:
 			_handle_round_plan_reveal(message)
 		"match_result":
 			_handle_match_result(message)
+		"match_truncated":
+			_handle_match_truncated(message)
 		"error":
 			var detail_text := str(message.get("details", ""))
 			var safe_error := str(message.get("error", "Arena backend rejected the request."))
@@ -195,6 +215,7 @@ func _send_configure(config: Dictionary) -> void:
 		return
 	var api_key := str(config.get("api_key", ""))
 	var brain_mode := "openai" if not api_key.is_empty() else "demo"
+	configured_observation_mode = str(config.get("observation_mode", "semantic"))
 	var outbound := {
 		"type": "configure_match",
 		"protocol": PROTOCOL,
@@ -203,14 +224,15 @@ func _send_configure(config: Dictionary) -> void:
 		"brain_mode": brain_mode,
 		"mode": str(config.get("mode", "demo")),
 		"track": str(config.get("track", "agentic")),
-		"map_id": "tri_13_v1",
+		"map_id": str(config.get("map_id", "tri_13_v1")),
 		"max_rounds": NORMAL_ROUND_LIMIT,
+		"observation_mode": configured_observation_mode,
 		"agents": config.get("agents", _default_agents())
 	}
 	if not api_key.is_empty():
 		outbound["api_key"] = api_key
 	configure_sent = true
-	presentation.set_setup_status("Creating three independent commander runtimes…", "pending")
+	presentation.set_setup_status("Creating the commander runtimes…", "pending")
 	_send_json(outbound)
 	api_key = ""
 	outbound.erase("api_key")
@@ -371,7 +393,15 @@ func _resolve_plans(plans: Dictionary, communication_events: Array, round_number
 		"validation_receipts": receipts
 	}
 	if bool(snapshot.match.ended):
-		receipt["terminal_outcome"] = _terminal_outcome(snapshot)
+		if bool(snapshot.match.get("truncated", false)):
+			receipt["truncation"] = {"truncated": true, "reason": "round_limit"}
+			receipt["standings"] = _truncation_standings(snapshot)
+		else:
+			receipt["termination"] = {
+				"terminated": true,
+				"reason": "verified_draw" if str(snapshot.match.get("winner", "")) == "draw" else "last_faction_surviving"
+			}
+			receipt["terminal_outcome"] = _terminal_outcome(snapshot)
 	return receipt
 
 
@@ -390,6 +420,9 @@ func _on_pause_requested(paused: bool) -> void:
 		requested_pause = false
 		return
 	requested_pause = paused
+	if _artifact_replay_mode and _artifact_replay_player != null:
+		_artifact_replay_player.set_playing(not paused)
+		return
 	if not paused and backend_configured and not round_in_flight:
 		_send_round_request()
 
@@ -401,9 +434,270 @@ func _on_speed_requested(speed: float) -> void:
 	playback_speed = clampf(speed, 0.5, 8.0)
 
 
+func _on_timeline_seek_requested(value: int) -> void:
+	if _artifact_replay_mode and _artifact_replay_player != null:
+		var duration := _artifact_replay_player.duration_seconds
+		_artifact_replay_player.seek((clampf(float(value), 0.0, 1000.0) / 1000.0) * duration)
+
+
 func _on_perspective_requested(_perspective_id: String) -> void:
 	# Projection switching is presentation-only in this local omniscient prototype.
 	pass
+
+
+func _on_simulation_requested(config: Dictionary) -> void:
+	if not _active_simulation_job_id.is_empty():
+		return
+	var seed := str(config.get("seed", "")).strip_edges()
+	if seed.is_empty():
+		presentation.set_simulation_error("A seed is required.")
+		return
+	var body := {
+		"seed": seed.substr(0, 96),
+		"max_rounds": clampi(int(config.get("max_rounds", 24)), 1, ABSOLUTE_ROUND_LIMIT),
+		"policy": str(config.get("policy", "deterministic_demo"))
+	}
+	presentation.set_simulation_job_status("QUEUED", "Submitting headless run…", true)
+	_request_api("POST", "/api/simulations", body, func(response: Variant) -> void:
+		if not response is Dictionary:
+			presentation.set_simulation_error("Simulation response was malformed.")
+			return
+		var job_id := str(response.get("job_id", response.get("id", ""))).strip_edges()
+		if job_id.is_empty() or not _safe_artifact_id(job_id):
+			presentation.set_simulation_error("Simulation response did not include a valid job ID.")
+			return
+		_active_simulation_job_id = job_id
+		_simulation_poll_at_msec = Time.get_ticks_msec() + 250
+		presentation.set_simulation_job_status(str(response.get("state", response.get("status", "QUEUED"))), "Job %s" % job_id, true)
+	)
+
+
+func _poll_simulation_job() -> void:
+	if _active_simulation_job_id.is_empty():
+		return
+	var job_id := _active_simulation_job_id
+	_simulation_poll_at_msec = Time.get_ticks_msec() + 750
+	_request_api("GET", "/api/simulations/%s" % job_id, {}, func(response: Variant) -> void:
+		if not response is Dictionary:
+			presentation.set_simulation_error("Simulation status response was malformed.")
+			return
+		if job_id != _active_simulation_job_id:
+			return
+		var status := str(response.get("state", response.get("status", "RUNNING"))).to_upper()
+		var detail := str(response.get("detail", response.get("message", "")))
+		if status == "COMPLETED":
+			_active_simulation_job_id = ""
+			presentation.set_simulation_job_status(status, detail if not detail.is_empty() else "Replay saved.", false)
+			_refresh_replays()
+		elif status == "FAILED":
+			_active_simulation_job_id = ""
+			presentation.set_simulation_error(detail if not detail.is_empty() else "The headless simulation failed.")
+		else:
+			presentation.set_simulation_job_status(status if status in ["QUEUED", "RUNNING"] else "RUNNING", detail, true)
+	)
+
+
+func _refresh_replays() -> void:
+	_request_api("GET", "/api/replays", {}, func(response: Variant) -> void:
+		var entries: Variant = response if response is Array else response.get("replays", response.get("items", [])) if response is Dictionary else []
+		if entries is Array:
+			presentation.set_replay_list(entries)
+		else:
+			presentation.set_simulation_error("Replay library returned an invalid list.")
+	)
+
+
+func _watch_replay(replay_id: String) -> void:
+	if not _safe_artifact_id(replay_id):
+		presentation.set_simulation_error("Replay ID was refused.")
+		return
+	_watching_replay_id = replay_id
+	presentation.set_simulation_job_status("RUNNING", "Loading saved replay…", true)
+	# Read metadata first: this keeps library selections explicit and gives the
+	# service a chance to reject a stale/failed artifact before the larger bundle.
+	_request_api("GET", "/api/replays/%s" % replay_id, {}, func(_metadata: Variant) -> void:
+		if replay_id != _watching_replay_id:
+			return
+		_request_api("GET", "/api/replays/%s/bundle" % replay_id, {}, func(response: Variant) -> void:
+			if replay_id != _watching_replay_id:
+				return
+			if not response is Dictionary:
+				presentation.set_simulation_error("Replay bundle was malformed.")
+				return
+			var projected := _project_artifact_bundle(response)
+			if projected.is_empty():
+				presentation.set_simulation_error("Replay bundle could not be projected for presentation.")
+				return
+			_start_artifact_replay(projected)
+		)
+	)
+
+
+func _start_artifact_replay(projected_bundle: Dictionary) -> void:
+	if _artifact_replay_player != null:
+		_artifact_replay_player.queue_free()
+	_artifact_replay_player = ArenaArtifactReplayPlayerScript.new()
+	_artifact_replay_player.name = "ArenaArtifactReplayPlayer"
+	add_child(_artifact_replay_player)
+	_artifact_replay_player.completed.connect(func() -> void:
+		presentation.set_phase("complete", _all_status("waiting"))
+	)
+	var status := _artifact_replay_player.load_bundle(projected_bundle)
+	if not bool(status.get("loaded", false)):
+		presentation.set_simulation_error(str(status.get("error", "Replay bundle was refused.")))
+		return
+	_artifact_replay_mode = true
+	requested_pause = false
+	presentation.set_lobby_visible(false)
+	presentation.prepare_artifact_replay()
+	presentation.set_simulation_job_status("COMPLETED", "Watching saved replay at 1×.", false)
+	presentation.set_phase("replay", _all_status("waiting"))
+	_artifact_replay_player.start(presentation)
+
+
+func _project_artifact_bundle(value: Dictionary) -> Dictionary:
+	# Batch output stores raw ArenaSimulation dictionaries.  Project a fresh copy
+	# for rendering; neither the downloaded artifact nor its nested frames change.
+	if str(value.get("protocol", "")) != "world-arena-replay/1":
+		return {}
+	var output := value.duplicate(true)
+	var initial: Variant = output.get("initial_snapshot", {})
+	if initial is Dictionary:
+		output["initial_snapshot"] = _project_artifact_snapshot(initial)
+	var projected_frames: Array = []
+	for raw_frame in output.get("frames", []):
+		if not raw_frame is Dictionary:
+			return {}
+		var frame: Dictionary = raw_frame.duplicate(true)
+		var raw_snapshot: Variant = frame.get("snapshot", {})
+		if not raw_snapshot is Dictionary:
+			return {}
+		frame["snapshot"] = _project_artifact_snapshot(raw_snapshot)
+		var raw_events: Variant = frame.get("events", [])
+		frame["events"] = _project_artifact_events(raw_events, int(frame.get("round", frame.snapshot.get("round", 0))))
+		projected_frames.append(frame)
+	output["frames"] = projected_frames
+	return output
+
+
+func _project_artifact_snapshot(raw: Dictionary) -> Dictionary:
+	if raw.get("factions", null) is Array and raw.get("districts", null) is Array and raw.get("units", null) is Array:
+		return raw.duplicate(true)
+	if raw.get("match", null) is Dictionary:
+		var phase := str((raw.match as Dictionary).get("phase", "replay"))
+		return _presentation_snapshot(raw, phase, _all_status("waiting"))
+	return raw.duplicate(true)
+
+
+func _project_artifact_events(raw_events: Variant, round_number: int) -> Array:
+	if not raw_events is Array:
+		return []
+	var canonical: Array = []
+	for raw in raw_events:
+		if raw is Dictionary and raw.has("event_id") and raw.has("summary") and raw.has("visibility"):
+			canonical.append((raw as Dictionary).duplicate(true))
+		elif raw is Dictionary:
+			canonical.append(_normalize_artifact_event(raw, round_number))
+	return canonical
+
+
+func _normalize_artifact_event(raw: Dictionary, fallback_round: int) -> Dictionary:
+	# Saved traces use simulation event names, while the presentation consumes a
+	# small event vocabulary. Keep every authoritative field in payload.
+	var raw_type := str(raw.get("type", raw.get("kind", "system"))).to_lower()
+	var actor := str(raw.get("faction", raw.get("faction_id", "")))
+	var targets: Array = raw.get("target_ids", [])
+	var district := str(raw.get("district", raw.get("district_id", "")))
+	if targets.is_empty() and not district.is_empty():
+		targets.append(district)
+	var kind := "system"
+	var summary := "Arena state updated."
+	match raw_type:
+		"task_started", "task_progress", "task_impact", "task_paused", "task_resumed", "task_completed":
+			var task_kind := str(raw.get("task_kind", raw.get("task", "work"))).to_lower()
+			kind = "construction" if task_kind == "build" or task_kind.contains("construct") else "gather" if task_kind == "gather" else "resource"
+			var completed := int(raw.get("completed_work", raw.get("work_completed", 0)))
+			var required := int(raw.get("required_work", raw.get("work_required", 0)))
+			summary = "%s %s task %d/%d." % [actor.capitalize(), task_kind.replace("_", " "), completed, required]
+		"order_accepted", "order_rejected", "unit_moved":
+			kind = "order"
+			summary = "%s %s." % [actor.capitalize(), "moves to %s" % district if raw_type == "unit_moved" else raw_type.replace("_", " ")]
+		"unit_killed", "commander_defeated", "structure_destroyed":
+			kind = "combat"
+			var target := str(raw.get("unit_id", raw.get("structure_id", "a target")))
+			if targets.is_empty() and target != "": targets.append(target)
+			summary = "%s: %s." % [actor.capitalize(), raw_type.replace("_", " ")]
+		"core_destroyed", "match_ended":
+			kind = "core"
+			summary = "%s." % ("A core is destroyed" if raw_type == "core_destroyed" else "%s wins WorldArena" % actor.capitalize())
+		"capture_ready", "district_captured":
+			kind = "territory"
+			summary = "%s secures %s." % [actor.capitalize(), district if not district.is_empty() else "a district"]
+		"starvation", "resource", "harvest", "resource_gathered":
+			kind = "resource"
+			summary = "%s: %s." % [actor.capitalize(), raw_type.replace("_", " ")]
+		"district_neutralized":
+			kind = "supply"
+			summary = "%s is neutralized." % (district if not district.is_empty() else "A district")
+	var payload := raw.duplicate(true)
+	if raw_type.begins_with("task_"):
+		var task_payload := _presentation_task_record(raw)
+		task_payload["task_id"] = str(raw.get("task_id", task_payload.get("id", "")))
+		task_payload["task_kind"] = str(raw.get("task_kind", raw.get("kind", "work")))
+		task_payload["district"] = district
+		task_payload["target_ids"] = targets.duplicate()
+		payload["task"] = task_payload
+	var event_id := str(raw.get("event_id", "artifact.%d.%d" % [fallback_round, event_sequence]))
+	return {"event_id": event_id, "round": int(raw.get("round", fallback_round)), "tick": int(raw.get("tick", 0)), "kind": kind, "actor_id": actor, "target_ids": targets, "visibility": "public", "visible_to": [], "state": str(raw.get("state", "")), "summary": summary, "payload": payload}
+
+
+func _request_api(method: String, path: String, payload: Dictionary, callback: Callable) -> void:
+	if not path.begins_with("/api/"):
+		presentation.set_simulation_error("Refused an unsafe API path.")
+		return
+	var request := HTTPRequest.new()
+	request.timeout = 12.0
+	add_child(request)
+	request.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+		request.queue_free()
+		if result != HTTPRequest.RESULT_SUCCESS:
+			presentation.set_simulation_error("Local simulation service is unavailable.")
+			return
+		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if response_code < 200 or response_code >= 300 or parsed == null:
+			var detail := str(parsed.get("detail", parsed.get("error", "Request failed."))) if parsed is Dictionary else "Request failed."
+			presentation.set_simulation_error(detail.substr(0, 180))
+			return
+		callback.call(parsed)
+	)
+	var headers := PackedStringArray(["Accept: application/json"])
+	var error := OK
+	if method == "POST":
+		headers.append("Content-Type: application/json")
+		error = request.request(_backend_http_base_url() + path, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
+	else:
+		error = request.request(_backend_http_base_url() + path, headers, HTTPClient.METHOD_GET)
+	if error != OK:
+		request.queue_free()
+		presentation.set_simulation_error("Could not start the local API request.")
+
+
+func _safe_artifact_id(value: String) -> bool:
+	if value.is_empty() or value.length() > 64:
+		return false
+	for character in value:
+		var code := character.unicode_at(0)
+		if not ((code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or character in ["_", "-"]):
+			return false
+	return true
+
+
+func _backend_websocket_url() -> String:
+	return "ws://%s:%d/ws/arena" % [BACKEND_HOST, BACKEND_PORT]
+
+
+func _backend_http_base_url() -> String:
+	return "http://%s:%d" % [BACKEND_HOST, BACKEND_PORT]
 
 
 func _send_json(message: Dictionary) -> void:
@@ -436,6 +730,20 @@ func _handle_match_result(message: Dictionary) -> void:
 	# Transport envelope fields are not evaluation evidence.
 	result.erase("type")
 	result.erase("protocol")
+	presentation.set_phase("complete", _all_status("waiting"))
+	presentation.show_match_result(result)
+	_match_result_presented = true
+
+
+func _handle_match_truncated(message: Dictionary) -> void:
+	var result := _local_mock_match_result(simulation.get_snapshot())
+	result["verified"] = true
+	result["verification_label"] = "TRUNCATED · NO CONQUEST WINNER"
+	result["verification_detail"] = "The declared round cap expired. Standings are diagnostic only; no faction won the conquest."
+	result["evidence_mode"] = "authoritative_truncation"
+	result["winner_id"] = null
+	result["draw"] = false
+	result["standings"] = message.get("standings", {})
 	presentation.set_phase("complete", _all_status("waiting"))
 	presentation.show_match_result(result)
 	_match_result_presented = true
@@ -490,7 +798,9 @@ func _terminal_outcome(snapshot: Dictionary) -> Dictionary:
 			"core_health": clampi(int(round(float(faction_state.core_hp))), 0, 1000),
 			"supplied_points": clampi(maxi(0, supplied_districts.size() - 1), 0, 13),
 			"territory_time": maxi(0, int(faction_state.territory.control_point_rounds)),
-			"crown_hold_rounds": clampi(int(faction_state.territory.get("crown_hold_rounds", 0)), 0, 48),
+			"enemy_strongholds_destroyed": 2 if winner == faction else 0,
+			"districts_discovered": clampi(int(faction_state.get("knowledge", {}).get("seen_districts", {}).size()), 0, 13),
+			"tech_tier": clampi(int(faction_state.get("tech", {}).get("tier", 0)), 0, 3),
 			"completed_structure_value": completed_structure_value,
 			"completed_structures": completed_structures
 		})
@@ -499,11 +809,46 @@ func _terminal_outcome(snapshot: Dictionary) -> Dictionary:
 		"ended": true,
 		"winner": winner,
 		"completed_rounds": rounds_completed,
+		"termination_reason": "verified_draw" if winner == "draw" else "last_faction_surviving",
 		"rules_hash": str(contract.rules.hash),
 		"map_hash": str(contract.map.hash),
 		"tool_hash": str(contract.tools.hash),
 		"factions": faction_outcomes
 	}
+
+
+func _truncation_standings(snapshot: Dictionary) -> Dictionary:
+	var ranked := FACTIONS.duplicate()
+	ranked.sort_custom(func(left: String, right: String) -> bool:
+		return _terminal_rank_precedes(left, right)
+	)
+	var factions: Array[Dictionary] = []
+	for index in ranked.size():
+		var faction := str(ranked[index])
+		var faction_state: Dictionary = snapshot.factions[faction]
+		var completed_structures := 0
+		var completed_structure_value := 0
+		for structure_variant in snapshot.structures.values():
+			var structure: Dictionary = structure_variant
+			if str(structure.get("faction", "")) != faction:
+				continue
+			completed_structures += 1
+			completed_structure_value += simulation.get_structure_value(str(structure.kind))
+		factions.append({
+			"faction_id": faction,
+			"placement": index + 1,
+			"won": false,
+			"draw": false,
+			"core_health": clampi(int(round(float(faction_state.core_hp))), 0, 1000),
+			"supplied_points": clampi(maxi(0, faction_state.supply.supplied_districts.size() - 1), 0, 13),
+			"territory_time": maxi(0, int(faction_state.territory.control_point_rounds)),
+			"enemy_strongholds_destroyed": 0,
+			"districts_discovered": clampi(int(faction_state.get("knowledge", {}).get("seen_districts", {}).size()), 0, 13),
+			"tech_tier": clampi(int(faction_state.get("tech", {}).get("tier", 0)), 0, 3),
+			"completed_structure_value": completed_structure_value,
+			"completed_structures": completed_structures
+		})
+	return {"round": rounds_completed, "reason": "round_limit", "factions": factions}
 
 
 func _terminal_placements(snapshot: Dictionary, winner: String) -> Dictionary:
@@ -598,6 +943,8 @@ func _start_showcase() -> void:
 	var status := _showcase_player.load_showcase(_showcase_path)
 	presentation.set_showcase_status(bool(status.verified), str(status.label), str(status.detail))
 	if bool(status.loaded):
+		if presentation.has_method("prepare_showcase"):
+			presentation.prepare_showcase()
 		presentation.set_phase("replay", _all_status("waiting"))
 		_showcase_player.start(presentation)
 	elif _quit_after_test:
@@ -612,7 +959,7 @@ func _local_mock_match_result(snapshot: Dictionary) -> Dictionary:
 		var supplied_land := maxi(0, state.supply.supplied_districts.size() - 1)
 		var territory_time := maxi(0, int(state.territory.control_point_rounds))
 		var core_health := maxi(0, int(float(state.core_hp)))
-		var crown_rounds := 1 if snapshot.districts.crown.get("owner", null) == faction else 0
+		var strongholds_destroyed := 2 if str(snapshot.match.get("winner", "")) == faction else 0
 		var pact_count := 0
 		var faction_betrayals := 0
 		for relationship in relationship_history:
@@ -621,7 +968,7 @@ func _local_mock_match_result(snapshot: Dictionary) -> Dictionary:
 			if str(relationship.get("actor_id", "")) == faction and str(relationship.get("state", "")) == "betrayed":
 				faction_betrayals += 1
 		var category_values := {
-			"objective_control": clampf(18.0 + supplied_land * 9.0 + territory_time * 0.45 + crown_rounds * 12.0 + core_health * 0.015, 0.0, 100.0),
+			"objective_control": clampf(18.0 + supplied_land * 5.0 + territory_time * 0.25 + strongholds_destroyed * 22.0 + core_health * 0.02, 0.0, 100.0),
 			"planning_adaptation": clampf(38.0 + supplied_land * 5.0 + territory_time * 0.25, 0.0, 100.0),
 			"resource_combat_efficiency": clampf(32.0 + supplied_land * 4.0 + core_health * 0.02, 0.0, 100.0),
 			"social_intelligence": clampf(35.0 + pact_count * 10.0 - faction_betrayals * 8.0, 0.0, 100.0),
@@ -652,8 +999,8 @@ func _local_mock_match_result(snapshot: Dictionary) -> Dictionary:
 			"worldarena_score": snappedf(worldarena_score, 0.01),
 			"categories": categories,
 			"metrics": {
-				"core": core_health, "territory": supplied_land, "crown": crown_rounds,
-				"trades": executed_trade_count, "tokens": 120 - int(cognition_remaining[faction]),
+				"core": core_health, "territory": supplied_land, "strongholds": strongholds_destroyed,
+				"trades": executed_trade_count, "tokens": 360 - int(cognition_remaining[faction]),
 				"invalid": 0, "pacts": pact_count, "betrayals": faction_betrayals
 			},
 			"best_decision": {
@@ -674,7 +1021,7 @@ func _local_mock_match_result(snapshot: Dictionary) -> Dictionary:
 		factions[index].erase("_ranking_points")
 	return {
 		"schema_version": 2,
-		"formula_version": "worldarena-score/1.0.0",
+		"formula_version": "worldarena-score/1.1.0",
 		"match_id": str(snapshot.match.id),
 		"completed_rounds": rounds_completed,
 		"verified": false,
@@ -734,9 +1081,9 @@ func _all_status(status: String) -> Dictionary:
 
 func _default_agents() -> Array:
 	return [
-		{"agent_id": "sol", "model": "gpt-5.6-sol", "reasoning_effort": "medium", "max_specialists": 3},
-		{"agent_id": "terra", "model": "gpt-5.6-terra", "reasoning_effort": "low", "max_specialists": 3},
-		{"agent_id": "luna", "model": "gpt-5.6-luna", "reasoning_effort": "low", "max_specialists": 3}
+		{"agent_id": "sol", "model": "gpt-5.6-sol", "reasoning_effort": "medium", "max_specialists": 2},
+		{"agent_id": "terra", "model": "gpt-5.6-terra", "reasoning_effort": "low", "max_specialists": 1},
+		{"agent_id": "luna", "model": "gpt-5.6-luna", "reasoning_effort": "low", "max_specialists": 0}
 	]
 
 
@@ -770,6 +1117,7 @@ func _build_round_request(snapshot: Dictionary) -> Dictionary:
 func _observation_for_faction(snapshot: Dictionary, faction: String) -> Dictionary:
 	var faction_state: Dictionary = snapshot.factions[faction]
 	var visible_districts := _visible_district_ids(snapshot, faction)
+	var known_districts := _known_district_ids(snapshot, faction, visible_districts)
 	var groups := _friendly_groups(snapshot, faction)
 	var structures: Array = []
 	var structure_ids: Array = snapshot.structures.keys()
@@ -787,16 +1135,21 @@ func _observation_for_faction(snapshot: Dictionary, faction: String) -> Dictiona
 		})
 
 	var districts: Array = []
-	for district_id in visible_districts:
+	for district_id in known_districts:
 		var district: Dictionary = snapshot.districts[district_id]
 		var owner: Variant = district.get("owner", null)
+		var is_visible := visible_districts.has(district_id)
+		var last_seen := int(faction_state.get("knowledge", {}).get("seen_districts", {}).get(district_id, snapshot.match.round if is_visible else 0))
 		var record := {
 			"district_id": str(district_id),
 			"owner_id": owner,
 			"supplied": _district_supplied(snapshot, str(owner), str(district_id)) if owner != null else null,
 			"contested": _district_contested(snapshot, str(district_id)),
-			"last_seen_round": int(snapshot.match.round),
-			"resources": _resource_bundle_from_nodes(district.resources)
+			"last_seen_round": last_seen,
+			"last_seen_tick": int(snapshot.match.get("tick", 0)) if is_visible else 0,
+			"visibility": "visible" if is_visible else "discovered",
+			"adjacent_ids": snapshot.map.adjacency.get(district_id, []).duplicate(),
+			"resources": _resource_bundle_from_nodes(district.resources) if is_visible else null
 		}
 		districts.append(record)
 
@@ -809,12 +1162,23 @@ func _observation_for_faction(snapshot: Dictionary, faction: String) -> Dictiona
 			"core_health": maxi(0, int(float(score_state.core_hp))),
 			"supplied_land": supplied_count,
 			"territory_time": int(score_state.territory.control_point_rounds),
-			"eliminated": float(score_state.core_hp) <= 0.0
+			"eliminated": float(score_state.core_hp) <= 0.0,
+			"core_max_health": 900,
+			"territory_percent": snappedf(float(supplied_count) / 13.0 * 100.0, 0.1),
+			"population": int(score_state.supply.used),
+			"supply_cap": int(score_state.supply.capacity),
+			"tech_tier": int(score_state.get("tech", {}).get("tier", 0)),
+			"current_intent": str(latest_plans.get(score_faction, {}).get("public_intent", ""))
 		})
 
 	var specialist_ids: Array = specialist_metadata[faction].keys()
 	specialist_ids.sort()
-	return {
+	var action_mask := _action_mask_for_faction(snapshot, faction, groups, known_districts)
+	var available_actions: Array = []
+	for mask in action_mask:
+		if bool(mask.enabled):
+			available_actions.append(str(mask.action))
+	var observation := {
 		"match_id": str(snapshot.match.id),
 		"round": int(snapshot.match.round),
 		"faction_id": faction,
@@ -836,8 +1200,145 @@ func _observation_for_faction(snapshot: Dictionary, faction: String) -> Dictiona
 			"specialist_cost": 1,
 			"active_specialist_ids": specialist_ids
 		},
-		"available_actions": ["assign_workers", "hunt", "scout", "build", "train", "mobilize", "reinforce", "retreat"]
+		"available_actions": available_actions,
+		"observation_mode": configured_observation_mode,
+		"action_mask": action_mask,
+		"active_tasks": _active_task_views(snapshot, faction),
+		"projected_at_tick": int(snapshot.match.get("tick", 0)),
+		"narrative_phase": str(snapshot.match.get("narrative_phase", "Opening")).to_lower(),
+		"stronghold": {
+			"stronghold_id": str(faction_state.core_id),
+			"district_id": str(faction_state.core_id),
+			"health": maxi(0, int(float(faction_state.core_hp))),
+			"max_health": 900,
+			"under_attack": _district_contested(snapshot, str(faction_state.core_id))
+		},
+		"technology": {
+			"tier": int(faction_state.get("tech", {}).get("tier", 0)),
+			"completed": faction_state.get("tech", {}).get("completed", []).duplicate(),
+			"available": _available_technologies(faction_state),
+			"active_technology_id": _active_technology(snapshot, faction),
+			"active_progress": _active_technology_progress(snapshot, faction, "completed_work"),
+			"active_required_work": _active_technology_progress(snapshot, faction, "required_work")
+		},
+		"population": int(faction_state.supply.used),
+		"supply_cap": int(faction_state.supply.capacity),
+		"explored_district_ids": known_districts.duplicate()
 	}
+	if configured_observation_mode in ["vision", "hybrid"]:
+		observation["vision"] = {
+			"frame_id": "frame.%s.r%d.%s" % [faction, int(snapshot.match.round), configured_observation_mode],
+			"content_hash": str(snapshot.match.state_hash),
+			"width": 1440,
+			"height": 900,
+			"mime_type": "image/png",
+			"frame_uri": "arena://frames/%s/%d/%s.png" % [snapshot.match.id, int(snapshot.match.round), faction]
+		}
+	return observation
+
+
+func _known_district_ids(snapshot: Dictionary, faction: String, visible: Array) -> Array:
+	var known: Dictionary = {}
+	for district_id in visible:
+		known[str(district_id)] = true
+	for district_id in snapshot.factions[faction].get("knowledge", {}).get("seen_districts", {}).keys():
+		known[str(district_id)] = true
+	var result: Array = known.keys()
+	result.sort()
+	return result
+
+
+func _action_mask_for_faction(snapshot: Dictionary, faction: String, groups: Array, known_districts: Array) -> Array:
+	var eliminated := bool(snapshot.factions[faction].get("eliminated", false))
+	var all_actors: Array = []
+	var workers: Array = []
+	var combat: Array = []
+	for group_variant in groups:
+		if not group_variant is Dictionary:
+			continue
+		var group: Dictionary = group_variant
+		var group_id := str(group.group_id)
+		all_actors.append(group_id)
+		if str(group.unit_kind) == "worker":
+			workers.append(group_id)
+		if str(group.unit_kind) in ["commander", "scout", "militia", "guard", "siege"]:
+			combat.append(group_id)
+	var visible_targets: Array = known_districts.duplicate()
+	for contact in _enemy_contacts(snapshot, faction, known_districts):
+		visible_targets.append(str(contact.contact_id))
+	var masks: Array = []
+	for action in ["Move", "Gather", "Build", "Attack", "Research", "Negotiate", "Think"]:
+		var actors: Array = []
+		var targets: Array = []
+		match action:
+			"Move": actors = all_actors.duplicate(); targets = known_districts.duplicate()
+			"Gather", "Research": actors = workers.duplicate(); targets = known_districts.duplicate()
+			"Build": actors = all_actors.duplicate(); targets = known_districts.duplicate()
+			"Attack": actors = combat.duplicate(); targets = visible_targets.duplicate()
+			"Negotiate": targets = FACTIONS.filter(func(candidate): return candidate != faction)
+		var enabled := not eliminated
+		if action in ["Move", "Gather", "Build", "Attack", "Research"]:
+			enabled = enabled and not actors.is_empty() and not targets.is_empty()
+		masks.append({
+			"action": action,
+			"enabled": enabled,
+			"reason": null if enabled else "faction_eliminated" if eliminated else "no_legal_actor_or_target",
+			"legal_actor_ids": actors,
+			"legal_target_ids": targets
+		})
+	return masks
+
+
+func _active_task_views(snapshot: Dictionary, faction: String) -> Array:
+	var result: Array = []
+	var task_ids: Array = snapshot.get("tasks", {}).keys()
+	task_ids.sort()
+	for task_id in task_ids:
+		var task: Dictionary = snapshot.tasks[task_id]
+		if str(task.get("faction", "")) != faction:
+			continue
+		var actor_ids: Array = task.get("worker_ids", []).duplicate()
+		var rate := mini(actor_ids.size(), int(task.get("staffing_cap", maxi(1, actor_ids.size()))))
+		var required := maxi(0, int(task.get("required_work", 0)))
+		var completed := clampi(int(task.get("completed_work", 0)), 0, required)
+		var target_id: Variant = task.get("target_id", task.get("structure_kind", task.get("technology", null)))
+		result.append({
+			"task_id": str(task_id),
+			"task_kind": str(task.get("kind", "build")),
+			"state": str(task.get("state", "active")),
+			"district_id": str(task.get("district", "")),
+			"actor_ids": actor_ids,
+			"target_id": target_id,
+			"required_work": required,
+			"completed_work": completed,
+			"work_rate": maxi(0, rate),
+			"eta_ticks": ceili(float(required - completed) / float(rate)) if rate > 0 else null,
+			"pause_reason": str(task.get("pause_reason", "")) if str(task.get("state", "active")) == "paused" else null
+		})
+	return result
+
+
+func _available_technologies(faction_state: Dictionary) -> Array:
+	var completed: Array = faction_state.get("tech", {}).get("completed", [])
+	var result: Array = []
+	for technology in ["fieldcraft", "ironworking", "siegecraft"]:
+		if not completed.has(technology):
+			result.append(technology)
+	return result
+
+
+func _active_technology(snapshot: Dictionary, faction: String) -> Variant:
+	for task in snapshot.get("tasks", {}).values():
+		if str(task.get("faction", "")) == faction and str(task.get("kind", "")) == "research":
+			return str(task.get("technology", ""))
+	return null
+
+
+func _active_technology_progress(snapshot: Dictionary, faction: String, field_name: String) -> int:
+	for task in snapshot.get("tasks", {}).values():
+		if str(task.get("faction", "")) == faction and str(task.get("kind", "")) == "research":
+			return maxi(0, int(task.get(field_name, 0)))
+	return 0
 
 
 func _friendly_groups(snapshot: Dictionary, faction: String) -> Array:
@@ -925,7 +1426,28 @@ func _enemy_contacts(snapshot: Dictionary, faction: String, visible_districts: A
 			"unit_kind": parts[1],
 			"approximate_count": int(buckets[key]),
 			"district_id": parts[2],
-			"last_seen_round": int(snapshot.match.round)
+			"last_seen_round": int(snapshot.match.round),
+			"last_seen_tick": int(snapshot.match.get("tick", 0)),
+			"confidence": "high",
+			"stale": false
+		})
+	var remembered: Dictionary = snapshot.factions[faction].get("knowledge", {}).get("contacts", {})
+	for remembered_id in remembered.keys():
+		var memory: Dictionary = remembered[remembered_id]
+		var district_id := str(memory.get("district", ""))
+		var key := "%s|%s|%s" % [str(memory.get("faction", "")), str(memory.get("kind", "unknown")), district_id]
+		if buckets.has(key) or district_id.is_empty():
+			continue
+		contacts.append({
+			"contact_id": "contact.%s" % str(remembered_id),
+			"faction_id": str(memory.get("faction", "sol")),
+			"unit_kind": str(memory.get("kind", "unknown")),
+			"approximate_count": 1,
+			"district_id": district_id,
+			"last_seen_round": int(memory.get("last_seen_round", 0)),
+			"last_seen_tick": 0,
+			"confidence": "low",
+			"stale": true
 		})
 	return contacts
 
@@ -951,7 +1473,7 @@ func _wildlife_observations(snapshot: Dictionary, visible_districts: Array) -> A
 		else:
 			var animal_food := int(district.resources.get("animals", 0))
 			if animal_food > 0:
-				var fallback_species := "wolves" if str(district.kind) == "wild" else "boar" if str(district.kind) == "crown" else "deer"
+				var fallback_species := "wolves" if str(district.kind) == "wild" else "boar" if str(district.kind) == "crossroads" else "deer"
 				result.append({
 					"wildlife_id": "wildlife.%s" % district_id, "species": fallback_species,
 					"approximate_count": clampi(animal_food / 10, 1, 24), "district_id": district_id,
@@ -1050,13 +1572,17 @@ func _translate_plans(plans: Dictionary) -> Dictionary:
 func _translate_order(faction: String, order: Dictionary) -> Dictionary:
 	var action := str(order.get("action", ""))
 	var actors := _expand_actor_ids(faction, order.get("actor_ids", []))
-	var target := _resolve_target_district(str(order.get("target_id", "")))
+	var target_id := str(order.get("target_id", ""))
+	var target := _resolve_target_district(target_id)
+	var mode := str(order.get("mode", ""))
+	var attributes: Dictionary = order.get("attributes", {}) if order.get("attributes", {}) is Dictionary else {}
 	match action:
-		"assign_workers":
-			var node: String = {"wood": "forest", "stone": "stone", "iron": "iron", "food": "animals", "crystal": "iron"}.get(str(order.get("resource", "")), "")
+		"Gather", "assign_workers":
+			var requested_node := str(attributes.get("resource_node_id", ""))
+			var node: String = requested_node if not requested_node.is_empty() else {"wood": "forest", "stone": "stone", "iron": "iron", "food": "animals", "crystal": "crystal"}.get(str(order.get("resource", "")), "")
 			if actors.is_empty() or target.is_empty() or node.is_empty():
 				return {}
-			return {"kind": "assign_workers", "district": target, "node": node, "unit_ids": actors}
+			return {"kind": "Gather", "district": target, "node": node, "unit_ids": actors, "actor_ids": actors}
 		"hunt":
 			if actors.is_empty() or target.is_empty():
 				return {}
@@ -1064,15 +1590,22 @@ func _translate_order(faction: String, order: Dictionary) -> Dictionary:
 			if species.is_empty():
 				return {}
 			return {"kind": "hunt", "unit_ids": actors, "district": target, "species": species}
-		"scout":
+		"Move", "scout":
 			if actors.is_empty() or target.is_empty():
 				return {}
-			return {"kind": "mobilize", "unit_ids": actors, "target": target, "stance": "avoid"}
-		"build":
-			var structure := str(order.get("option", ""))
+			return {"kind": "Move", "unit_ids": actors, "actor_ids": actors, "target": target, "target_id": target, "mode": mode if not mode.is_empty() else "scout"}
+		"Build", "build":
+			var option := str(order.get("option", attributes.get("structure_kind", attributes.get("unit_kind", ""))))
+			if mode == "train":
+				if option.is_empty(): return {}
+				return {"kind": "train", "unit": option, "actor_ids": actors, "target_id": target_id, "mode": "train"}
+			if mode == "repair":
+				if actors.is_empty() or target_id.is_empty(): return {}
+				return {"kind": "Build", "mode": "repair", "target_id": target_id, "worker_ids": actors, "actor_ids": actors}
+			var structure := option
 			if target.is_empty() or structure.is_empty():
 				return {}
-			return {"kind": "build", "structure": structure, "district": target, "unit_ids": actors}
+			return {"kind": "Build", "structure": structure, "district": target, "worker_ids": actors, "unit_ids": actors, "actor_ids": actors, "mode": "construct"}
 		"train":
 			var unit_kind := str(order.get("option", ""))
 			if unit_kind.is_empty():
@@ -1088,6 +1621,15 @@ func _translate_order(faction: String, order: Dictionary) -> Dictionary:
 			if target.is_empty():
 				target = "core_%s" % faction
 			return {"kind": "retreat", "unit_ids": actors, "target": target, "stance": str(order.get("stance", "avoid"))}
+		"Attack":
+			if actors.is_empty() or target.is_empty(): return {}
+			return {"kind": "Attack", "unit_ids": actors, "actor_ids": actors, "target_id": target, "target": target, "mode": mode if not mode.is_empty() else "assault"}
+		"Research", "research":
+			var technology := str(order.get("option", attributes.get("technology_id", "")))
+			if actors.is_empty() or target.is_empty() or technology.is_empty(): return {}
+			return {"kind": "Research", "worker_ids": actors, "actor_ids": actors, "district": target, "technology_id": technology}
+		"Negotiate", "Think":
+			return {"kind": action}
 		_:
 			return {}
 
@@ -1115,6 +1657,10 @@ func _resolve_target_district(target_id: String) -> String:
 		return str(simulation.state.units[target_id].district)
 	if simulation.state.structures.has(target_id):
 		return str(simulation.state.structures[target_id].district)
+	if target_id.begins_with("contact."):
+		var parts := target_id.split(".")
+		if parts.size() >= 4 and simulation.state.districts.has(str(parts[-1])):
+			return str(parts[-1])
 	return ""
 
 
@@ -1220,7 +1766,7 @@ func _register_offer(faction: String, offer: Dictionary, round_number: int) -> D
 		"kind": kind,
 		"sender_id": faction,
 		"recipient_id": recipient,
-		"expires_round": clampi(expires_round, round_number + 1, 48),
+		"expires_round": clampi(expires_round, round_number + 1, 120),
 		"summary": summary,
 		"state": "offered",
 		"terms": offer.duplicate(true)
@@ -1328,7 +1874,7 @@ func _detect_pact_betrayals(plans: Dictionary, round_number: int) -> Dictionary:
 		for faction in [first, second]:
 			var counterpart := second if faction == first else first
 			for order_variant in plans.get(faction, {}).get("orders", []):
-				if not order_variant is Dictionary or str(order_variant.get("action", "")) not in ["mobilize", "reinforce"]:
+				if not order_variant is Dictionary or str(order_variant.get("action", "")) not in ["Move", "Attack", "mobilize", "reinforce"]:
 					continue
 				var district_id := _resolve_target_district(str(order_variant.get("target_id", "")))
 				if district_id.is_empty() or simulation.state.districts[district_id].get("owner", null) != counterpart:
@@ -1337,7 +1883,7 @@ func _detect_pact_betrayals(plans: Dictionary, round_number: int) -> Dictionary:
 				betrayal_count += 1
 				var event := _arena_event(
 					"betrayal", faction, [counterpart, district_id], "public", [],
-					"%s breaks non-aggression with %s by mobilizing into %s." % [faction.capitalize(), counterpart.capitalize(), district_id],
+					"%s breaks non-aggression with %s by advancing into %s." % [faction.capitalize(), counterpart.capitalize(), district_id],
 					round_number, {"pact_id": relationship.id, "district_id": district_id, "state": "betrayed"}
 				)
 				events.append(event)
@@ -1505,6 +2051,7 @@ func _presentation_snapshot(snapshot: Dictionary, phase: String, statuses: Dicti
 		})
 
 	var elapsed_seconds := maxi(0, (int(snapshot.match.round) - 1) * 15)
+	var task_records := _presentation_tasks(snapshot)
 	return {
 		"match_id": str(snapshot.match.id),
 		"round": int(snapshot.match.round),
@@ -1515,10 +2062,53 @@ func _presentation_snapshot(snapshot: Dictionary, phase: String, statuses: Dicti
 		"factions": faction_records,
 		"districts": district_records,
 		"units": unit_records,
+		"tasks": task_records,
 		"relationships": relationship_history.duplicate(true),
 		"state_hash": str(snapshot.match.state_hash),
 		"winner": str(snapshot.match.winner)
 	}
+
+
+func _presentation_tasks(snapshot: Dictionary) -> Array:
+	var records: Array = []
+	var raw_tasks: Variant = snapshot.get("tasks", {})
+	if raw_tasks is Array:
+		for raw_task in raw_tasks:
+			if raw_task is Dictionary:
+				records.append(_presentation_task_record(raw_task))
+	elif raw_tasks is Dictionary:
+		var task_ids: Array = raw_tasks.keys()
+		task_ids.sort()
+		for task_id in task_ids:
+			var raw_task: Variant = raw_tasks[task_id]
+			if raw_task is Dictionary:
+				var task: Dictionary = raw_task.duplicate(true)
+				task["id"] = str(task.get("id", task_id))
+				records.append(_presentation_task_record(task))
+	return records
+
+
+func _presentation_task_record(raw: Dictionary) -> Dictionary:
+	var workers: Array = raw.get("worker_ids", raw.get("builder_ids", raw.get("target_ids", [])))
+	var kind := str(raw.get("kind", raw.get("task_kind", "work"))).to_lower()
+	var faction := str(raw.get("faction_id", raw.get("faction", "neutral")))
+	var actor := str(raw.get("actor_id", workers[0] if not workers.is_empty() else ""))
+	var record := {
+		"id": str(raw.get("id", raw.get("task_id", "task"))),
+		"kind": "construction" if kind.contains("build") or kind.contains("construct") else "gather",
+		"faction_id": faction,
+		"actor_id": actor,
+		"district_id": str(raw.get("district_id", raw.get("district", ""))),
+		"state": str(raw.get("state", "active")),
+		"completed_work": int(raw.get("completed_work", raw.get("work_completed", 0))),
+		"required_work": maxi(1, int(raw.get("required_work", raw.get("work_required", 1)))),
+		"resource": str(raw.get("resource", raw.get("node", ""))),
+		"structure": str(raw.get("structure", raw.get("structure_kind", ""))),
+		"worker_ids": workers.duplicate()
+	}
+	if str(record.kind) == "construction":
+		record["builder_ids"] = workers.duplicate()
+	return record
 
 
 func _district_presentation_state(snapshot: Dictionary, district_id: String) -> Dictionary:
@@ -1571,6 +2161,15 @@ func _simulation_events(raw_events: Array, round_number: int) -> Array:
 		var summary := "Arena state updated."
 		var payload := raw.duplicate(true)
 		match raw_type:
+			"task_started", "task_progress", "task_impact", "task_paused", "task_completed":
+				var task_kind := str(raw.get("task_kind", raw.get("kind", "work"))).to_lower()
+				kind = "construction" if task_kind.contains("build") or task_kind.contains("construct") else "gather" if task_kind.contains("gather") else "resource"
+				var completed := int(raw.get("completed_work", raw.get("work_completed", 0)))
+				var required := int(raw.get("required_work", raw.get("work_required", 0)))
+				summary = "%s %s task: %d/%d work." % [actor.capitalize(), task_kind.replace("_", " "), completed, required]
+			"construction_completed", "build_completed":
+				kind = "construction"
+				summary = "%s completes construction." % actor.capitalize()
 			"order_accepted":
 				kind = "order"
 				summary = "%s order accepted: %s." % [actor.capitalize(), str(raw.get("kind", "order")).replace("_", " ")]
@@ -1652,35 +2251,36 @@ func _offline_plan(faction: String, round_number: int, observations: Array) -> D
 	var intent := "Secure production and observe both opponents."
 	if round_number == 1 and not workers.is_empty():
 		orders.append({
-			"order_id": "%s.r1.gather" % faction, "action": "assign_workers",
+			"order_id": "%s.r1.gather" % faction, "action": "Gather",
 			"actor_ids": [workers.group_id], "target_id": "home_%s" % faction,
-			"resource": "wood", "option": null, "stance": null
+			"resource": "wood", "option": null, "stance": null, "mode": null, "attributes": {}
 		})
-		intent = "Build a wood reserve before the first territorial clash."
+		intent = "Build a timber reserve before fortifying the stronghold."
 	elif round_number == 2 and not militia.is_empty():
 		var mine := "mine_st" if faction in ["sol", "terra"] else "mine_ls"
 		orders.append({
-			"order_id": "%s.r2.move" % faction, "action": "mobilize",
+			"order_id": "%s.r2.move" % faction, "action": "Move",
 			"actor_ids": [militia.group_id], "target_id": mine,
-			"resource": null, "option": null, "stance": "assault"
+			"resource": null, "option": null, "stance": "assault", "mode": "scout", "attributes": {}
 		})
 		intent = "Contest the nearest iron mine before rivals can fortify it."
 	elif round_number >= 3:
 		var actor := militia if not militia.is_empty() else commander
 		if not actor.is_empty():
-			var objective := "home_luna" if faction == "sol" and round_number == 3 else "crown"
+			var rival := "terra" if faction == "sol" else "luna" if faction == "terra" else "sol"
+			var objective := "core_%s" % rival
 			orders.append({
-				"order_id": "%s.r%d.crown" % [faction, round_number], "action": "mobilize",
+				"order_id": "%s.r%d.attack" % [faction, round_number], "action": "Attack",
 				"actor_ids": [actor.group_id], "target_id": objective,
-				"resource": null, "option": null, "stance": "raid"
+				"resource": null, "option": null, "stance": "raid", "mode": "raid", "attributes": {"target_faction_id": rival}
 			})
-		intent = "Pressure the Crown while retaining the supplied homeland."
+		intent = "Pressure a rival stronghold while retaining a supplied defensive reserve."
 
 	var utterances: Array = []
 	if round_number == 1 and faction == "sol":
 		utterances.append({"client_ref": "sol.r1.luna", "visibility": "private", "recipients": ["luna"], "text": "Terra shares our mine. Coordinate pressure next round?"})
 	elif round_number == 1 and faction == "luna":
-		utterances.append({"client_ref": "luna.r1.sol", "visibility": "private", "recipients": ["sol"], "text": "Agreed for one round. I will scout the Crown route."})
+		utterances.append({"client_ref": "luna.r1.sol", "visibility": "private", "recipients": ["sol"], "text": "Agreed for one round. I will scout the western pass."})
 	elif round_number == 2 and faction == "terra":
 		utterances.append({"client_ref": "terra.r2.all", "visibility": "public", "recipients": [], "text": "The mine is open. Any coalition against me will pay for every metre."})
 
@@ -1703,7 +2303,7 @@ func _offline_plan(faction: String, round_number: int, observations: Array) -> D
 	elif round_number == 2 and faction == "sol":
 		responses.append({"offer_id": "offer.r1.luna", "decision": "accept"})
 	return {
-		"schema_version": "arena-v1",
+		"schema_version": "arena-v2",
 		"match_id": str(simulation.state.match.id),
 		"round": round_number,
 		"faction_id": faction,

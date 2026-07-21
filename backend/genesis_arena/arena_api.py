@@ -17,6 +17,7 @@ from .arena.models import (
     FactionId,
     FactionPlan,
     Identifier,
+    ObservationMode,
     RoundCommitsLocked,
     RoundReceipt,
     RoundRequest,
@@ -37,15 +38,34 @@ class ArenaWireModel(BaseModel):
 class ArenaFactionConfig(ArenaWireModel):
     agent_id: FactionId
     model: str = Field(min_length=1, max_length=120)
-    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = (
-        "medium"
-    )
-    max_specialists: int = Field(default=3, ge=0, le=3)
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "medium"
+    max_specialists: int = Field(default=2, ge=0, le=3)
+    # ``advisor_count`` is the v0.3 name.  Keep the established field so older setup
+    # clients do not need a migration release.
+    advisor_count: Optional[int] = Field(default=None, ge=0, le=3)
+
+    @model_validator(mode="after")
+    def validate_advisor_limit(self) -> ArenaFactionConfig:
+        # ``max_specialists=2`` is the conquest default, so an advisor-only request
+        # may intentionally override it. Non-default dual values must agree.
+        if (
+            self.advisor_count is not None
+            and self.max_specialists != 2
+            and self.advisor_count != self.max_specialists
+        ):
+            raise ValueError("advisor_count must match max_specialists when both are provided")
+        return self
+
+    @property
+    def specialist_limit(self) -> int:
+        return self.max_specialists if self.advisor_count is None else self.advisor_count
 
 
 class ArenaMatchConfigure(ArenaWireModel):
     type: Literal["configure_match", "configure_arena"] = "configure_match"
-    protocol: Literal["world-arena/0.2"] = "world-arena/0.2"
+    protocol: Literal["world-arena/0.2", "world-arena/0.3", "world-arena/0.4"] = (
+        "world-arena/0.4"
+    )
     match_id: Optional[Identifier] = None
     api_key: Optional[SecretStr] = None
     brain_mode: Optional[Literal["demo", "openai"]] = None
@@ -53,7 +73,8 @@ class ArenaMatchConfigure(ArenaWireModel):
     track: Literal["standard", "agentic", "open"] = "agentic"
     map_id: Literal["tri_13_v1"] = "tri_13_v1"
     seed: int = Field(default=1, ge=1, le=2_147_483_646)
-    max_rounds: int = Field(default=40, ge=1, le=48)
+    max_rounds: int = Field(default=120, ge=1, le=120)
+    observation_mode: ObservationMode = "semantic"
     agents: List[ArenaFactionConfig] = Field(min_length=3, max_length=3)
 
     @model_validator(mode="after")
@@ -88,10 +109,12 @@ class ArenaSession:
         self.round_plans: Dict[int, Dict[str, FactionPlan]] = {}
         self.round_diagnostics: Dict[int, Dict[str, DecisionDiagnostic]] = {}
         self.track = "agentic"
-        self.max_rounds = 40
+        self.max_rounds = 120
         self.seed = 1
         self.brain_mode = "demo"
         self.map_id = "tri_13_v1"
+        self.protocol = "world-arena/0.4"
+        self.observation_mode: ObservationMode = "semantic"
         self.artifact_store = RunArtifactStore(settings.runs_dir)
         self.round_artifacts = []
         self.artifact_directory = None
@@ -132,7 +155,8 @@ class ArenaSession:
                     api_key=raw_key,
                     identity=(
                         f"You command faction {competitor.agent_id} in WorldArena. "
-                        "Maximize supplied territory and protect your core while negotiating "
+                        "Be the last surviving stronghold: build an economy, scout, fortify, "
+                        "research, field an army, attack rival keeps, and negotiate "
                         "strategically with two independent opponents."
                     ),
                 )
@@ -152,7 +176,7 @@ class ArenaSession:
                         api_key=key,
                     )
 
-                factory = specialist_factory if competitor.max_specialists else None
+                factory = specialist_factory if competitor.specialist_limit else None
             else:
                 commander = ArenaDemoCommander()
                 factory = None
@@ -162,7 +186,7 @@ class ArenaSession:
                 commander=commander,
                 budget=budget,
                 specialist_factory=factory,
-                max_specialists=competitor.max_specialists,
+                max_specialists=competitor.specialist_limit,
             )
 
         # The raw key is deliberately not retained on this session. In provider mode it exists
@@ -177,7 +201,8 @@ class ArenaSession:
             agent.agent_id: {
                 "model": agent.model,
                 "reasoning_effort": agent.reasoning_effort,
-                "max_specialists": agent.max_specialists,
+                "max_specialists": agent.specialist_limit,
+                "advisor_count": agent.specialist_limit,
             }
             for agent in config.agents
         }
@@ -186,6 +211,8 @@ class ArenaSession:
         self.seed = config.seed
         self.brain_mode = brain_mode
         self.map_id = config.map_id
+        self.protocol = config.protocol
+        self.observation_mode = config.observation_mode
         self.receipts.clear()
         self.round_plans.clear()
         self.round_diagnostics.clear()
@@ -193,12 +220,13 @@ class ArenaSession:
         self.artifact_directory = None
         response: Dict[str, object] = {
             "type": "configured",
-            "protocol": "world-arena/0.2",
+            "protocol": config.protocol,
             "brain_mode": brain_mode,
             "track": config.track,
             "map_id": config.map_id,
             "seed": config.seed,
             "max_rounds": config.max_rounds,
+            "observation_mode": config.observation_mode,
             "models": dict(self.models),
             "agents": dict(self.agent_metadata),
         }
@@ -276,9 +304,10 @@ class ArenaSession:
             )
         manifest = RunManifest(
             match_id=receipt.match_id,
+            protocol=receipt.protocol,
             map_id=self.map_id,
             map_hash=terminal.map_hash,
-            rules_id="arena-v1",
+            rules_id="arena-v0.4",
             rules_hash=terminal.rules_hash,
             tool_hash=terminal.tool_hash,
             seed=self.seed,
@@ -333,8 +362,16 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
     await websocket.send_json(
         {
             "type": "connected",
-            "protocol": "world-arena/0.2",
-            "supports": ["demo", "openai", "commit_reveal", "simultaneous_plans"],
+            "protocol": "world-arena/0.4",
+            "supports": [
+                "demo",
+                "openai",
+                "commit_reveal",
+                "simultaneous_plans",
+                "world-arena/0.2",
+                "world-arena/0.3",
+                "world-arena/0.4",
+            ],
         }
     )
 
@@ -366,14 +403,21 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                     continue
 
                 if message_type == "ping":
-                    await websocket.send_json(
-                        {"type": "pong", "protocol": "world-arena/0.2"}
-                    )
+                    await websocket.send_json({"type": "pong", "protocol": session.protocol})
                     continue
 
                 if message_type == "round_request":
                     orchestrator = session.require_orchestrator()
                     request = RoundRequest.model_validate(message)
+                    if request.protocol != session.protocol:
+                        raise ArenaRuntimeError(
+                            "round request protocol does not match configuration"
+                        )
+                    if any(
+                        observation.observation_mode != session.observation_mode
+                        for observation in request.observations
+                    ):
+                        raise ArenaRuntimeError("observation mode does not match configuration")
                     if session.match_id and request.match_id != session.match_id:
                         raise ArenaRuntimeError("Arena session is already bound to another match")
                     session.match_id = request.match_id
@@ -391,9 +435,7 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                     )
                     commits = await orchestrator.commit_round(request)
                     statuses = {
-                        commit.faction_id: (
-                            "locked" if commit.status == "planned" else "fallback"
-                        )
+                        commit.faction_id: ("locked" if commit.status == "planned" else "fallback")
                         for commit in commits.commits
                     }
                     await websocket.send_json(
@@ -410,6 +452,8 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                 if message_type == "round_commits_locked":
                     orchestrator = session.require_orchestrator()
                     acknowledgement = RoundCommitsLocked.model_validate(message)
+                    if acknowledgement.protocol != session.protocol:
+                        raise ArenaRuntimeError("commit lock protocol does not match configuration")
                     orchestrator.lock_commits(acknowledgement)
                     reveal = await orchestrator.reveal_round(
                         acknowledgement.match_id, acknowledgement.round
@@ -420,6 +464,8 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                 if message_type == "round_receipts":
                     orchestrator = session.require_orchestrator()
                     receipt = RoundReceipt.model_validate(message)
+                    if receipt.protocol != session.protocol:
+                        raise ArenaRuntimeError("receipt protocol does not match configuration")
                     if not session.match_id or receipt.match_id != session.match_id:
                         raise ArenaRuntimeError("receipt does not belong to this Arena session")
                     await orchestrator.finalize_round(receipt)
@@ -440,7 +486,7 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                     await websocket.send_json(
                         {
                             "type": "round_receipts_accepted",
-                            "protocol": "world-arena/0.2",
+                            "protocol": receipt.protocol,
                             "match_id": receipt.match_id,
                             "round": receipt.round,
                             "state_hash": receipt.state_hash,
@@ -450,9 +496,21 @@ async def arena_socket(websocket: WebSocket, settings: Settings) -> None:
                         await websocket.send_json(
                             {
                                 "type": "match_result",
-                                "protocol": "world-arena/0.2",
+                                "protocol": receipt.protocol,
                                 "result": official_result,
                                 "artifact_run": artifact_run,
+                            }
+                        )
+                    elif receipt.standings is not None:
+                        await websocket.send_json(
+                            {
+                                "type": "match_truncated",
+                                "protocol": receipt.protocol,
+                                "match_id": receipt.match_id,
+                                "round": receipt.round,
+                                "reason": receipt.standings.reason,
+                                "winner": None,
+                                "standings": receipt.standings.model_dump(mode="json"),
                             }
                         )
                     continue

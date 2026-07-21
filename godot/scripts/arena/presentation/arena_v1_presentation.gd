@@ -10,12 +10,20 @@ signal pause_requested(paused: bool)
 signal playback_speed_requested(speed: float)
 signal timeline_seek_requested(round_index: int)
 signal event_focus_requested(event_id: String)
+signal simulation_requested(config: Dictionary)
+signal replay_refresh_requested
+signal replay_watch_requested(replay_id: String)
 
 const DistrictViewScript := preload("res://scripts/arena/presentation/arena_district_view.gd")
 const UnitViewScript := preload("res://scripts/arena/presentation/arena_unit_view.gd")
 const SpeechBubbleScript := preload("res://scripts/arena/presentation/arena_speech_bubble.gd")
 const RelationshipGraphScript := preload("res://scripts/arena/presentation/relationship_graph.gd")
 const ArenaPodiumScript := preload("res://scripts/arena/presentation/arena_podium.gd")
+const WorkTaskViewScript := preload("res://scripts/arena/presentation/arena_work_task_view.gd")
+const ConstructionViewScript := preload("res://scripts/arena/presentation/arena_construction_view.gd")
+const AssetResolver := preload("res://scripts/arena/presentation/arena_asset_resolver.gd")
+const ConquestMinimapScript := preload("res://scripts/arena/presentation/arena_conquest_minimap.gd")
+const AmbientWildlifeScript := preload("res://scripts/arena/presentation/arena_ambient_wildlife.gd")
 
 const GRASS_TEXTURE := "res://art/textures/grass-warcraft-v1.png"
 const WATER_TEXTURE := "res://art/textures/water-warcraft-v1.png"
@@ -24,13 +32,22 @@ const WOOD_TEXTURE := "res://art/textures/wood-warcraft-v1.png"
 const ROCK_TEXTURE := "res://art/textures/rock-warcraft-v1.png"
 const ROOF_TEXTURE := "res://art/textures/roof-warcraft-v1.png"
 const CRYSTAL_TEXTURE := "res://art/textures/crystal-warcraft-v1.png"
+const KENNEY_PANEL_TEXTURE := "res://assets/external/kenney_ui_pack_adventure/Vector/panel_brown_dark.svg"
+const KENNEY_BUTTON_TEXTURE := "res://assets/external/kenney_ui_pack_adventure/Vector/button_brown.svg"
+const KENNEY_MINIMAP_RING := "res://assets/external/kenney_ui_pack_adventure/Vector/minimap_ring_brown.svg"
+
+# The simulation still speaks in TRI-13 world coordinates.  Presentation folds
+# those coordinates into a tabletop-sized island so the complete match remains
+# readable at a single glance during live play and recorded demos.
+const COMPACT_MAP_SCALE := 0.46
+const COMPACT_RADIUS_SCALE := 0.72
 
 const FACTION_IDS := ["sol", "terra", "luna"]
 const FACTION_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
 const FACTION_COLORS := {
-	"sol": Color("f4c95d"),
-	"terra": Color("ff7a70"),
-	"luna": Color("70b8ff")
+	"sol": Color("d25530"),
+	"terra": Color("2a9a70"),
+	"luna": Color("5367cf")
 }
 const FACTION_GLYPHS := {"sol": "△", "terra": "□", "luna": "○", "neutral": "·"}
 const NEUTRAL_COLOR := Color("687884")
@@ -48,7 +65,7 @@ const DISTRICT_DEFINITIONS := [
 	{"id": "wild_st", "name": "North Wildwood", "kind": "wildwood", "position": Vector3(0, 0, 151), "radius": 23.0, "resources": ["tree", "tree", "wolf"]},
 	{"id": "wild_tl", "name": "East Wildwood", "kind": "wildwood", "position": Vector3(126, 0, 5), "radius": 23.0, "resources": ["tree", "boar", "wolf"]},
 	{"id": "wild_ls", "name": "West Wildwood", "kind": "wildwood", "position": Vector3(-126, 0, 5), "radius": 23.0, "resources": ["tree", "boar", "wolf"]},
-	{"id": "crown", "name": "The Crown", "kind": "crown ×3", "position": Vector3(0, 0, 3), "radius": 29.0, "resources": ["crystal", "iron", "boar"]}
+	{"id": "crossroads", "name": "Crossroads", "kind": "strategic ground", "position": Vector3(0, 0, 3), "radius": 29.0, "resources": ["crystal", "iron", "boar"]}
 ]
 
 const DISTRICT_LINKS := [
@@ -56,7 +73,7 @@ const DISTRICT_LINKS := [
 	["home_sol", "wild_st"], ["home_sol", "wild_ls"], ["home_sol", "mine_st"], ["home_sol", "mine_ls"],
 	["home_terra", "wild_st"], ["home_terra", "wild_tl"], ["home_terra", "mine_st"], ["home_terra", "mine_tl"],
 	["home_luna", "wild_tl"], ["home_luna", "wild_ls"], ["home_luna", "mine_tl"], ["home_luna", "mine_ls"],
-	["mine_st", "crown"], ["mine_tl", "crown"], ["mine_ls", "crown"],
+	["mine_st", "crossroads"], ["mine_tl", "crossroads"], ["mine_ls", "crossroads"],
 	["wild_st", "mine_st"], ["wild_tl", "mine_tl"], ["wild_ls", "mine_ls"]
 ]
 
@@ -74,14 +91,29 @@ var district_views: Dictionary = {}
 var district_positions: Dictionary = {}
 var unit_views: Dictionary = {}
 var commander_views: Dictionary = {}
+var work_task_views: Dictionary = {}
+var construction_views: Dictionary = {}
 
 var ui_root: Control
 var setup_overlay: Control
 var setup_status_label: Label
 var setup_start_button: Button
+var setup_content: Control
+var simulation_page: PanelContainer
+var lobby_mode_buttons: Dictionary = {}
+var simulation_seed_input: LineEdit
+var simulation_rounds_input: SpinBox
+var simulation_policy_select: OptionButton
+var simulation_observation_select: OptionButton
+var simulation_run_button: Button
+var simulation_status_label: Label
+var replay_runs_list: VBoxContainer
 var api_key_input: LineEdit
 var model_inputs: Dictionary = {}
 var reasoning_inputs: Dictionary = {}
+var advisor_inputs: Dictionary = {}
+var scenario_select: OptionButton
+var observation_select: OptionButton
 var phase_label: Label
 var round_label: Label
 var timer_label: Label
@@ -104,6 +136,9 @@ var speed_select: OptionButton
 var timeline_slider: HSlider
 var timeline_markers: HBoxContainer
 var live_status_label: Label
+var objective_label: Label
+var objective_detail_label: Label
+var objective_progress: ProgressBar
 var bubble_layer: Control
 var showcase_banner: PanelContainer
 var showcase_banner_label: Label
@@ -113,6 +148,7 @@ var chapter_title_label: Label
 var chapter_subtitle_label: Label
 var _chapter_tween: Tween
 var podium_overlay: ArenaPodium
+var conquest_minimap
 
 var current_snapshot: Dictionary = {}
 var event_history: Array[Dictionary] = []
@@ -122,20 +158,21 @@ var bubble_queues: Dictionary = {}
 var current_perspective := "spectator"
 var selected_faction := "sol"
 var current_round := 0
-var max_rounds := 40
+var max_rounds := 120
 var current_phase := "setup"
 var live_paused := false
 var playback_speed := 1.0
 var _updating_timeline := false
 var _mock_sequence_id := 0
 var _camera_focus := Vector3(0, 0, -4)
-var _camera_distance := 310.0
+var _camera_distance := 184.0
 var _camera_yaw := 0.0
 var _camera_dragging := false
 var _camera_last_mouse := Vector2.ZERO
 var _camera_directed := false
 var _camera_directed_tween: Tween
 var _camera_directed_focus := Vector3.ZERO
+var _artifact_timeline := false
 
 
 func _ready() -> void:
@@ -168,10 +205,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_camera_dragging = event.pressed
 			_camera_last_mouse = event.position
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_camera_distance = clampf(_camera_distance - 22.0, 180.0, 390.0)
+			_camera_distance = clampf(_camera_distance - 16.0, 150.0, 265.0)
 			_update_strategy_camera()
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_camera_distance = clampf(_camera_distance + 22.0, 180.0, 390.0)
+			_camera_distance = clampf(_camera_distance + 16.0, 150.0, 265.0)
 			_update_strategy_camera()
 	if event is InputEventMouseMotion and _camera_dragging:
 		var delta: Vector2 = event.position - _camera_last_mouse
@@ -188,25 +225,26 @@ func configure_from_snapshot(snapshot: Dictionary) -> void:
 	current_snapshot = snapshot.duplicate(true)
 	current_round = int(snapshot.get("round", current_round))
 	max_rounds = maxi(1, int(snapshot.get("max_rounds", max_rounds)))
-	if current_round > 40 and current_round <= 48:
-		round_label.text = "SUDDEN DEATH %02d / 08" % (current_round - 40)
-	else:
-		round_label.text = "ROUND %02d / %02d" % [current_round, mini(40, max_rounds)]
+	round_label.text = "ROUND %03d / %03d" % [current_round, max_rounds]
 	timer_label.text = str(snapshot.get("sim_time", "00:00"))
 
 	var district_states := _records_by_id(snapshot.get("districts", []))
 	for district_id in district_views:
 		var state: Dictionary = district_states.get(district_id, {})
 		district_views[district_id].apply_state(state)
+	_update_objective(snapshot)
 
 	_apply_units(snapshot.get("units", []))
+	_apply_persistent_tasks(snapshot)
 	_apply_factions(snapshot.get("factions", []))
+	if conquest_minimap != null:
+		conquest_minimap.apply_snapshot(snapshot)
 	if snapshot.has("relationships"):
 		relationship_graph.set_relations(snapshot.get("relationships", []))
 	set_phase(str(snapshot.get("phase", current_phase)), snapshot.get("thinking_status", {}))
 
 	_updating_timeline = true
-	timeline_slider.max_value = maxi(max_rounds, 48 if current_round > 40 else max_rounds)
+	timeline_slider.max_value = max_rounds
 	timeline_slider.value = current_round
 	_updating_timeline = false
 	_refresh_selected_command()
@@ -238,6 +276,10 @@ func set_phase(phase: String, statuses: Dictionary = {}) -> void:
 func show_message(event: Dictionary) -> void:
 	if not _event_visible(event):
 		return
+	# The Battle Chronicle is the spectator communication surface. World bubbles
+	# are reserved for faction-view context so they never cover the battlefield.
+	if current_perspective == "spectator":
+		return
 	var actor_id := str(event.get("actor_id", ""))
 	if not commander_views.has(actor_id):
 		return
@@ -263,6 +305,113 @@ func mark_setup_accepted(initial_snapshot: Dictionary = {}) -> void:
 		configure_from_snapshot(initial_snapshot)
 
 
+## A showcase replaces the controller's bootstrap snapshot with its own complete
+## actor timeline. Clear only projection nodes so bootstrap actors cannot linger
+## as zero-health ghosts underneath the replay.
+func prepare_showcase() -> void:
+	_artifact_timeline = false
+	for view in unit_views.values():
+		if is_instance_valid(view):
+			view.queue_free()
+	for view in work_task_views.values():
+		if is_instance_valid(view):
+			view.queue_free()
+	for view in construction_views.values():
+		if is_instance_valid(view):
+			view.queue_free()
+	unit_views.clear()
+	commander_views.clear()
+	work_task_views.clear()
+	construction_views.clear()
+	_reset_events()
+
+
+## Saved artifacts use the same projection path as authored showcases, while
+## remaining distinct from the fixed-duration cue player.
+func prepare_artifact_replay() -> void:
+	prepare_showcase()
+	_artifact_timeline = true
+	live_paused = false
+	pause_button.text = "PAUSE"
+	playback_speed = 1.0
+	if speed_select != null:
+		speed_select.select(1) # 1×; saved replays always begin at normal speed.
+	live_status_label.text = "SAVED REPLAY · LOADING FRAME"
+
+
+func set_artifact_replay_time(elapsed_seconds: float, duration_seconds: float) -> void:
+	_artifact_timeline = true
+	var duration := maxf(0.001, duration_seconds)
+	timer_label.text = "%02d:%02d / %02d:%02d" % [int(elapsed_seconds) / 60, int(elapsed_seconds) % 60, int(duration) / 60, int(duration) % 60]
+	_updating_timeline = true
+	timeline_slider.min_value = 0
+	timeline_slider.max_value = 1000
+	timeline_slider.step = 1
+	timeline_slider.value = roundi((elapsed_seconds / duration) * 1000.0)
+	_updating_timeline = false
+
+
+func set_simulation_job_status(status: String, detail := "", active := false) -> void:
+	if simulation_status_label == null:
+		return
+	var normalized := status.to_upper()
+	simulation_status_label.text = "%s%s" % [normalized, "  ·  " + detail if not detail.is_empty() else ""]
+	simulation_status_label.add_theme_color_override("font_color", Color("ff7a70") if normalized == "FAILED" else Color("9fe3d2") if normalized == "COMPLETED" else Color("f4c95d"))
+	if simulation_run_button != null:
+		simulation_run_button.disabled = active
+		simulation_run_button.text = "RUNNING SIMULATION…" if active else "▶  RUN SIMULATION"
+
+
+func set_replay_list(replays: Array) -> void:
+	if replay_runs_list == null:
+		return
+	for child in replay_runs_list.get_children():
+		child.queue_free()
+	if replays.is_empty():
+		var empty := _caption("No saved runs yet. Run a headless simulation to create one.")
+		replay_runs_list.add_child(empty)
+		return
+	for value in replays.slice(0, 6):
+		if not value is Dictionary:
+			continue
+		var replay: Dictionary = value
+		var replay_id := str(replay.get("replay_id", replay.get("id", ""))).strip_edges()
+		if replay_id.is_empty():
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var label := Label.new()
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var state := str(replay.get("state", replay.get("status", "COMPLETED"))).to_upper()
+		label.text = "%s  ·  %s  ·  %s rounds" % [replay_id, state, str(replay.get("max_rounds", replay.get("rounds", "?")))]
+		label.add_theme_font_size_override("font_size", 10)
+		label.add_theme_color_override("font_color", Color("ff7a70") if state == "FAILED" else Color("9fe3d2"))
+		row.add_child(label)
+		var watch := Button.new()
+		watch.text = "WATCH REPLAY" if state == "COMPLETED" else "DETAILS"
+		watch.disabled = state != "COMPLETED"
+		watch.pressed.connect(func() -> void: replay_watch_requested.emit(replay_id))
+		row.add_child(watch)
+		replay_runs_list.add_child(row)
+
+
+func set_simulation_error(message: String) -> void:
+	set_simulation_job_status("FAILED", message.substr(0, 180), false)
+
+
+func _set_lobby_mode(mode: String) -> void:
+	var simulation_mode := mode == "simulation" or mode == "replays"
+	if simulation_page != null:
+		simulation_page.visible = simulation_mode
+	if setup_content != null:
+		setup_content.visible = not simulation_mode
+	for key in lobby_mode_buttons:
+		var button: Button = lobby_mode_buttons[key]
+		button.button_pressed = (key == mode)
+	if mode == "replays":
+		replay_refresh_requested.emit()
+
+
 func set_setup_status(message: String, state := "info") -> void:
 	setup_status_label.text = message
 	setup_status_label.add_theme_color_override("font_color", Color("ff7a70") if state == "error" else Color("9fe3d2") if state == "success" else Color("f4c95d"))
@@ -285,7 +434,10 @@ func show_match_result(result: Dictionary) -> void:
 func focus_world(target_id := "overview", shot := "medium", duration := 1.2, target_position: Variant = null) -> void:
 	if camera == null:
 		return
-	var focus := _camera_target(str(target_id), target_position)
+	var requested_focus := _camera_target(str(target_id), target_position)
+	# Camera cues now emphasize a front without abandoning the rest of the board.
+	# This keeps every surviving character and the win condition in context.
+	var focus := Vector3(requested_focus.x * 0.20, 0.7, requested_focus.z * 0.16 - 4.0)
 	var shot_name := str(shot).to_lower()
 	if shot_name not in ["overview", "wide", "medium", "close"]:
 		shot_name = "medium"
@@ -307,9 +459,9 @@ func _camera_target(target_id: String, target_position: Variant) -> Vector3:
 	if target_position is Vector3:
 		return target_position
 	if target_position is Array and target_position.size() == 3:
-		return Vector3(float(target_position[0]), float(target_position[1]), float(target_position[2]))
+		return Vector3(float(target_position[0]), float(target_position[1]), float(target_position[2])) * COMPACT_MAP_SCALE
 	if target_position is Dictionary:
-		return Vector3(float(target_position.get("x", 0.0)), float(target_position.get("y", 0.0)), float(target_position.get("z", 0.0)))
+		return Vector3(float(target_position.get("x", 0.0)), float(target_position.get("y", 0.0)), float(target_position.get("z", 0.0))) * COMPACT_MAP_SCALE
 	if target_id != "overview":
 		# Cues address actor IDs such as `sol_commander`, while the speech-bubble
 		# lookup below is keyed by faction.  Prefer a concrete body for close shots.
@@ -325,13 +477,13 @@ func _camera_target(target_id: String, target_position: Variant) -> Vector3:
 func _camera_shot_profile(shot_name: String) -> Dictionary:
 	match shot_name:
 		"close":
-			return {"offset": Vector3(24, 27, 33), "fov": 43.0}
+			return {"offset": Vector3(0, 98, 132), "fov": 47.0}
 		"medium":
-			return {"offset": Vector3(43, 51, 61), "fov": 47.0}
+			return {"offset": Vector3(0, 108, 146), "fov": 48.0}
 		"wide":
-			return {"offset": Vector3(80, 102, 120), "fov": 50.0}
+			return {"offset": Vector3(0, 116, 158), "fov": 49.0}
 		_:
-			return {"offset": Vector3(0, 170, 235), "fov": 52.0}
+			return {"offset": Vector3(0, 122, 166), "fov": 49.0}
 
 
 func _aim_directed_camera(_progress: float) -> void:
@@ -343,7 +495,7 @@ func _finish_directed_camera(focus: Vector3) -> void:
 	_camera_directed = false
 	_camera_focus = focus
 	var relative := camera.position - focus
-	_camera_distance = clampf(relative.length(), 90.0, 390.0)
+	_camera_distance = clampf(relative.length(), 150.0, 265.0)
 	_camera_yaw = atan2(relative.x / 0.48, relative.z / 0.80)
 
 
@@ -389,19 +541,23 @@ func _build_world() -> void:
 	_build_ambient_landscape()
 	_build_landmarks()
 	for definition in DISTRICT_DEFINITIONS:
+		var compact_definition: Dictionary = definition.duplicate(true)
+		var compact_position: Vector3 = definition.position
+		compact_definition.position = compact_position * COMPACT_MAP_SCALE
+		compact_definition.radius = float(definition.radius) * COMPACT_RADIUS_SCALE
 		var district = DistrictViewScript.new()
 		district.name = str(definition.id)
-		district.setup(definition, FACTION_COLORS, FACTION_GLYPHS)
+		district.setup(compact_definition, FACTION_COLORS, FACTION_GLYPHS)
 		districts_root.add_child(district)
 		district_views[definition.id] = district
-		district_positions[definition.id] = definition.position
-		_build_district_resources(definition)
+		district_positions[definition.id] = compact_definition.position
+		_build_district_resources(compact_definition)
 		if str(definition.kind) == "core":
-			_build_core_structure(definition)
+			_build_core_structure(compact_definition)
 		elif str(definition.kind) == "homeland":
-			_build_settlement_structure(definition)
+			_build_settlement_structure(compact_definition)
 		elif str(definition.kind) == "mid mine":
-			_build_mine_structure(definition)
+			_build_mine_structure(compact_definition)
 	_build_graph_lines()
 
 	camera = Camera3D.new()
@@ -465,7 +621,7 @@ func _build_triangle_ground() -> void:
 	# look like a debug diagram.
 	var water := MeshInstance3D.new()
 	var water_mesh := PlaneMesh.new()
-	water_mesh.size = Vector2(760, 760)
+	water_mesh.size = Vector2(430, 430)
 	water.mesh = water_mesh
 	water.position.y = -2.5
 	var water_material := _material(Color("0f3c58"))
@@ -485,7 +641,12 @@ func _build_triangle_ground() -> void:
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	const GRID := 48
-	const HALF := 245.0
+	const HALF := 152.0
+	var cosmetic_noise := FastNoiseLite.new()
+	cosmetic_noise.seed = 2407
+	cosmetic_noise.frequency = 0.021
+	cosmetic_noise.fractal_octaves = 3
+	cosmetic_noise.fractal_gain = 0.48
 	for z_index in range(GRID + 1):
 		for x_index in range(GRID + 1):
 			var x := lerpf(-HALF, HALF, float(x_index) / GRID)
@@ -493,9 +654,9 @@ func _build_triangle_ground() -> void:
 			# An irregular coastline avoids the old rectangular board silhouette.
 			var angle := atan2(z + 12.0, x)
 			var shoreline := 0.78 + sin(angle * 3.0) * 0.055 + cos(angle * 5.0) * 0.035
-			var edge := Vector2(x / 245.0, (z + 12.0) / 245.0).length()
+			var edge := Vector2(x / HALF, (z + 7.0) / HALF).length()
 			var coast := clampf((edge - shoreline) / 0.20, 0.0, 1.0)
-			var height := -0.12 + sin(x * 0.037) * 0.32 + cos(z * 0.043) * 0.24 + sin((x - z) * 0.025) * 0.18
+			var height := -0.12 + cosmetic_noise.get_noise_2d(x, z) * 0.72 + sin((x - z) * 0.025) * 0.12
 			height -= coast * 4.0
 			vertices.append(Vector3(x, height, z))
 			normals.append(Vector3.UP)
@@ -524,6 +685,7 @@ func _build_triangle_ground() -> void:
 	terrain_material.roughness = 0.95
 	terrain.material_override = terrain_material
 	world_root.add_child(terrain)
+	_attach_optional_terrain3d_hook()
 	# A handful of broad ground patches break up the grass without textures.
 	for patch_data in [[Vector3(-118, 0.30, 75), Vector2(42, 28), Color("3d7144")], [Vector3(105, 0.30, 48), Vector2(48, 28), Color("58713f")], [Vector3(0, 0.30, -66), Vector2(58, 30), Color("357154")]]:
 		var patch := MeshInstance3D.new()
@@ -536,6 +698,20 @@ func _build_triangle_ground() -> void:
 		patch_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		patch.material_override = patch_material
 		world_root.add_child(patch)
+
+
+func _attach_optional_terrain3d_hook() -> void:
+	# Terrain3D is never required for the deterministic compact mesh. If the
+	# addon is active, retain a hidden cosmetic hook for later reviewed terrain
+	# data rather than constructing or mutating terrain from replay state.
+	if not ClassDB.class_exists(&"Terrain3D"):
+		return
+	var terrain_hook := Node3D.new()
+	terrain_hook.name = "OptionalTerrain3DArtHook"
+	terrain_hook.visible = false
+	terrain_hook.set_meta("terrain3d_class_available", true)
+	terrain_hook.set_meta("cosmetic_only", true)
+	world_root.add_child(terrain_hook)
 
 
 func _build_graph_lines() -> void:
@@ -569,7 +745,7 @@ func _build_ambient_landscape() -> void:
 		Vector3(-48, 0, -78), Vector3(54, 0, 58)
 	]
 	for grove_index in range(groves.size()):
-		var center: Vector3 = groves[grove_index]
+		var center: Vector3 = groves[grove_index] * COMPACT_MAP_SCALE
 		for tree_index in range(13):
 			var seed := float(grove_index * 37 + tree_index * 13)
 			var spread := 6.0 + float(tree_index) * 1.45
@@ -577,6 +753,11 @@ func _build_ambient_landscape() -> void:
 			_create_resource_marker("tree", at, seed)
 		if grove_index % 2 == 0:
 			_create_resource_marker("stone", center + Vector3(11, 0, -7), float(grove_index) * 17.0)
+		if grove_index in [1, 5, 8]:
+			var wildlife := AmbientWildlifeScript.new()
+			wildlife.name = "AmbientWildlife_%d" % grove_index
+			wildlife.setup(center + Vector3(4, 0, -3), grove_index * 31)
+			resources_root.add_child(wildlife)
 
 
 func _build_landmarks() -> void:
@@ -591,7 +772,7 @@ func _build_landmarks() -> void:
 		[Vector3(28, 0, -156), 1.08, 101.0]
 	]
 	for data in landmark_data:
-		_create_mountain_cluster(data[0], float(data[1]), float(data[2]))
+		_create_mountain_cluster(data[0] * COMPACT_MAP_SCALE, float(data[1]) * 0.82, float(data[2]))
 
 
 func _create_mountain_cluster(center: Vector3, size_factor: float, seed: float) -> void:
@@ -646,6 +827,12 @@ func _build_core_structure(definition: Dictionary) -> void:
 	core.name = "%sCoreStructure" % faction_id.capitalize()
 	core.position = definition.position
 	resources_root.add_child(core)
+	var imported_keep := AssetResolver.instantiate_structure("keep")
+	if imported_keep != null:
+		_add_imported_structure_pad(core, 8.2, FACTION_COLORS[faction_id].darkened(0.48))
+		core.add_child(imported_keep)
+		imported_keep.scale = Vector3.ONE * 1.6
+		return
 	var base := MeshInstance3D.new()
 	var base_mesh := CylinderMesh.new()
 	base_mesh.top_radius = 6.2
@@ -713,6 +900,12 @@ func _build_settlement_structure(definition: Dictionary) -> void:
 	camp.name = "%sSettlement" % faction_id.capitalize()
 	camp.position = definition.position
 	resources_root.add_child(camp)
+	var imported_settlement := AssetResolver.instantiate_structure("settlement")
+	if imported_settlement != null:
+		_add_imported_structure_pad(camp, 13.5, FACTION_COLORS[faction_id].darkened(0.55))
+		camp.add_child(imported_settlement)
+		imported_settlement.scale = Vector3.ONE * 1.4
+		return
 	var floor := MeshInstance3D.new()
 	var floor_mesh := CylinderMesh.new()
 	floor_mesh.top_radius = 16.0
@@ -777,6 +970,12 @@ func _build_mine_structure(definition: Dictionary) -> void:
 	mine.name = "%sMineEntrance" % str(definition.id)
 	mine.position = definition.position + Vector3(0, 0.15, 6.0)
 	resources_root.add_child(mine)
+	var imported_mine := AssetResolver.instantiate_structure("mine")
+	if imported_mine != null:
+		_add_imported_structure_pad(mine, 6.2, Color("394747"))
+		mine.add_child(imported_mine)
+		imported_mine.scale = Vector3.ONE * 1.8
+		return
 	var arch := MeshInstance3D.new()
 	var arch_mesh := CylinderMesh.new()
 	arch_mesh.top_radius = 4.0
@@ -816,6 +1015,19 @@ func _build_mine_structure(definition: Dictionary) -> void:
 	mine_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	mine_label.pixel_size = 0.016
 	mine.add_child(mine_label)
+
+
+func _add_imported_structure_pad(parent: Node3D, radius: float, color: Color) -> void:
+	var pad := MeshInstance3D.new()
+	var pad_mesh := CylinderMesh.new()
+	pad_mesh.top_radius = radius * 0.92
+	pad_mesh.bottom_radius = radius
+	pad_mesh.height = 0.65
+	pad_mesh.radial_segments = 14
+	pad.mesh = pad_mesh
+	pad.position.y = 0.32
+	pad.material_override = _material(color)
+	parent.add_child(pad)
 
 
 func _build_district_resources(definition: Dictionary) -> void:
@@ -957,6 +1169,7 @@ func _build_interface() -> void:
 	_build_faction_panel()
 	_build_diplomacy_panel()
 	_build_command_and_replay_panel()
+	_build_conquest_minimap()
 	_build_setup_lobby()
 	_build_podium()
 
@@ -1221,63 +1434,141 @@ func _build_podium() -> void:
 	ui_root.add_child(podium_overlay)
 
 
+func _build_conquest_minimap() -> void:
+	conquest_minimap = ConquestMinimapScript.new()
+	conquest_minimap.name = "ConquestMinimap"
+	conquest_minimap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	conquest_minimap.offset_left = -194
+	conquest_minimap.offset_top = -226
+	conquest_minimap.offset_right = -16
+	conquest_minimap.offset_bottom = -132
+	conquest_minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_root.add_child(conquest_minimap)
+
+
 func _build_top_bar() -> void:
 	var panel := PanelContainer.new()
-	panel.name = "MatchPhaseBar"
-	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	panel.offset_left = 14
+	panel.name = "ConquestObjectiveBar"
+	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	panel.offset_left = -470
 	panel.offset_top = 10
-	panel.offset_right = -14
-	panel.offset_bottom = 58
-	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.018, 0.045, 0.06, 0.94), Color("2b6d72"), 12, 8))
+	panel.offset_right = 470
+	panel.offset_bottom = 86
+	panel.add_theme_stylebox_override("panel", _kenney_panel_style(Color(0.012, 0.029, 0.043, 0.96), Color("c99842"), 14, 10))
 	ui_root.add_child(panel)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 14)
 	panel.add_child(row)
 
 	var brand := Label.new()
-	brand.text = "WORLD ARENA"
-	brand.add_theme_font_size_override("font_size", 17)
+	brand.text = "WORLD ARENA\nCONQUEST"
+	brand.custom_minimum_size.x = 88
+	brand.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	brand.add_theme_font_size_override("font_size", 15)
 	brand.add_theme_color_override("font_color", Color("fff3c4"))
 	row.add_child(brand)
 
 	round_label = Label.new()
-	round_label.text = "ROUND 00 / 40"
-	round_label.add_theme_font_size_override("font_size", 12)
+	round_label.text = "ROUND 00"
+	round_label.custom_minimum_size.x = 86
+	round_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	round_label.add_theme_font_size_override("font_size", 11)
 	round_label.add_theme_color_override("font_color", Color("f4c95d"))
 	row.add_child(round_label)
 
+	var objective_box := VBoxContainer.new()
+	objective_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	objective_box.add_theme_constant_override("separation", 2)
+	row.add_child(objective_box)
+	objective_label = Label.new()
+	objective_label.text = "OBJECTIVE  ·  DESTROY EVERY RIVAL STRONGHOLD"
+	objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	objective_label.add_theme_font_size_override("font_size", 20)
+	objective_label.add_theme_color_override("font_color", Color("f8f2dd"))
+	objective_box.add_child(objective_label)
+	objective_progress = ProgressBar.new()
+	objective_progress.custom_minimum_size = Vector2(0, 10)
+	objective_progress.min_value = 0
+	objective_progress.max_value = 100
+	objective_progress.value = 0
+	objective_progress.show_percentage = false
+	objective_progress.add_theme_stylebox_override("background", _panel_style(Color("132d3b"), Color("2b5969"), 5, 0))
+	objective_progress.add_theme_stylebox_override("fill", _panel_style(Color("70b8ff"), Color("bde4ff"), 5, 0))
+	objective_box.add_child(objective_progress)
+	objective_detail_label = Label.new()
+	objective_detail_label.text = "OPENING  ·  Strongholds alive 3 / 3"
+	objective_detail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	objective_detail_label.add_theme_font_size_override("font_size", 10)
+	objective_detail_label.add_theme_color_override("font_color", Color("9dbbc3"))
+	objective_box.add_child(objective_detail_label)
+
 	phase_label = Label.new()
-	phase_label.text = "SETUP"
-	phase_label.custom_minimum_size.x = 78
-	phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	phase_label.add_theme_font_size_override("font_size", 11)
-	phase_label.add_theme_color_override("font_color", Color("70b8ff"))
+	phase_label.text = "LIVE"
+	phase_label.visible = false
 	row.add_child(phase_label)
 
 	for faction_id in FACTION_IDS:
 		var status := Label.new()
-		status.text = "%s %s · READY" % [FACTION_GLYPHS[faction_id], faction_id.to_upper()]
-		status.add_theme_font_size_override("font_size", 10)
-		status.add_theme_color_override("font_color", FACTION_COLORS[faction_id].darkened(0.2))
-		status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		status.text = faction_id.to_upper()
+		status.visible = false
 		row.add_child(status)
 		thinking_labels[faction_id] = status
 
 	timer_label = Label.new()
-	timer_label.text = "00:00"
-	timer_label.add_theme_font_size_override("font_size", 11)
-	timer_label.add_theme_color_override("font_color", Color("a9c5c5"))
+	timer_label.text = "01:30"
+	timer_label.custom_minimum_size.x = 92
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	timer_label.add_theme_font_size_override("font_size", 24)
+	timer_label.add_theme_color_override("font_color", Color("fff3c4"))
 	row.add_child(timer_label)
 
 	perspective_select = OptionButton.new()
-	perspective_select.custom_minimum_size.x = 118
+	perspective_select.visible = false
 	perspective_select.add_item("Spectator", 0)
 	perspective_select.add_item("View: Sol", 1)
 	perspective_select.add_item("View: Terra", 2)
 	perspective_select.add_item("View: Luna", 3)
 	perspective_select.item_selected.connect(_on_perspective_selected)
 	row.add_child(perspective_select)
+
+
+func set_showcase_time(elapsed_seconds: float, duration_seconds: float) -> void:
+	if timer_label == null:
+		return
+	var remaining := maxi(0, int(ceil(duration_seconds - elapsed_seconds)))
+	timer_label.text = "%02d:%02d" % [remaining / 60, remaining % 60]
+
+
+func _update_objective(snapshot: Dictionary) -> void:
+	if objective_progress == null:
+		return
+	var alive := 0
+	var contested := false
+	var expanded := false
+	for faction_variant in snapshot.get("factions", []):
+		if not faction_variant is Dictionary:
+			continue
+		var faction: Dictionary = faction_variant
+		if not bool(faction.get("eliminated", false)) and float(faction.get("core_hp", 1.0)) > 0.0:
+			alive += 1
+		if float(faction.get("land_percent", 0.0)) >= 28.0:
+			expanded = true
+	for district_variant in snapshot.get("districts", []):
+		if district_variant is Dictionary and bool((district_variant as Dictionary).get("contested", false)):
+			contested = true
+	var phase := "OPENING"
+	if alive <= 1:
+		phase = "ENDGAME"
+	elif contested or current_phase in ["combat", "war"]:
+		phase = "WAR"
+	elif expanded:
+		phase = "EXPAND"
+	elif current_round >= 5:
+		phase = "FORTIFY"
+	objective_progress.value = float(alive) / 3.0 * 100.0
+	objective_progress.add_theme_stylebox_override("fill", _panel_style(Color("c99842"), Color("f2e2bf"), 5, 0))
+	objective_detail_label.text = "%s  ·  STRONGHOLDS ALIVE  %d / 3" % [phase, alive]
 
 
 func _build_faction_panel() -> void:
@@ -1288,12 +1579,12 @@ func _build_faction_panel() -> void:
 	panel.offset_top = 70
 	panel.offset_right = 228
 	panel.offset_bottom = 342
-	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.018, 0.045, 0.06, 0.91), Color("1b3d49"), 12, 8))
+	panel.add_theme_stylebox_override("panel", _kenney_panel_style(Color(0.018, 0.045, 0.06, 0.91), Color("79541f"), 12, 8))
 	ui_root.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
-	box.add_child(_section_label("FACTIONS  ·  CLICK TO FOCUS"))
+	box.add_child(_section_label("FACTIONS  ·  RESOURCES / POP / ACTION"))
 	for faction_id in FACTION_IDS:
 		box.add_child(_create_faction_card(faction_id))
 	relationship_graph_toggle = Button.new()
@@ -1311,7 +1602,7 @@ func _build_faction_panel() -> void:
 
 func _create_faction_card(faction_id: String) -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(190, 61)
+	panel.custom_minimum_size = Vector2(214, 92)
 	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.026, 0.064, 0.081, 0.92), FACTION_COLORS[faction_id].darkened(0.25), 8, 6))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
@@ -1332,20 +1623,21 @@ func _create_faction_card(faction_id: String) -> Control:
 	title_row.add_child(state)
 
 	var model := Label.new()
-	model.text = "model not configured"
+	model.text = ""
 	model.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	model.add_theme_font_size_override("font_size", 8)
 	model.add_theme_color_override("font_color", Color("7899a5"))
+	model.visible = false
 	box.add_child(model)
 
 	var metrics := Label.new()
-	metrics.text = "CORE 1000 · LAND 0% · ARMY 5"
+	metrics.text = "KEEP 1000/1000  ·  TERRITORY 0%"
 	metrics.add_theme_font_size_override("font_size", 9)
 	metrics.add_theme_color_override("font_color", Color("edf7ed"))
 	box.add_child(metrics)
 
 	var economy := Label.new()
-	economy.text = "F120 W90 S70 · COG 0/100"
+	economy.text = "F120 W90 S70 · POP 0 · SUPPLY 0/0"
 	economy.add_theme_font_size_override("font_size", 8)
 	economy.add_theme_color_override("font_color", Color("7899a5"))
 	box.add_child(economy)
@@ -1386,7 +1678,7 @@ func _build_diplomacy_panel() -> void:
 	panel.offset_top = 70
 	panel.offset_right = -14
 	panel.offset_bottom = 292
-	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.018, 0.045, 0.06, 0.91), Color("1b3d49"), 12, 8))
+	panel.add_theme_stylebox_override("panel", _kenney_panel_style(Color(0.018, 0.045, 0.06, 0.91), Color("79541f"), 12, 8))
 	diplomacy_panel = panel
 	ui_root.add_child(panel)
 	var box := VBoxContainer.new()
@@ -1394,12 +1686,12 @@ func _build_diplomacy_panel() -> void:
 	panel.add_child(box)
 	var header := HBoxContainer.new()
 	box.add_child(header)
-	var title := _section_label("LATEST COMMS")
+	var title := _section_label("BATTLE CHRONICLE")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	diplomacy_filter = OptionButton.new()
 	diplomacy_filter.custom_minimum_size.x = 76
-	for filter_name in ["All", "Public", "Private"]:
+	for filter_name in ["All", "World", "Comms"]:
 		diplomacy_filter.add_item(filter_name)
 	diplomacy_filter.item_selected.connect(func(_index: int) -> void: _rebuild_feed())
 	header.add_child(diplomacy_filter)
@@ -1427,10 +1719,10 @@ func _build_command_and_replay_panel() -> void:
 	panel.name = "CommandReplayStrip"
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.offset_left = 14
-	panel.offset_top = -82
+	panel.offset_top = -118
 	panel.offset_right = -14
 	panel.offset_bottom = -12
-	panel.add_theme_stylebox_override("panel", _panel_style(Color(0.013, 0.035, 0.049, 0.94), Color("2b6d72"), 12, 8))
+	panel.add_theme_stylebox_override("panel", _kenney_panel_style(Color(0.013, 0.035, 0.049, 0.94), Color("79541f"), 12, 8))
 	ui_root.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
@@ -1445,19 +1737,19 @@ func _build_command_and_replay_panel() -> void:
 	selected_title.add_theme_color_override("font_color", FACTION_COLORS.sol)
 	command_row.add_child(selected_title)
 	selected_intent = Label.new()
-	selected_intent.text = "Showcase loaded — agents are entering the arena."
+	selected_intent.text = "CURRENT ORDER · Awaiting authoritative command."
 	selected_intent.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	selected_intent.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	selected_intent.add_theme_font_size_override("font_size", 11)
 	selected_intent.add_theme_color_override("font_color", Color("edf7ed"))
 	command_row.add_child(selected_intent)
 	live_status_label = Label.new()
-	live_status_label.text = "SHOWCASE REPLAY"
+	live_status_label.text = "CONQUEST REPLAY"
 	live_status_label.add_theme_font_size_override("font_size", 9)
 	live_status_label.add_theme_color_override("font_color", Color("f4c95d"))
 	command_row.add_child(live_status_label)
 	var action_legend := Label.new()
-	action_legend.text = "WORLD ACTIONS   GATHER  ·  BUILD  ·  TRADE  ·  FIGHT  ·  CAPTURE"
+	action_legend.text = "TASK INSPECTOR   MOVE  ·  GATHER  ·  BUILD  ·  ATTACK  ·  RETREAT  ·  RESEARCH"
 	action_legend.add_theme_font_size_override("font_size", 8)
 	action_legend.add_theme_color_override("font_color", Color("86a9a8"))
 	box.add_child(action_legend)
@@ -1481,11 +1773,12 @@ func _build_command_and_replay_panel() -> void:
 	pause_button = Button.new()
 	pause_button.text = "PAUSE"
 	pause_button.custom_minimum_size.x = 62
+	pause_button.add_theme_stylebox_override("normal", _kenney_button_style())
 	pause_button.pressed.connect(_toggle_pause)
 	replay_row.add_child(pause_button)
 	timeline_slider = HSlider.new()
 	timeline_slider.min_value = 0
-	timeline_slider.max_value = 40
+	timeline_slider.max_value = 120
 	timeline_slider.step = 1
 	timeline_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	timeline_slider.custom_minimum_size.x = 160
@@ -1513,29 +1806,30 @@ func _build_setup_lobby() -> void:
 	ui_root.add_child(setup_overlay)
 	var shade := ColorRect.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.color = Color(0.007, 0.021, 0.03, 0.965)
+	shade.color = Color(0.007, 0.021, 0.03, 0.86)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	setup_overlay.add_child(shade)
 
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.offset_left = -400
-	panel.offset_top = -326
+	panel.offset_top = -348
 	panel.offset_right = 400
-	panel.offset_bottom = 326
+	panel.offset_bottom = 270
 	panel.add_theme_stylebox_override("panel", _panel_style(Color("071923"), Color("2b6d72"), 20, 20))
 	setup_overlay.add_child(panel)
 	var content := VBoxContainer.new()
 	content.add_theme_constant_override("separation", 10)
 	panel.add_child(content)
-	content.add_child(_section_label("WORLD ARENA  /  THREE-MODEL MATCH"))
+	setup_content = content
+	content.add_child(_section_label("WORLD ARENA  /  CONQUEST"))
 	var title := Label.new()
-	title.text = "Choose the minds entering the arena."
+	title.text = "Configure the commanders."
 	title.add_theme_font_size_override("font_size", 28)
 	title.add_theme_color_override("font_color", Color("fff3c4"))
 	content.add_child(title)
 	var subtitle := Label.new()
-	subtitle.text = "All commanders observe the same frozen round, reason concurrently, then reveal sealed plans together."
+	subtitle.text = "Collect resources, build a force, and outplay two rival agents on one compact island."
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	subtitle.add_theme_font_size_override("font_size", 14)
 	subtitle.add_theme_color_override("font_color", Color("a9c5c5"))
@@ -1556,6 +1850,29 @@ func _build_setup_lobby() -> void:
 	reveal_key.text = "SHOW"
 	reveal_key.toggled.connect(func(pressed: bool) -> void: api_key_input.secret = not pressed)
 	key_row.add_child(reveal_key)
+
+	content.add_child(_caption("MATCH  ·  WHAT THE AGENTS OBSERVE"))
+	var match_row := HBoxContainer.new()
+	match_row.add_theme_constant_override("separation", 10)
+	content.add_child(match_row)
+	scenario_select = OptionButton.new()
+	scenario_select.custom_minimum_size = Vector2(0, 40)
+	scenario_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scenario_select.add_item("Standard Island Skirmish")
+	scenario_select.set_item_metadata(0, "tri_13_v1")
+	scenario_select.tooltip_text = "A compact three-base map with crossroads and rival strongholds."
+	match_row.add_child(scenario_select)
+	observation_select = OptionButton.new()
+	observation_select.custom_minimum_size = Vector2(220, 40)
+	for observation_mode in ["semantic", "vision", "hybrid"]:
+		var label: String = str(observation_mode).capitalize()
+		if observation_mode == "semantic":
+			label += " · recommended"
+		observation_select.add_item(label)
+		observation_select.set_item_metadata(observation_select.item_count - 1, observation_mode)
+	observation_select.select(0)
+	observation_select.tooltip_text = "Semantic is the fair benchmark default; vision and hybrid are separate evaluation tracks."
+	match_row.add_child(observation_select)
 
 	content.add_child(_caption("COMMANDERS  ·  INDEPENDENT MODEL AND REASONING BUDGET"))
 	var defaults := {"sol": "gpt-5.6-sol", "terra": "gpt-5.6-terra", "luna": "gpt-5.6-luna"}
@@ -1585,30 +1902,183 @@ func _build_setup_lobby() -> void:
 		reasoning.select(1 if faction_id == "sol" else 0)
 		row.add_child(reasoning)
 		reasoning_inputs[faction_id] = reasoning
-		var advisors := Label.new()
-		advisors.text = "3 advisors max"
-		advisors.custom_minimum_size.x = 100
-		advisors.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		advisors.add_theme_font_size_override("font_size", 10)
-		advisors.add_theme_color_override("font_color", Color("7899a5"))
+		var advisors := OptionButton.new()
+		advisors.custom_minimum_size.x = 116
+		for advisor_count in range(4):
+			advisors.add_item("%d advisor%s" % [advisor_count, "" if advisor_count == 1 else "s"])
+			advisors.set_item_metadata(advisors.item_count - 1, advisor_count)
+		advisors.select({"sol": 2, "terra": 1, "luna": 0}.get(faction_id, 0))
+		advisors.tooltip_text = "Maximum specialist calls for %s (0–3)." % faction_id.capitalize()
 		row.add_child(advisors)
+		advisor_inputs[faction_id] = advisors
 
 	var rules := Label.new()
-	rules.text = "TRI-13  ·  40 ROUNDS  ·  AGENTIC TRACK  ·  OMNISCIENT DEMO VIEW  ·  REPLAY ON"
+	rules.text = "LAST STRONGHOLD STANDING  ·  120-ROUND CAP  ·  SIMULTANEOUS PLANS  ·  REPLAY ON"
 	rules.add_theme_font_size_override("font_size", 11)
 	rules.add_theme_color_override("font_color", Color("70b8ff"))
 	content.add_child(rules)
 	setup_status_label = Label.new()
-	setup_status_label.text = "Leave the key blank for the credential-free demo policy." if mock_mode and not run_embedded_mock_on_submit else "Mock presentation mode: the API key may be left blank." if mock_mode else "Enter a key and choose all three models."
+	setup_status_label.text = "Leave the key blank for the credential-free demo policy." if mock_mode else "Connected. Choose each commander's model and advisor count."
 	setup_status_label.add_theme_font_size_override("font_size", 12)
 	setup_status_label.add_theme_color_override("font_color", Color("f4c95d"))
 	content.add_child(setup_status_label)
 	setup_start_button = Button.new()
-	setup_start_button.text = "START THREE-AGENT MATCH" if not run_embedded_mock_on_submit else "START MOCK ARENA" if mock_mode else "START THREE-AGENT MATCH"
+	setup_start_button.text = "START MATCH"
 	setup_start_button.custom_minimum_size.y = 50
 	setup_start_button.add_theme_font_size_override("font_size", 15)
 	setup_start_button.pressed.connect(_on_setup_start)
 	content.add_child(setup_start_button)
+	_build_simulation_lobby(panel)
+
+
+func _build_simulation_lobby(live_panel: PanelContainer) -> void:
+	# Keep the established LIVE MATCH form intact underneath this sibling page.
+	# Tabs live above both pages, so changing modes never recreates credentials or
+	# commander/advisor controls.
+	var tabs := HBoxContainer.new()
+	tabs.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	tabs.offset_left = -400
+	tabs.offset_top = 72
+	tabs.offset_right = 400
+	tabs.offset_bottom = 112
+	tabs.add_theme_constant_override("separation", 8)
+	tabs.z_index = 4
+	setup_overlay.add_child(tabs)
+	for entry in [["live", "⚔  LIVE MATCH"], ["simulation", "ϟ  FAST SIMULATION"], ["replays", "▣  REPLAY LIBRARY"]]:
+		var mode := str(entry[0])
+		var button := Button.new()
+		button.text = str(entry[1])
+		button.toggle_mode = true
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size.y = 38
+		button.add_theme_font_size_override("font_size", 14)
+		button.add_theme_color_override("font_color", Color("b7c9cc"))
+		button.add_theme_color_override("font_hover_color", Color("fff3c4"))
+		button.add_theme_color_override("font_pressed_color", Color("fff3c4"))
+		button.add_theme_stylebox_override("normal", _panel_style(Color("0b1821"), Color("203d48"), 7, 7))
+		button.add_theme_stylebox_override("hover", _panel_style(Color("132936"), Color("4b7380"), 7, 7))
+		button.add_theme_stylebox_override("pressed", _panel_style(Color("5b3c12"), Color("e6a62f"), 7, 7))
+		button.add_theme_stylebox_override("hover_pressed", _panel_style(Color("6b4817"), Color("ffc45b"), 7, 7))
+		button.button_pressed = mode == "live"
+		button.pressed.connect(func() -> void: _set_lobby_mode(mode))
+		tabs.add_child(button)
+		lobby_mode_buttons[mode] = button
+
+	simulation_page = PanelContainer.new()
+	simulation_page.name = "SimulationLab"
+	simulation_page.set_anchors_preset(Control.PRESET_CENTER)
+	simulation_page.offset_left = -400
+	simulation_page.offset_top = -348
+	simulation_page.offset_right = 400
+	simulation_page.offset_bottom = 270
+	simulation_page.add_theme_stylebox_override("panel", _panel_style(Color("071923"), Color("c28b27"), 20, 20))
+	simulation_page.visible = false
+	setup_overlay.add_child(simulation_page)
+	var outer := HBoxContainer.new()
+	outer.add_theme_constant_override("separation", 12)
+	simulation_page.add_child(outer)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 9)
+	outer.add_child(left)
+	left.add_child(_section_label("FAST SIMULATION"))
+	var heading := Label.new()
+	heading.text = "RUN HEADLESS  →  SAVE REPLAY  →  WATCH & SCRUB"
+	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", Color("fff3c4"))
+	left.add_child(heading)
+	left.add_child(_caption("Same authoritative rules as a live match. Saved artifacts replay through the compact battlefield."))
+
+	left.add_child(_caption("POLICY SOURCE"))
+	simulation_policy_select = OptionButton.new()
+	simulation_policy_select.add_item("Deterministic demo")
+	simulation_policy_select.set_item_metadata(0, "deterministic_demo")
+	simulation_policy_select.add_item("Live AI")
+	simulation_policy_select.set_item_metadata(1, "live_ai")
+	left.add_child(simulation_policy_select)
+	var seed_row := HBoxContainer.new()
+	seed_row.add_child(_caption("SEED"))
+	simulation_seed_input = LineEdit.new()
+	simulation_seed_input.text = "ARENA-2407"
+	simulation_seed_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	seed_row.add_child(simulation_seed_input)
+	left.add_child(seed_row)
+	var rounds_row := HBoxContainer.new()
+	rounds_row.add_child(_caption("MAX ROUNDS"))
+	simulation_rounds_input = SpinBox.new()
+	simulation_rounds_input.min_value = 1
+	simulation_rounds_input.max_value = 120
+	simulation_rounds_input.step = 1
+	simulation_rounds_input.value = 36
+	simulation_rounds_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rounds_row.add_child(simulation_rounds_input)
+	left.add_child(rounds_row)
+	var observation_row := HBoxContainer.new()
+	observation_row.add_child(_caption("OBSERVATION"))
+	simulation_observation_select = OptionButton.new()
+	simulation_observation_select.add_item("Semantic state")
+	simulation_observation_select.set_item_metadata(0, "semantic")
+	simulation_observation_select.add_item("Vision")
+	simulation_observation_select.set_item_metadata(1, "vision")
+	simulation_observation_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	observation_row.add_child(simulation_observation_select)
+	left.add_child(observation_row)
+	left.add_child(_caption("TEAM SUMMARY  ·  Sol 2 advisors  ·  Terra 1  ·  Luna 0  (advisor range remains 0–3)"))
+	var note := Label.new()
+	note.text = "Headless execution only. The replay is saved before you watch it."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color("a9c5c5"))
+	left.add_child(note)
+	simulation_status_label = Label.new()
+	simulation_status_label.text = "READY  ·  choose a seed and run a simulation"
+	simulation_status_label.add_theme_font_size_override("font_size", 11)
+	simulation_status_label.add_theme_color_override("font_color", Color("f4c95d"))
+	left.add_child(simulation_status_label)
+	simulation_run_button = Button.new()
+	simulation_run_button.text = "▶  RUN SIMULATION"
+	simulation_run_button.custom_minimum_size.y = 52
+	simulation_run_button.add_theme_stylebox_override("normal", _kenney_button_style())
+	simulation_run_button.add_theme_font_size_override("font_size", 15)
+	simulation_run_button.add_theme_color_override("font_color", Color("fff3c4"))
+	simulation_run_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	simulation_run_button.add_theme_stylebox_override("normal", _panel_style(Color("8a5a12"), Color("e6a62f"), 9, 10))
+	simulation_run_button.add_theme_stylebox_override("hover", _panel_style(Color("a76f18"), Color("ffc45b"), 9, 10))
+	simulation_run_button.add_theme_stylebox_override("pressed", _panel_style(Color("6c450d"), Color("fff3c4"), 9, 10))
+	simulation_run_button.add_theme_stylebox_override("disabled", _panel_style(Color("253039"), Color("52616a"), 9, 10))
+	simulation_run_button.pressed.connect(_on_simulation_run)
+	left.add_child(simulation_run_button)
+
+	var recent := PanelContainer.new()
+	recent.custom_minimum_size.x = 294
+	recent.add_theme_stylebox_override("panel", _panel_style(Color("0a1821"), Color("2b5969"), 12, 10))
+	outer.add_child(recent)
+	var recent_box := VBoxContainer.new()
+	recent_box.add_theme_constant_override("separation", 8)
+	recent.add_child(recent_box)
+	var recent_head := HBoxContainer.new()
+	recent_box.add_child(recent_head)
+	var recent_title := _section_label("RECENT RUNS")
+	recent_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	recent_head.add_child(recent_title)
+	var refresh := Button.new()
+	refresh.text = "REFRESH"
+	refresh.pressed.connect(func() -> void: replay_refresh_requested.emit())
+	recent_head.add_child(refresh)
+	replay_runs_list = VBoxContainer.new()
+	replay_runs_list.add_theme_constant_override("separation", 8)
+	recent_box.add_child(replay_runs_list)
+	set_replay_list([])
+
+
+func _on_simulation_run() -> void:
+	var seed := simulation_seed_input.text.strip_edges()
+	if seed.is_empty():
+		set_simulation_error("Enter a non-empty seed.")
+		return
+	var policy := str(simulation_policy_select.get_item_metadata(simulation_policy_select.selected))
+	var observation := str(simulation_observation_select.get_item_metadata(simulation_observation_select.selected))
+	simulation_requested.emit({"seed": seed, "max_rounds": int(simulation_rounds_input.value), "policy": policy, "observation_mode": observation})
 
 
 func _apply_units(value: Variant) -> void:
@@ -1635,17 +2105,15 @@ func _apply_units(value: Variant) -> void:
 		if str(state.get("unit_type", "")) == "commander":
 			commander_views[faction_id] = unit_views[unit_id]
 
+	# A missing replay row no longer pops a character out of existence. Units stay
+	# on the battlefield in a defeated/recovering state, preserving spatial memory.
 	var removed: Array = []
 	for unit_id in unit_views:
 		if not seen.has(unit_id):
 			removed.append(unit_id)
 	for unit_id in removed:
 		var old_unit: Node = unit_views[unit_id]
-		for faction_id in FACTION_IDS:
-			if commander_views.get(faction_id) == old_unit:
-				commander_views.erase(faction_id)
-		old_unit.queue_free()
-		unit_views.erase(unit_id)
+		old_unit.apply_state({"position": old_unit.position, "visible": true, "health": 0, "max_health": 100, "task": "recovering", "in_combat": false})
 	for faction_id in FACTION_IDS:
 		if commander_views.has(faction_id) and not is_instance_valid(commander_views[faction_id]):
 			commander_views.erase(faction_id)
@@ -1653,25 +2121,35 @@ func _apply_units(value: Variant) -> void:
 
 func _apply_factions(value: Variant) -> void:
 	var records := _records_by_id(value)
+	var visible_population := {"sol": 0, "terra": 0, "luna": 0}
+	for unit_variant in _record_array(current_snapshot.get("units", [])):
+		if unit_variant is Dictionary and bool(unit_variant.get("visible", true)):
+			var unit_faction := str(unit_variant.get("faction_id", unit_variant.get("faction", "")))
+			if visible_population.has(unit_faction):
+				visible_population[unit_faction] = int(visible_population[unit_faction]) + 1
 	for faction_id in FACTION_IDS:
 		var state: Dictionary = records.get(faction_id, {})
 		var card: Dictionary = faction_cards[faction_id]
-		var core_hp := int(state.get("core_hp", 1000))
 		var land := float(state.get("land_percent", 0.0))
 		var army := int(state.get("army_strength", state.get("unit_count", 5)))
-		card.metrics.text = "CORE %d   LAND %d%%   ARMY %d" % [core_hp, int(land), army]
-		card.model.text = str(state.get("model", "model not configured"))
-		card.state.text = str(state.get("state", "waiting")).replace("_", " ").to_upper()
+		var population := int(state.get("population", state.get("unit_count", visible_population[faction_id])))
+		var keep_hp := int(state.get("core_hp", state.get("keep_hp", 1000)))
+		var keep_max := maxi(1, int(state.get("max_core_hp", state.get("max_keep_hp", 1000))))
+		var eliminated := bool(state.get("eliminated", false)) or keep_hp <= 0
+		card.metrics.text = "STRONGHOLD DESTROYED" if eliminated else "KEEP %d/%d  ·  TERRITORY %d%%" % [keep_hp, keep_max, int(land)]
+		card.model.text = "" # Model/provider identity belongs to setup, not the spectator hierarchy.
+		var current_action := str(state.get("current_action", state.get("active_task", state.get("state", "waiting")))).replace("_", " ").to_upper()
+		card.state.text = current_action
 		var resources: Dictionary = state.get("resources", {})
-		var cognition: Dictionary = state.get("cognition", {})
-		var spent := float(cognition.get("round_spent", 0.0))
-		var budget := maxf(1.0, float(cognition.get("round_budget", 100.0)))
-		card.cognition.max_value = budget
-		card.cognition.value = spent
-		card.economy.text = "F%d W%d S%d · COG %d/%d" % [
+		var supply: Dictionary = state.get("supply", {})
+		var supply_used := int(supply.get("used", population))
+		var supply_capacity := int(supply.get("capacity", state.get("supply_capacity", population)))
+		var tech := str(state.get("tech_tier", state.get("tech", "I"))).to_upper()
+		card.economy.text = "F%d W%d S%d · POP %d · SUPPLY %d/%d · TIER %s · ARMY %d" % [
 			int(resources.get("food", 0)), int(resources.get("wood", 0)),
-			int(resources.get("stone", 0)), int(spent), int(budget)
+			int(resources.get("stone", 0)), population, supply_used, supply_capacity, tech, army
 		]
+		card.state.text = "STRONGHOLD DESTROYED" if eliminated else current_action
 		var specialist_records: Array = state.get("specialists", [])
 		var advisor_tokens: Array[String] = []
 		for specialist_variant in specialist_records:
@@ -1683,14 +2161,104 @@ func _apply_factions(value: Variant) -> void:
 		card.panel.add_theme_stylebox_override("panel", _panel_style(Color(0.026, 0.064, 0.081, 0.96), border, 10, 8))
 
 
+## Projects persistent simulation tasks without interpreting transforms or outcomes.
+## v0.2 queue names and the v0.3 task envelope are both accepted during migration.
+func _apply_persistent_tasks(snapshot: Dictionary) -> void:
+	var work_records: Array = []
+	var construction_records: Array = []
+	for key in ["tasks", "work_tasks", "resource_tasks"]:
+		work_records.append_array(_record_array(snapshot.get(key, [])))
+	for key in ["construction", "construction_tasks", "build_queue"]:
+		construction_records.append_array(_record_array(snapshot.get(key, [])))
+	for task_variant in _record_array(snapshot.get("tasks", [])):
+		if task_variant is Dictionary and _is_construction_task(task_variant):
+			construction_records.append(task_variant)
+	var seen_work: Dictionary = {}
+	for task_variant in work_records:
+		if not task_variant is Dictionary or _is_construction_task(task_variant):
+			continue
+		var task: Dictionary = task_variant
+		var task_id := str(task.get("id", task.get("task_id", "")))
+		if task_id.is_empty():
+			continue
+		seen_work[task_id] = true
+		var faction_id := str(task.get("faction_id", task.get("faction", "neutral")))
+		var view = work_task_views.get(task_id)
+		if view == null:
+			view = WorkTaskViewScript.new()
+			view.name = "WorkTask_%s" % task_id
+			resources_root.add_child(view)
+			work_task_views[task_id] = view
+		view.apply_snapshot(task, _task_position(task), FACTION_COLORS.get(faction_id, NEUTRAL_COLOR))
+	var seen_construction: Dictionary = {}
+	for job_variant in construction_records:
+		if not job_variant is Dictionary:
+			continue
+		var job: Dictionary = job_variant
+		var job_id := str(job.get("id", job.get("job_id", "")))
+		if job_id.is_empty():
+			job_id = "%s_%s_%s" % [str(job.get("faction", "neutral")), str(job.get("kind", "build")), str(job.get("district", job.get("district_id", "")))]
+			job["id"] = job_id
+		seen_construction[job_id] = true
+		var faction_id := str(job.get("faction_id", job.get("faction", "neutral")))
+		var view = construction_views.get(job_id)
+		if view == null:
+			view = ConstructionViewScript.new()
+			view.name = "Construction_%s" % job_id
+			resources_root.add_child(view)
+			construction_views[job_id] = view
+		view.apply_snapshot(job, _task_position(job), FACTION_COLORS.get(faction_id, NEUTRAL_COLOR))
+	_remove_missing_task_views(work_task_views, seen_work)
+	_remove_missing_task_views(construction_views, seen_construction)
+
+
+func _is_construction_task(task: Dictionary) -> bool:
+	var kind := str(task.get("kind", task.get("action", task.get("task", "")))).to_lower()
+	return kind.contains("build") or kind.contains("construct") or task.has("required_work") and task.has("builder_ids")
+
+
+func _task_position(task: Dictionary) -> Vector3:
+	if task.has("position"):
+		return _to_vector3(task.position) * COMPACT_MAP_SCALE
+	var actor_id := str(task.get("actor_id", task.get("unit_id", "")))
+	if unit_views.has(actor_id) and is_instance_valid(unit_views[actor_id]):
+		return unit_views[actor_id].global_position
+	var district_id := str(task.get("district_id", task.get("district", task.get("target_district_id", ""))))
+	return district_positions.get(district_id, Vector3.ZERO)
+
+
+func _remove_missing_task_views(views: Dictionary, seen: Dictionary) -> void:
+	var stale: Array = []
+	for view_id in views:
+		if not seen.has(view_id):
+			stale.append(view_id)
+	for view_id in stale:
+		var view: Node = views[view_id]
+		if is_instance_valid(view):
+			view.queue_free()
+		views.erase(view_id)
+
+
 func _refresh_selected_command() -> void:
 	if current_snapshot.is_empty():
 		return
 	var factions := _records_by_id(current_snapshot.get("factions", []))
 	var state: Dictionary = factions.get(selected_faction, {})
-	selected_title.text = "%s %s COMMAND ROOM" % [FACTION_GLYPHS[selected_faction], selected_faction.to_upper()]
+	selected_title.text = "%s %s NOW" % [FACTION_GLYPHS[selected_faction], selected_faction.to_upper()]
 	selected_title.add_theme_color_override("font_color", FACTION_COLORS[selected_faction])
 	selected_intent.text = str(state.get("strategic_intent", "Strategic intent will appear after plans lock."))
+	var active_task: Dictionary = {}
+	for task_variant in _record_array(current_snapshot.get("tasks", current_snapshot.get("construction", []))):
+		if task_variant is Dictionary and str((task_variant as Dictionary).get("faction_id", (task_variant as Dictionary).get("faction", ""))) == selected_faction:
+			active_task = task_variant
+			break
+	if not active_task.is_empty():
+		var workers: Variant = active_task.get("builder_ids", active_task.get("worker_ids", active_task.get("target_ids", [])))
+		var worker_count: int = workers.size() if workers is Array else int(workers)
+		var completed := int(active_task.get("completed_work", 0))
+		var required := maxi(1, int(active_task.get("required_work", 1)))
+		var eta := maxi(0, required - completed) / maxi(1, worker_count)
+		selected_intent.text = "TASK · %s  %d%%  ·  %d worker%s  ·  ETA %02d" % [str(active_task.get("structure", active_task.get("resource", active_task.get("kind", "work")))).to_upper(), int(float(completed) / required * 100.0), worker_count, "" if worker_count == 1 else "s", eta]
 	var order_summaries: Array[String] = []
 	for order_variant in state.get("orders", []):
 		if order_variant is Dictionary:
@@ -1698,6 +2266,7 @@ func _refresh_selected_command() -> void:
 			var target := str(order.get("target", order.get("district_id", "")))
 			order_summaries.append("%s%s" % [str(order.get("action", "order")).replace("_", " ").to_upper(), " → " + target if not target.is_empty() else ""])
 	selected_orders.text = "ORDERS  %s" % ("—" if order_summaries.is_empty() else "  ·  ".join(order_summaries))
+	selected_orders.visible = true
 	var advisor_summaries: Array[String] = []
 	for advisor_variant in state.get("specialists", []):
 		if advisor_variant is Dictionary:
@@ -1708,6 +2277,7 @@ func _refresh_selected_command() -> void:
 				str(advisor.get("recommendation_summary", "waiting"))
 			])
 	selected_advisors.text = "ADVISORS  %s" % ("none active" if advisor_summaries.is_empty() else "  |  ".join(advisor_summaries))
+	selected_advisors.visible = false
 
 
 func _apply_event(event: Dictionary) -> void:
@@ -1729,10 +2299,43 @@ func _apply_event(event: Dictionary) -> void:
 		var district_id := str(payload.get("district_id", ""))
 		if district_views.has(district_id) and payload.has("district_state"):
 			district_views[district_id].apply_state(payload.district_state)
+	if kind in ["gather", "resource", "work", "build", "construction"]:
+		_apply_task_event(safe_event)
 
 	_add_timeline_marker(safe_event)
 	_rebuild_feed()
 	call_deferred("_scroll_feed_to_end")
+
+
+func _apply_task_event(event: Dictionary) -> void:
+	var payload: Dictionary = event.get("payload", {})
+	var task: Dictionary = payload.get("task", payload.get("task_state", payload.get("job", payload.get("construction", {}))))
+	if task.is_empty():
+		task = payload.duplicate(true)
+		task["id"] = str(event.get("task_id", event.get("job_id", event.get("event_id", "event_task"))))
+		task["kind"] = str(event.get("kind", "work"))
+		task["state"] = str(event.get("state", "active"))
+		if event.has("actor_id"):
+			task["actor_id"] = event.actor_id
+	var faction_id := str(task.get("faction_id", task.get("faction", event.get("faction_id", "neutral"))))
+	var position := _task_position(task)
+	var task_id := str(task.get("id", event.get("event_id", "event_task")))
+	if _is_construction_task(task):
+		var construction = construction_views.get(task_id)
+		if construction == null:
+			construction = ConstructionViewScript.new()
+			construction.name = "Construction_%s" % task_id
+			resources_root.add_child(construction)
+			construction_views[task_id] = construction
+		construction.apply_event(event, position, FACTION_COLORS.get(faction_id, NEUTRAL_COLOR))
+	else:
+		var work = work_task_views.get(task_id)
+		if work == null:
+			work = WorkTaskViewScript.new()
+			work.name = "WorkTask_%s" % task_id
+			resources_root.add_child(work)
+			work_task_views[task_id] = work
+		work.apply_event(event, position, FACTION_COLORS.get(faction_id, NEUTRAL_COLOR))
 
 
 func _rebuild_feed() -> void:
@@ -1801,10 +2404,8 @@ func _event_matches_filter(event: Dictionary, filter_name: String) -> bool:
 	var kind := str(event.get("kind", "system"))
 	var visibility_kind := str(event.get("visibility", "public"))
 	match filter_name:
-		"public": return visibility_kind == "public"
-		"private": return visibility_kind != "public"
-		"deals": return kind in ["offer", "trade", "pact", "betrayal"]
-		"system": return kind in ["system", "territory", "supply", "combat", "core", "advisor", "resource"]
+		"world": return kind in ["move", "gather", "resource", "build", "construction", "train", "combat", "territory", "supply", "capture", "core"]
+		"comms": return kind in ["message", "offer", "trade", "pact", "betrayal"]
 	return true
 
 
@@ -1967,11 +2568,12 @@ func _on_setup_start() -> void:
 			set_setup_status("Choose a model for every commander.", "error")
 			return
 		var reasoning: OptionButton = reasoning_inputs[faction_id]
+		var advisors: OptionButton = advisor_inputs[faction_id]
 		competitors.append({
 			"agent_id": faction_id,
 			"model": model,
 			"reasoning_effort": reasoning.get_item_metadata(reasoning.selected),
-			"max_specialists": 3
+			"max_specialists": int(advisors.get_item_metadata(advisors.selected))
 		})
 	var api_key := api_key_input.text.strip_edges()
 	if not mock_mode and api_key.length() < 8:
@@ -1979,13 +2581,14 @@ func _on_setup_start() -> void:
 		return
 	var config := {
 		"type": "configure_match",
-		"protocol": "world-arena/0.2",
+		"protocol": "world-arena/0.4",
 		"api_key": api_key,
 		"brain_mode": "demo" if api_key.is_empty() else "openai",
 		"mode": "demo",
 		"track": "agentic",
-		"map_id": "tri_13_v1",
-		"max_rounds": 40,
+		"map_id": str(scenario_select.get_item_metadata(scenario_select.selected)),
+		"max_rounds": 120,
+		"observation_mode": str(observation_select.get_item_metadata(observation_select.selected)),
 		"agents": competitors
 	}
 	setup_submitted.emit(config)
@@ -1994,7 +2597,7 @@ func _on_setup_start() -> void:
 	if mock_mode and run_embedded_mock_on_submit:
 		_start_mock_demo()
 	else:
-		set_setup_status("Opening three independent model sessions…", "pending")
+		set_setup_status("Opening the commander sessions…", "pending")
 
 
 func _start_mock_demo() -> void:
@@ -2039,8 +2642,8 @@ func _start_mock_demo() -> void:
 		"actor_id": "luna",
 		"target_ids": ["sol"],
 		"visibility": "public",
-		"summary": "Luna breaks the Crown pact and raids Sol's exposed western supply line.",
-		"pact_id": "pact_sol_luna_crown",
+		"summary": "Luna ends the crossroads pact and raids Sol's exposed western supply line.",
+		"pact_id": "pact_sol_luna_crossroads",
 		"state": "betrayed"
 	}])
 
@@ -2058,7 +2661,7 @@ func _mock_snapshot() -> Dictionary:
 	return {
 		"match_id": "mock_tri_13",
 		"round": 12,
-		"max_rounds": 40,
+		"max_rounds": 120,
 		"phase": "thinking",
 		"sim_time": "03:00",
 		"thinking_status": {"sol": "thinking", "terra": "thinking", "luna": "thinking"},
@@ -2067,26 +2670,26 @@ func _mock_snapshot() -> Dictionary:
 				"id": "sol", "model": "gpt-5.6-sol", "core_hp": 910, "land_percent": 39,
 				"army_strength": 9, "state": "negotiating", "resources": {"food": 138, "wood": 62, "stone": 45, "iron": 26, "crystal": 3},
 				"cognition": {"round_spent": 72, "round_budget": 100, "match_spent": 814},
-				"strategic_intent": "Trade wood to Luna, contain Terra's iron lead, then secure the Crown approach.",
-				"orders": [{"action": "fortify", "target": "mine_st"}, {"action": "trade", "target": "luna"}, {"action": "scout", "target": "crown"}],
+				"strategic_intent": "Trade wood to Luna, contain Terra's iron lead, then defend the eastern stronghold road.",
+				"orders": [{"action": "Build", "target": "mine_st"}, {"action": "Negotiate", "target": "luna"}, {"action": "Move", "target": "crossroads"}],
 				"specialists": [
 					{"role": "military", "state": "advice_ready", "disposition": "accepted", "recommendation_summary": "Hold Sunfall Mine instead of chasing Terra."},
-					{"role": "diplomacy", "state": "advice_ready", "disposition": "modified", "recommendation_summary": "Offer Luna wood for one-round Crown pressure."}
+					{"role": "diplomacy", "state": "advice_ready", "disposition": "modified", "recommendation_summary": "Offer Luna wood for one-round eastern pressure."}
 				]
 			},
 			{
 				"id": "terra", "model": "gpt-5.6-terra", "core_hp": 1000, "land_percent": 34,
 				"army_strength": 11, "state": "expanding", "resources": {"food": 104, "wood": 48, "stone": 71, "iron": 44, "crystal": 0},
 				"cognition": {"round_spent": 43, "round_budget": 100, "match_spent": 676},
-				"strategic_intent": "Exploit the eastern mine advantage and pressure the Crown before rivals coordinate.",
-				"orders": [{"action": "advance", "target": "crown"}, {"action": "train_guard", "target": "home_terra"}],
+				"strategic_intent": "Exploit the eastern mine advantage and pressure Sol's outer works before rivals coordinate.",
+				"orders": [{"action": "Move", "target": "crossroads"}, {"action": "Build", "target": "home_terra"}],
 				"specialists": [{"role": "economy", "state": "advice_ready", "disposition": "accepted", "recommendation_summary": "Convert the iron surplus into guards now."}]
 			},
 			{
 			"id": "luna", "model": "gpt-5.6-luna", "core_hp": 870, "land_percent": 27,
 				"army_strength": 7, "state": "scouting", "resources": {"food": 126, "wood": 31, "stone": 40, "iron": 13, "crystal": 9},
 				"cognition": {"round_spent": 61, "round_budget": 100, "match_spent": 731},
-				"strategic_intent": "Accept temporary support, reveal Terra's movement, and preserve a route to a late Crown betrayal.",
+				"strategic_intent": "Accept temporary support, reveal Terra's movement, and preserve a route to a late betrayal.",
 				"orders": [{"action": "accept_trade", "target": "sol"}, {"action": "raid", "target": "mine_tl"}],
 				"specialists": [{"role": "scout", "state": "advice_ready", "disposition": "accepted", "recommendation_summary": "Terra left Ember Mine lightly defended."}]
 			}
@@ -2104,11 +2707,16 @@ func _mock_snapshot() -> Dictionary:
 			{"id": "wild_st", "owner": "terra", "supplied": false},
 			{"id": "wild_tl", "owner": "terra", "supplied": true},
 			{"id": "wild_ls", "owner": "sol", "supplied": true},
-			{"id": "crown", "owner": "neutral", "supplied": true, "contested": true, "capture_progress": 0.35}
+			{"id": "crossroads", "owner": "neutral", "supplied": true, "contested": true, "capture_progress": 0.35}
 		],
 		"units": _mock_units(),
+		"tasks": [
+			{"id": "mock_sol_chop", "faction_id": "sol", "actor_id": "sol_worker_1", "kind": "gather", "resource": "wood", "state": "active", "completed_work": 6, "required_work": 10},
+			{"id": "mock_terra_mine", "faction_id": "terra", "actor_id": "terra_worker_1", "kind": "gather", "resource": "iron", "state": "active", "completed_work": 3, "required_work": 10},
+			{"id": "mock_luna_store", "faction_id": "luna", "district_id": "home_luna", "kind": "build", "structure": "storage", "state": "active", "completed_work": 14, "required_work": 24, "builder_ids": ["luna_worker_1"]}
+		],
 		"relationships": [
-			{"id": "pact_sol_luna_crown", "actor_id": "sol", "target_id": "luna", "state": "pending", "summary": "Proposed coordinated pressure on the Crown"}
+			{"id": "pact_sol_luna_crossroads", "actor_id": "sol", "target_id": "luna", "state": "pending", "summary": "Proposed coordinated pressure on the eastern road"}
 		]
 	}
 
@@ -2119,12 +2727,12 @@ func _mock_units() -> Array:
 		{"id": "sol_worker_1", "faction_id": "sol", "unit_type": "worker", "district_id": "wild_ls", "health": 30, "max_health": 30, "task": "harvest wood"},
 		{"id": "sol_worker_2", "faction_id": "sol", "unit_type": "worker", "district_id": "mine_st", "health": 24, "max_health": 30, "task": "repair outpost", "in_combat": true},
 		{"id": "sol_guard_1", "faction_id": "sol", "unit_type": "guard", "district_id": "mine_st", "health": 92, "max_health": 110, "task": "defend", "in_combat": true},
-		{"id": "terra_commander", "faction_id": "terra", "unit_type": "commander", "district_id": "crown", "health": 150, "max_health": 150, "task": "advance"},
+		{"id": "terra_commander", "faction_id": "terra", "unit_type": "commander", "district_id": "crossroads", "health": 150, "max_health": 150, "task": "advance"},
 		{"id": "terra_worker_1", "faction_id": "terra", "unit_type": "worker", "district_id": "mine_tl", "health": 30, "max_health": 30, "task": "mine iron"},
-		{"id": "terra_guard_1", "faction_id": "terra", "unit_type": "guard", "district_id": "crown", "health": 110, "max_health": 110, "task": "contest crown", "in_combat": true},
+		{"id": "terra_guard_1", "faction_id": "terra", "unit_type": "guard", "district_id": "crossroads", "health": 110, "max_health": 110, "task": "hold crossroads", "in_combat": true},
 		{"id": "terra_militia_1", "faction_id": "terra", "unit_type": "militia", "district_id": "mine_st", "health": 41, "max_health": 75, "task": "attack", "in_combat": true},
 		{"id": "luna_commander", "faction_id": "luna", "unit_type": "commander", "district_id": "mine_ls", "health": 118, "max_health": 150, "task": "private channel"},
-		{"id": "luna_scout_1", "faction_id": "luna", "unit_type": "scout", "district_id": "crown", "health": 40, "max_health": 40, "task": "inspect"},
+		{"id": "luna_scout_1", "faction_id": "luna", "unit_type": "scout", "district_id": "crossroads", "health": 40, "max_health": 40, "task": "inspect"},
 		{"id": "luna_worker_1", "faction_id": "luna", "unit_type": "worker", "district_id": "home_luna", "health": 30, "max_health": 30, "task": "harvest food"},
 		{"id": "luna_militia_1", "faction_id": "luna", "unit_type": "militia", "district_id": "mine_tl", "health": 69, "max_health": 75, "task": "raid"}
 	]
@@ -2142,13 +2750,13 @@ func _mock_diplomacy_events() -> Array:
 		},
 		{
 			"event_id": "mock_003", "round": 12, "kind": "offer", "actor_id": "sol", "target_ids": ["luna"],
-			"visibility": "participants", "visible_to": ["sol", "luna"], "summary": "20 wood for a coordinated attack on Terra's Crown route.",
-			"state": "accepted", "payload": {"give": {"wood": 20}, "request": "attack_crown_route", "state": "accepted"}
+			"visibility": "participants", "visible_to": ["sol", "luna"], "summary": "20 wood for a coordinated attack on Terra's eastern road.",
+			"state": "accepted", "payload": {"give": {"wood": 20}, "request": "attack_east_road", "state": "accepted"}
 		},
 		{
 			"event_id": "mock_004", "round": 12, "kind": "pact", "actor_id": "sol", "target_ids": ["luna"],
-			"visibility": "public", "summary": "Sol and Luna acknowledge a one-round Crown coordination pact.",
-			"pact_id": "pact_sol_luna_crown", "state": "acknowledged"
+			"visibility": "public", "summary": "Sol and Luna acknowledge a one-round crossroads coordination pact.",
+			"pact_id": "pact_sol_luna_crossroads", "state": "acknowledged"
 		}
 	]
 
@@ -2205,7 +2813,7 @@ func _record_array(value: Variant) -> Array:
 
 func _unit_position(state: Dictionary) -> Vector3:
 	if state.has("position"):
-		return _to_vector3(state.position)
+		return _to_vector3(state.position) * COMPACT_MAP_SCALE
 	var district_id := str(state.get("district_id", ""))
 	var center: Vector3 = district_positions.get(district_id, Vector3.ZERO)
 	var stable_hash := absi(str(state.get("id", "unit")).hash())
@@ -2288,6 +2896,34 @@ func _panel_style(fill: Color, border: Color, radius: int, margin: int) -> Style
 	style.content_margin_top = margin
 	style.content_margin_bottom = margin
 	return style
+
+
+func _kenney_panel_style(fill: Color, border: Color, radius: int, margin: int) -> StyleBox:
+	if ResourceLoader.exists(KENNEY_PANEL_TEXTURE):
+		var style := StyleBoxTexture.new()
+		style.texture = load(KENNEY_PANEL_TEXTURE)
+		style.texture_margin_left = 16
+		style.texture_margin_top = 16
+		style.texture_margin_right = 16
+		style.texture_margin_bottom = 16
+		style.content_margin_left = margin
+		style.content_margin_right = margin
+		style.content_margin_top = margin
+		style.content_margin_bottom = margin
+		return style
+	return _panel_style(fill, border, radius, margin)
+
+
+func _kenney_button_style() -> StyleBox:
+	if ResourceLoader.exists(KENNEY_BUTTON_TEXTURE):
+		var style := StyleBoxTexture.new()
+		style.texture = load(KENNEY_BUTTON_TEXTURE)
+		style.texture_margin_left = 12
+		style.texture_margin_top = 12
+		style.texture_margin_right = 12
+		style.texture_margin_bottom = 12
+		return style
+	return _panel_style(Color("79541f"), Color("c99842"), 5, 6)
 
 
 func _section_label(value: String) -> Label:

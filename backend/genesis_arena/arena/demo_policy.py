@@ -21,7 +21,7 @@ from .models import (
 
 
 class ArenaDemoCommander:
-    """Deterministic policy that demonstrates economy, diplomacy, capture, and combat.
+    """Deterministic policy that demonstrates the complete conquest story.
 
     It is deliberately a visible fallback/demo opponent rather than a benchmark model. Its
     plans use the same strict contract and simultaneous commit/reveal path as live models.
@@ -44,71 +44,66 @@ class ArenaDemoCommander:
         fighters = [
             group
             for group in groups
-            if group.unit_kind in {"commander", "militia", "guard", "siege"}
+            if group.unit_kind in {"commander", "scout", "militia", "guard", "siege"}
         ]
         orders: List[PhysicalOrder] = []
+        home = f"home_{faction}"
+        rival_core = f"core_{self.RIVAL[faction]}"
+        home_worker = self._worker_at(workers, home) or self._first(workers)
+        staging_worker = self._worker_at(workers, staging)
+        commander = next(
+            (group for group in groups if group.unit_kind == "commander"),
+            self._first(groups),
+        )
 
         if round_number == 1:
-            movers = self._ids(fighters[:3] + workers[:1])
-            self._move(orders, observation, movers, staging, "assault")
-            home_worker = workers[1] if len(workers) > 1 else self._first(workers)
-            self._gather(orders, observation, home_worker, "wood")
+            # One worker is intentionally scarce; produce a second before splitting jobs.
+            self._train(orders, observation, commander, "worker")
         elif round_number == 2:
-            self._gather(orders, observation, self._worker_at(workers, f"home_{faction}"), "stone")
-            self._train(orders, observation, "scout")
+            self._gather(orders, observation, home_worker, "wood")
+            other = next((worker for worker in workers if worker != home_worker), None)
+            self._gather(orders, observation, other, "stone")
         elif round_number == 3:
-            builder = self._worker_at(workers, staging) or self._first(workers)
-            self._build(orders, observation, builder, staging, "outpost")
-            self._gather(orders, observation, self._worker_at(workers, f"home_{faction}"), "wood")
+            movers = self._ids(([commander] if commander else []) + workers[:1])
+            self._move(orders, observation, movers, staging, "advance")
+            self._gather(orders, observation, workers[1] if len(workers) > 1 else None, "food")
         elif round_number == 4:
-            staging_fighters = [group for group in fighters if group.district_id == staging]
-            self._move(
+            self._build(orders, observation, staging_worker or self._first(workers), staging, "outpost")
+            self._gather(orders, observation, home_worker, "food")
+        elif round_number == 5:
+            self._gather(orders, observation, staging_worker, "iron")
+            self._train(orders, observation, commander, "scout")
+        elif round_number == 6:
+            self._build(orders, observation, home_worker, home, "wall")
+            scouts = [group for group in groups if group.unit_kind == "scout"]
+            self._move(orders, observation, self._ids(scouts), staging, "scout")
+        elif round_number == 7:
+            self._research(orders, observation, home_worker, home, "fieldcraft")
+            self._gather(orders, observation, staging_worker, "iron")
+        elif round_number == 8:
+            self._build(orders, observation, staging_worker, staging, "workshop")
+            self._gather(orders, observation, home_worker, "food")
+        elif round_number == 9:
+            self._research(orders, observation, staging_worker or home_worker, staging, "ironworking")
+            self._train(orders, observation, commander, "militia")
+        elif round_number in {10, 11}:
+            self._train(
                 orders,
                 observation,
-                self._ids(staging_fighters or fighters)[:4],
-                "crown",
-                "assault",
+                commander,
+                "guard" if round_number == 10 else "siege",
             )
-            self._gather(orders, observation, self._first(workers), "food")
-        elif round_number == 8 and faction == "sol":
-            # The credential-free showcase includes one intentional pact violation so the
-            # observer can see that agreements are recorded but never engine-enforced.
-            raiders = fighters or workers
-            self._move(
-                orders,
-                observation,
-                self._ids(raiders)[:4],
-                "home_terra",
-                "raid",
-            )
-            self._gather(orders, observation, self._first(workers), "food")
+            self._gather(orders, observation, home_worker, "food")
         else:
-            # Sustain the economy while continually converging military strength on the Crown.
-            crown_fighters = [group for group in fighters if group.district_id == "crown"]
-            mobile = [group for group in fighters if group.district_id != "crown"]
-            if mobile:
-                self._move(orders, observation, self._ids(mobile)[:4], "crown", "assault")
-            elif crown_fighters and round_number % 5 == 0:
-                # Re-issuing a hold target is useful if a renderer/controller dropped a target.
-                self._move(
-                    orders,
-                    observation,
-                    self._ids(crown_fighters)[:4],
-                    "crown",
-                    "hold",
-                )
-            self._gather(
-                orders,
-                observation,
-                self._first(workers),
-                "iron" if round_number % 4 == 0 else "food",
-            )
-            if self._remaining_command_points(orders) >= 1:
-                self._train(
-                    orders,
-                    observation,
-                    "guard" if round_number >= 10 else "militia",
-                )
+            # Endgame orders are explicit attacks on a rival keep, never a center rush.
+            attack_force = [
+                group for group in fighters if group.unit_kind in {"militia", "guard", "siege"}
+            ]
+            if attack_force:
+                self._attack(orders, observation, self._ids(attack_force), rival_core)
+            else:
+                self._train(orders, observation, commander, "militia")
+            self._gather(orders, observation, home_worker, "food")
 
         communication = self._communication(observation)
         specialist_ops = []
@@ -128,6 +123,32 @@ class ArenaDemoCommander:
                 ),
             ]
 
+        if specialist_ops and len(orders) < 3:
+            orders.append(
+                PhysicalOrder(
+                    order_id=f"{faction}-r{round_number}-think",
+                    action=PhysicalAction.THINK,
+                    mode="deliberate",
+                    option="coordinate_specialists",
+                )
+            )
+        if (
+            len(orders) < 3
+            and (
+                communication.utterances
+                or communication.new_offer is not None
+                or communication.responses
+            )
+        ):
+            orders.append(
+                PhysicalOrder(
+                    order_id=f"{faction}-r{round_number}-negotiate",
+                    action=PhysicalAction.NEGOTIATE,
+                    mode="offer" if communication.new_offer is not None else "respond",
+                    option="communication_plan",
+                )
+            )
+
         recommendation_note = (
             f" Advisor input received from {len(recommendations)} specialist(s)."
             if recommendations
@@ -142,7 +163,7 @@ class ArenaDemoCommander:
             orders=orders,
             communication=communication,
             specialist_ops=specialist_ops,
-            supply_priority=[staging, f"home_{faction}"],
+            supply_priority=[staging, home],
         )
 
     def _communication(self, observation: FactionObservation) -> CommunicationPlan:
@@ -175,8 +196,8 @@ class ArenaDemoCommander:
                     visibility="private",
                     recipients=[rival],
                     text=(
-                        "Temporary non-aggression? I will avoid your homeland while we "
-                        "contest the Crown."
+                        "Temporary non-aggression? I will avoid your homeland while both "
+                        "of us establish defenses."
                     ),
                 )
             )
@@ -184,7 +205,7 @@ class ArenaDemoCommander:
                 recipient=rival,
                 duration_rounds=10,
                 regions=["*"],
-                expires_round=min(48, round_number + 10),
+                expires_round=min(120, round_number + 10),
             )
         elif round_number == 6:
             rival = self.RIVAL[faction]
@@ -200,7 +221,7 @@ class ArenaDemoCommander:
                 recipient=rival,
                 give=ResourceBundle(food=10),
                 receive=ResourceBundle(stone=5),
-                expires_round=min(48, round_number + 2),
+                expires_round=min(120, round_number + 2),
             )
         elif round_number >= 8:
             leader = max(
@@ -220,7 +241,7 @@ class ArenaDemoCommander:
                         recipients=[partner],
                         text=(
                             f"{leader.title()} is leading. Pressure their supply while I "
-                            "contest the Crown."
+                            "threaten their outer stronghold."
                         ),
                     )
                 )
@@ -230,8 +251,8 @@ class ArenaDemoCommander:
                         client_ref=f"{faction}-r{round_number}-warning",
                         visibility="public",
                         text=(
-                            "The Crown is mine for now. Any coalition against me will pay "
-                            "for the opening."
+                            "My stronghold is fortified. Any siege against it will pay "
+                            "for every wall breached."
                         ),
                     )
                 )
@@ -245,12 +266,14 @@ class ArenaDemoCommander:
     @staticmethod
     def _intent(round_number: int, faction: str) -> str:
         if round_number <= 3:
-            return f"{faction.title()} is establishing a supplied forward mine before committing."
+            return f"{faction.title()} is splitting labor between food, timber, and expansion."
         if round_number <= 7:
             return (
-                f"{faction.title()} is converging on the Crown while maintaining food production."
+                f"{faction.title()} is fortifying home and scouting a supplied frontier."
             )
-        return f"{faction.title()} is balancing Crown pressure, reinforcement, and coalition risk."
+        if round_number <= 11:
+            return f"{faction.title()} is researching iron weapons and assembling a siege force."
+        return f"{faction.title()} is attacking a rival stronghold while sustaining reinforcements."
 
     @staticmethod
     def _ids(groups: List[FriendlyGroup]) -> List[str]:
@@ -277,16 +300,16 @@ class ArenaDemoCommander:
         observation: FactionObservation,
         actor_ids: List[str],
         target: str,
-        stance: str,
+        mode: str,
     ) -> None:
         if actor_ids and len(orders) < 3 and self._remaining_command_points(orders) >= 2:
             orders.append(
                 PhysicalOrder(
                     order_id=f"{observation.faction_id}-r{observation.round}-move-{target}",
-                    action=PhysicalAction.MOBILIZE,
+                    action=PhysicalAction.MOVE,
                     actor_ids=actor_ids,
                     target_id=target,
-                    stance=stance,
+                    mode=mode,
                 )
             )
 
@@ -301,7 +324,7 @@ class ArenaDemoCommander:
             orders.append(
                 PhysicalOrder(
                     order_id=f"{observation.faction_id}-r{observation.round}-gather-{resource}",
-                    action=PhysicalAction.ASSIGN_WORKERS,
+                    action=PhysicalAction.GATHER,
                     actor_ids=[worker.group_id],
                     target_id=worker.district_id,
                     resource=resource,
@@ -324,20 +347,65 @@ class ArenaDemoCommander:
                     actor_ids=[worker.group_id],
                     target_id=district,
                     option=structure,
+                    mode="construct",
                 )
             )
 
     def _train(
-        self, orders: List[PhysicalOrder], observation: FactionObservation, unit: str
+        self,
+        orders: List[PhysicalOrder],
+        observation: FactionObservation,
+        producer: Optional[FriendlyGroup],
+        unit: str,
     ) -> None:
-        actor = self._first(observation.groups)
-        if actor is not None and len(orders) < 3 and self._remaining_command_points(orders) >= 1:
+        if producer is not None and len(orders) < 3 and self._remaining_command_points(orders) >= 1:
             orders.append(
                 PhysicalOrder(
                     order_id=f"{observation.faction_id}-r{observation.round}-train-{unit}",
-                    action=PhysicalAction.TRAIN,
-                    actor_ids=[actor.group_id],
+                    action=PhysicalAction.BUILD,
+                    actor_ids=[producer.group_id],
                     target_id=f"core_{observation.faction_id}",
                     option=unit,
+                    mode="train",
+                )
+            )
+
+    def _research(
+        self,
+        orders: List[PhysicalOrder],
+        observation: FactionObservation,
+        worker: Optional[FriendlyGroup],
+        district: str,
+        technology: str,
+    ) -> None:
+        if worker is not None and len(orders) < 3 and self._remaining_command_points(orders) >= 1:
+            orders.append(
+                PhysicalOrder(
+                    order_id=(
+                        f"{observation.faction_id}-r{observation.round}-research-{technology}"
+                    ),
+                    action=PhysicalAction.RESEARCH,
+                    actor_ids=[worker.group_id],
+                    target_id=district,
+                    option=technology,
+                )
+            )
+
+    def _attack(
+        self,
+        orders: List[PhysicalOrder],
+        observation: FactionObservation,
+        actor_ids: List[str],
+        target_id: str,
+    ) -> None:
+        if actor_ids and len(orders) < 3 and self._remaining_command_points(orders) >= 2:
+            orders.append(
+                PhysicalOrder(
+                    order_id=f"{observation.faction_id}-r{observation.round}-attack-{target_id}",
+                    action=PhysicalAction.ATTACK,
+                    actor_ids=actor_ids[:16],
+                    target_id=target_id,
+                    stance="assault",
+                    mode="assault",
                 )
             )

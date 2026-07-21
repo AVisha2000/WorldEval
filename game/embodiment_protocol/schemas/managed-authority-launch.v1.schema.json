@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/managed-authority-launch.v1.schema.json",
+  "title": "LLM Controller managed authority launch v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "launch"],
+  "properties": {
+    "schema_version": {"const": "llm-controller/managed-authority-launch/1.0.0"},
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attachment_ticket", "config", "config_sha256", "connection_id", "episode_id", "gateway_url", "protocol_package_sha256", "session_secret"],
+      "properties": {
+        "attachment_ticket": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+        "config": {"$ref": "episode-config.v1.schema.json"},
+        "config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "connection_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+        "gateway_url": {"type": "string", "minLength": 1, "maxLength": 512},
+        "protocol_package_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "session_secret": {
+          "type": "array",
+          "minItems": 32,
+          "maxItems": 32,
+          "items": {"type": "integer", "minimum": 0, "maximum": 255}
+        }
+      }
+    }
+  }
+}

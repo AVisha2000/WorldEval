@@ -75,9 +75,9 @@ func _faction(faction_id: String, model: String, placement: int, score: float) -
 		"categories": categories,
 		"metrics": {
 			"core": 1000 - placement * 100, "territory": 9 - placement,
-			"crown": 6 - placement, "trades": placement, "tokens": 45000 + placement,
+			"strongholds_destroyed": 3 - placement, "trades": placement, "tokens": 45000 + placement,
 			"invalid": placement - 1, "pacts": 3 - placement, "betrayals": placement - 1
 		},
-		"best_decision": {"round": 8, "summary": "Converted a supplied flank into durable Crown pressure."},
+		"best_decision": {"round": 8, "summary": "Converted a supplied flank into a successful stronghold siege."},
 		"biggest_failure": {"round": 15, "summary": "Overextended one group beyond its supply chain."}
 	}

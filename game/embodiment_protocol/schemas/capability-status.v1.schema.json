@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/capability-status.v1.schema.json",
+  "title": "LLM Controller runtime capability status v1",
+  "description": "Schema presence declares the full protocol vocabulary. These lists report only capabilities implemented by this runtime and separately identify certification/scoring state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "implemented_modes",
+    "implemented_observation_profiles",
+    "implemented_tasks",
+    "certified_modes",
+    "certified_observation_profiles",
+    "scored_observation_profiles"
+  ],
+  "properties": {
+    "implemented_modes": {
+      "type": "array",
+      "items": {"enum": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+      "uniqueItems": true
+    },
+    "implemented_observation_profiles": {
+      "type": "array",
+      "items": {"enum": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]},
+      "uniqueItems": true
+    },
+    "implemented_tasks": {
+      "type": "array",
+      "items": {"enum": ["orientation-v0", "interaction-v0", "construction-v0", "neutral-encounter-v0", "central-relay-v0"]},
+      "uniqueItems": true
+    },
+    "certified_modes": {
+      "type": "array",
+      "items": {"enum": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+      "uniqueItems": true
+    },
+    "certified_observation_profiles": {
+      "type": "array",
+      "items": {"enum": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]},
+      "uniqueItems": true
+    },
+    "scored_observation_profiles": {
+      "type": "array",
+      "items": {"enum": ["text-visible-v1", "rgb-v1", "hybrid-visible-v1"]},
+      "uniqueItems": true
+    }
+  }
+}

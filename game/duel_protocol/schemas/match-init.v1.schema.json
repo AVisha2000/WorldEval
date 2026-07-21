@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/match-init.v1.schema.json",
+  "title": "WorldArena Duel immutable match initialization v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "message_type",
+    "protocol_version",
+    "match_id",
+    "perspective",
+    "artifacts",
+    "ruleset",
+    "faction",
+    "map",
+    "decision",
+    "limits",
+    "coordinate_frame",
+    "victory_rules",
+    "draw_rules",
+    "failure_rules",
+    "observation_rules",
+    "memory_rules",
+    "scoring_rules",
+    "action_schema",
+    "public_catalogs",
+    "map_manifest",
+    "starting_state"
+  ],
+  "properties": {
+    "message_type": {"const": "match_init"},
+    "protocol_version": {"const": "worldeval-rts/1.0.0"},
+    "match_id": {"type": "string", "pattern": "^m_[A-Za-z0-9._-]{1,120}$"},
+    "perspective": {"const": "self"},
+    "artifacts": {"$ref": "#/$defs/artifacts"},
+    "ruleset": {"$ref": "#/$defs/hashRef"},
+    "faction": {"$ref": "#/$defs/factionRef"},
+    "map": {"$ref": "#/$defs/mapRef"},
+    "decision": {"$ref": "#/$defs/decision"},
+    "limits": {"$ref": "#/$defs/limits"},
+    "coordinate_frame": {"$ref": "#/$defs/coordinateFrame"},
+    "victory_rules": {"$ref": "#/$defs/victoryRules"},
+    "draw_rules": {"$ref": "#/$defs/drawRules"},
+    "failure_rules": {"$ref": "#/$defs/failureRules"},
+    "observation_rules": {"$ref": "#/$defs/observationRules"},
+    "memory_rules": {"$ref": "#/$defs/memoryRules"},
+    "scoring_rules": {"$ref": "#/$defs/scoringRules"},
+    "action_schema": {"$ref": "#/$defs/catalogPayload"},
+    "public_catalogs": {"$ref": "#/$defs/publicCatalogs"},
+    "map_manifest": {"$ref": "map-manifest.v1.schema.json"},
+    "starting_state": {"$ref": "#/$defs/startingState"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "publicId": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "entityId": {"type": "string", "pattern": "^e_[A-Za-z0-9._-]{1,80}$"},
+    "hashRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/publicId"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "factionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256", "mirror_faction"],
+      "properties": {
+        "id": {"enum": ["vanguard-v1", "warhost-v1", "grove-v1", "crypt-v1"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "mirror_faction": {"const": true}
+      }
+    },
+    "mapRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"const": "crossroads-duel-v1"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "engine_build",
+        "prompt",
+        "helper",
+        "items",
+        "neutrals",
+        "attack_armor"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/hashRef"},
+        "engine_build": {"$ref": "#/$defs/hashRef"},
+        "prompt": {"$ref": "#/$defs/hashRef"},
+        "helper": {"$ref": "#/$defs/hashRef"},
+        "items": {"$ref": "#/$defs/hashRef"},
+        "neutrals": {"$ref": "#/$defs/hashRef"},
+        "attack_armor": {"$ref": "#/$defs/hashRef"}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "simulation_hz",
+        "decision_period_ticks",
+        "response_deadline_ms",
+        "control_profile",
+        "observation_profile",
+        "validity_window_ticks",
+        "max_in_flight_calls_per_player"
+      ],
+      "properties": {
+        "mode": {"enum": ["fixed_simultaneous", "continuous_realtime"]},
+        "simulation_hz": {"const": 10},
+        "decision_period_ticks": {"type": "integer", "enum": [50, 100, 150]},
+        "response_deadline_ms": {"type": "integer", "minimum": 1, "maximum": 45000},
+        "control_profile": {"const": "hybrid-v1"},
+        "observation_profile": {"const": "full-belief-v1"},
+        "validity_window_ticks": {"type": "integer", "minimum": 1, "maximum": 100},
+        "max_in_flight_calls_per_player": {"const": 1}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_input_bytes",
+        "max_output_bytes",
+        "max_command_objects",
+        "max_atomic_order_cost",
+        "max_actor_ids_per_command",
+        "max_queue_entries_per_entity",
+        "max_working_memory_bytes"
+      ],
+      "properties": {
+        "max_input_bytes": {"const": 262144},
+        "max_output_bytes": {"const": 16384},
+        "max_command_objects": {"const": 16},
+        "max_atomic_order_cost": {"const": 64},
+        "max_actor_ids_per_command": {"const": 24},
+        "max_queue_entries_per_entity": {"const": 8},
+        "max_working_memory_bytes": {"const": 4096}
+      }
+    },
+    "coordinateFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "position_unit", "distance_unit", "facing_unit", "percentage_unit"],
+      "properties": {
+        "kind": {"const": "self_canonical"},
+        "position_unit": {"const": "milli_tile"},
+        "distance_unit": {"const": "milli_tile"},
+        "facing_unit": {"const": "millidegree"},
+        "percentage_unit": {"const": "basis_point"}
+      }
+    },
+    "victoryRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "simultaneous_stronghold_destruction"],
+      "properties": {
+        "primary": {"const": "destroy_enemy_stronghold"},
+        "simultaneous_stronghold_destruction": {"const": "draw"}
+      }
+    },
+    "drawRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_match_ticks", "no_progress_ticks", "time_limit_tiebreak"],
+      "properties": {
+        "maximum_match_ticks": {"const": 18000},
+        "no_progress_ticks": {"const": 3000},
+        "time_limit_tiebreak": {"const": "draw"}
+      }
+    },
+    "failureRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "participant_failed_opportunities_forfeit",
+        "participant_cumulative_failures_forfeit",
+        "no_same_window_retry",
+        "invalid_envelope_result",
+        "individual_illegal_command_result",
+        "infrastructure_failure_result"
+      ],
+      "properties": {
+        "participant_failed_opportunities_forfeit": {"const": 3},
+        "participant_cumulative_failures_forfeit": {"const": 10},
+        "no_same_window_retry": {"const": true},
+        "invalid_envelope_result": {"const": "no_op_and_strike"},
+        "individual_illegal_command_result": {"const": "skip_command"},
+        "infrastructure_failure_result": {"const": "void_match"}
+      }
+    },
+    "observationRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "knowledge_boundary",
+        "observation_hash_scope",
+        "remembered_state_is_frozen",
+        "optional_brief"
+      ],
+      "properties": {
+        "profile": {"const": "full-belief-v1"},
+        "knowledge_boundary": {"const": "agent_knowledge_state"},
+        "observation_hash_scope": {"const": "legal_observation_without_hash_field"},
+        "remembered_state_is_frozen": {"const": true},
+        "optional_brief": {"const": "fixed_templates_only"}
+      }
+    },
+    "memoryRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "provider_memory", "persistent_field", "maximum_bytes"],
+      "properties": {
+        "policy": {"enum": ["fresh-match-with-bounded-scratchpad", "adaptive-series"]},
+        "provider_memory": {"const": "disabled"},
+        "persistent_field": {"const": "working_memory"},
+        "maximum_bytes": {"const": 4096}
+      }
+    },
+    "scoringRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "paired_seed_unit", "tracks_are_separate"],
+      "properties": {
+        "primary": {"const": "paired_seed_match_points"},
+        "paired_seed_unit": {"const": true},
+        "tracks_are_separate": {"const": true}
+      }
+    },
+    "catalogPayload": {
+      "type": "object",
+      "description": "A content-hash-verified catalog object; its own catalog tests are authoritative.",
+      "minProperties": 1
+    },
+    "publicCatalogs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rules",
+        "actions",
+        "attack_armor",
+        "units",
+        "buildings",
+        "heroes",
+        "abilities",
+        "items",
+        "upgrades",
+        "neutrals"
+      ],
+      "properties": {
+        "rules": {"$ref": "#/$defs/catalogPayload"},
+        "actions": {"$ref": "#/$defs/catalogPayload"},
+        "attack_armor": {"$ref": "#/$defs/catalogPayload"},
+        "units": {"$ref": "#/$defs/catalogPayload"},
+        "buildings": {"$ref": "#/$defs/catalogPayload"},
+        "heroes": {"$ref": "#/$defs/catalogPayload"},
+        "abilities": {"$ref": "#/$defs/catalogPayload"},
+        "items": {"$ref": "#/$defs/catalogPayload"},
+        "upgrades": {"$ref": "#/$defs/catalogPayload"},
+        "neutrals": {"$ref": "#/$defs/catalogPayload"}
+      }
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [{"type": "integer"}, {"type": "integer"}],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2,
+      "x-canonical-order": "coordinate-x-y"
+    },
+    "startingEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "type_id", "position_mt", "facing_mdeg", "food"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/entityId"},
+        "type_id": {"$ref": "#/$defs/publicId"},
+        "position_mt": {"$ref": "#/$defs/point"},
+        "facing_mdeg": {"type": "integer", "minimum": 0, "maximum": 359999},
+        "food": {"type": "integer", "minimum": 0}
+      }
+    },
+    "startingState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gold",
+        "lumber",
+        "food_used",
+        "food_cap",
+        "tier",
+        "entities",
+        "structures",
+        "home_mine_site_id"
+      ],
+      "properties": {
+        "gold": {"const": 500},
+        "lumber": {"const": 200},
+        "food_used": {"const": 5},
+        "food_cap": {"const": 20},
+        "tier": {"const": 1},
+        "entities": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/startingEntity"}
+        },
+        "structures": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "x-canonical-order": "ascending-entity-id",
+          "items": {"$ref": "#/$defs/startingEntity"}
+        },
+        "home_mine_site_id": {"$ref": "#/$defs/publicId"}
+      }
+    }
+  }
+}

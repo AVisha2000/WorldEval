@@ -1,0 +1,30 @@
+{
+  "downloaded_at": "2026-07-19",
+  "packages": [
+    {
+      "id": "terrain3d",
+      "install_path": "godot/addons/terrain_3d",
+      "release_tag": "v1.0.1-stable",
+      "commit": "630eb4179d2daf4a262b0b34fd3b9415f81ab43a",
+      "release_url": "https://github.com/TokisanGames/Terrain3D/releases/download/v1.0.1-stable/Terrain3D_v1.0.1.zip",
+      "archive_sha256": "f9b2663f35340f17d4fe9dd7a90b0969d067b6317c6e7bf5dd6696b35c4dde0f",
+      "archive_size_bytes": 42377949,
+      "license": "MIT",
+      "upstream_license_file": "godot/addons/terrain_3d/LICENSE.txt",
+      "macos_binary": "godot/addons/terrain_3d/bin/libterrain.macos.release.framework/libterrain.macos.release"
+    },
+    {
+      "id": "limboai",
+      "install_path": "godot/addons/limboai",
+      "release_tag": "v1.6.0",
+      "commit": "91b22a187f7cd701e25eedd6dcff34179795e687",
+      "release_url": "https://github.com/limbonaut/limboai/releases/download/v1.6.0/limboai%2Bv1.6.0.gdextension-4.4.zip",
+      "archive_sha256": "20e2559d4000efee4495a2e361b0c3cc1d0c51d38a9cc062d335e020de1a405f",
+      "archive_size_bytes": 30436828,
+      "license": "MIT",
+      "upstream_license_file": "godot/addons/limboai/LICENSE.md",
+      "macos_binary": "godot/addons/limboai/bin/liblimboai.macos.editor.framework/liblimboai.macos.editor",
+      "notice": "The v1.6.x GDExtension release is the upstream-supported line for Godot 4.4/4.5/4.6. It is installed but intentionally not enabled in project.godot."
+    }
+  ]
+}

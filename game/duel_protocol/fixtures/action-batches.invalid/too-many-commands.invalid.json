@@ -1,0 +1,28 @@
+{
+  "message_type": "action_batch",
+  "protocol_version": "worldeval-rts/1.0.0",
+  "match_id": "m_0042",
+  "observation_seq": 18,
+  "based_on_observation_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "client_batch_id": "bad_too_many_commands",
+  "valid_until_tick": 1801,
+  "commands": [
+    {"command_id": "c01", "op": "stop", "actor_ids": ["e_u01"]},
+    {"command_id": "c02", "op": "stop", "actor_ids": ["e_u02"]},
+    {"command_id": "c03", "op": "stop", "actor_ids": ["e_u03"]},
+    {"command_id": "c04", "op": "stop", "actor_ids": ["e_u04"]},
+    {"command_id": "c05", "op": "stop", "actor_ids": ["e_u05"]},
+    {"command_id": "c06", "op": "stop", "actor_ids": ["e_u06"]},
+    {"command_id": "c07", "op": "stop", "actor_ids": ["e_u07"]},
+    {"command_id": "c08", "op": "stop", "actor_ids": ["e_u08"]},
+    {"command_id": "c09", "op": "stop", "actor_ids": ["e_u09"]},
+    {"command_id": "c10", "op": "stop", "actor_ids": ["e_u10"]},
+    {"command_id": "c11", "op": "stop", "actor_ids": ["e_u11"]},
+    {"command_id": "c12", "op": "stop", "actor_ids": ["e_u12"]},
+    {"command_id": "c13", "op": "stop", "actor_ids": ["e_u13"]},
+    {"command_id": "c14", "op": "stop", "actor_ids": ["e_u14"]},
+    {"command_id": "c15", "op": "stop", "actor_ids": ["e_u15"]},
+    {"command_id": "c16", "op": "stop", "actor_ids": ["e_u16"]},
+    {"command_id": "c17", "op": "stop", "actor_ids": ["e_u17"]}
+  ]
+}

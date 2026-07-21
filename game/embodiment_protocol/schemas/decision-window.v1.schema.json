@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/llm-controller/decision-window.v1.schema.json",
+  "title": "LLM Controller joint decision window v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["episode_id", "observation_seq", "mode", "start_tick", "duration_ticks", "decisions"],
+  "properties": {
+    "episode_id": {"type": "string", "pattern": "^ep_[A-Za-z0-9._-]{1,120}$"},
+    "observation_seq": {"type": "integer", "minimum": 0},
+    "mode": {"enum": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"]},
+    "start_tick": {"type": "integer", "minimum": 0},
+    "duration_ticks": {"type": "integer", "minimum": 1, "maximum": 20},
+    "decisions": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2,
+      "propertyNames": {"pattern": "^participant_[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+      "additionalProperties": {"$ref": "#/$defs/participant_decision"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"mode": {"const": "solo-curriculum-v0"}}, "required": ["mode"]},
+      "then": {"properties": {"decisions": {"minProperties": 1, "maxProperties": 1}}}
+    },
+    {
+      "if": {"properties": {"mode": {"enum": ["scripted-duel-v0", "model-duel-v0"]}}, "required": ["mode"]},
+      "then": {"properties": {"duration_ticks": {"const": 10}, "decisions": {"minProperties": 2, "maxProperties": 2}}}
+    }
+  ],
+  "$defs": {
+    "participant_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "action", "fallback", "no_input_reason"],
+      "properties": {
+        "disposition": {"enum": ["accepted", "no_input"]},
+        "action": {
+          "anyOf": [
+            {"type": "null"},
+            {"$ref": "controller-action.v1.schema.json"}
+          ]
+        },
+        "fallback": {"enum": ["none", "neutral"]},
+        "no_input_reason": {
+          "type": ["string", "null"],
+          "enum": [null, "missing", "invalid", "timeout", "stale_observation"]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "disposition": {"const": "accepted"},
+            "action": {"$ref": "controller-action.v1.schema.json"},
+            "fallback": {"const": "none"},
+            "no_input_reason": {"type": "null"}
+          }
+        },
+        {
+          "properties": {
+            "disposition": {"const": "no_input"},
+            "action": {"type": "null"},
+            "fallback": {"const": "neutral"},
+            "no_input_reason": {"enum": ["missing", "invalid", "timeout", "stale_observation"]}
+          }
+        }
+      ]
+    }
+  }
+}

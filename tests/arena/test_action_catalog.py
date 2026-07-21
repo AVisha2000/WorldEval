@@ -11,10 +11,19 @@ def test_frozen_arena_action_catalog_matches_wire_enum_and_costs() -> None:
     catalog = json.loads((root / "game" / "arena_actions.json").read_text(encoding="utf-8"))
     actions = catalog["actions"]
 
-    assert catalog["protocol"] == "world-arena/0.2"
-    assert catalog["schema_version"] == "arena-v1"
-    assert set(actions) == {action.value for action in PhysicalAction}
-    for action in PhysicalAction:
+    assert catalog["protocol"] == "world-arena/0.4"
+    assert catalog["schema_version"] == "arena-v2"
+    canonical_actions = {
+        PhysicalAction.MOVE,
+        PhysicalAction.GATHER,
+        PhysicalAction.BUILD,
+        PhysicalAction.ATTACK,
+        PhysicalAction.RESEARCH,
+        PhysicalAction.NEGOTIATE,
+        PhysicalAction.THINK,
+    }
+    assert set(actions) == {action.value for action in canonical_actions}
+    for action in canonical_actions:
         assert actions[action.value]["command_points"] == COMMAND_POINT_COST[action]
 
     assert catalog["communication"]["offer_kinds"] == [

@@ -7,6 +7,7 @@
     "dev": "remotion studio src/index.ts",
     "compositions": "remotion compositions src/index.ts",
     "render:intro": "remotion render src/index.ts WorldArenaIntro out/worldarena-intro.mp4",
+    "render:explainer": "remotion render src/index.ts WorldArenaExplainer out/worldarena-explainer.mp4",
     "render:frame": "remotion still src/index.ts WorldArenaIntro out/worldarena-intro.png --frame=120",
     "typecheck": "tsc --noEmit"
   },
