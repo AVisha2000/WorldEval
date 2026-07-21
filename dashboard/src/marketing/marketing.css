@@ -331,8 +331,17 @@
 .capability-era-number {
   fill: #1a120a;
   font-family: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
-  font-size: 88px;
+  font-size: 68px;
   font-weight: 600;
+}
+
+.capability-era-release {
+  fill: #1a120a;
+  font-family:
+    "Geist Variable", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: 1.2px;
 }
 
 .mobile-era-readouts {
@@ -542,6 +551,27 @@
   line-height: 1;
   text-align: right;
   text-wrap: balance;
+}
+.infinite-zoom-watermark {
+  position: absolute;
+  z-index: 22;
+  top: 28px;
+  right: max(32px, calc((100vw - 1440px) / 2));
+  margin: 0;
+  border: 1px solid rgb(234 174 88 / 0.22);
+  padding: 7px 10px;
+  background: rgb(5 6 8 / 0.64);
+  color: rgb(246 239 226 / 0.68);
+  font-size: 9px;
+  font-weight: 520;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.infinite-zoom-watermark strong {
+  color: var(--amber);
+  font-weight: 680;
 }
 .infinity-reticle {
   position: absolute;
@@ -1232,6 +1262,12 @@
     bottom: 52px;
     width: min(330px, calc(100vw - 36px));
     font-size: 34px;
+  }
+  .infinite-zoom-watermark {
+    top: 24px;
+    right: 18px;
+    max-width: calc(100vw - 36px);
+    font-size: 8px;
   }
   .expansion-progress {
     bottom: 16px;

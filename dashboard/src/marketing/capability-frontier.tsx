@@ -271,6 +271,10 @@ export function CapabilityFrontier() {
           </div>
         </div>
 
+        <p className="infinite-zoom-watermark">
+          Infinite zoom created with <strong>5.6 Sol</strong>
+        </p>
+
         <div className="expansion-progress" aria-hidden="true">
           <motion.span
             style={{ scaleX: reducedMotion ? 1 : smoothScrollProgress }}

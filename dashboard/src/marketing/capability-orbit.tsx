@@ -14,6 +14,7 @@ type CapabilityEra = {
   id: "3" | "4" | "5" | "future"
   number: "3" | "4" | "5" | "?"
   radius: number
+  releaseLabel: "2020" | "2023" | "2025" | "SOON 👀"
   start: number
   title: string
 }
@@ -34,6 +35,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "3",
     number: "3",
     radius: 126,
+    releaseLabel: "2020",
     start: 0,
     title: "Language generation",
   },
@@ -49,6 +51,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "4",
     number: "4",
     radius: 204,
+    releaseLabel: "2023",
     start: 0.27,
     title: "Multimodal reasoning",
   },
@@ -64,6 +67,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "5",
     number: "5",
     radius: 286,
+    releaseLabel: "2025",
     start: 0.52,
     title: "Agentic execution",
   },
@@ -79,6 +83,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "future",
     number: "?",
     radius: 368,
+    releaseLabel: "SOON 👀",
     start: 0.77,
     title: "The physical frontier",
   },
@@ -231,15 +236,26 @@ function EraMarker({
   )
 
   return (
-    <motion.text
-      className={`capability-era-number capability-era-number--${era.id}`}
-      style={{ opacity }}
-      textAnchor="middle"
-      x={ORBIT_CENTER}
-      y={ORBIT_CENTER + 56}
-    >
-      {era.number}
-    </motion.text>
+    <>
+      <motion.text
+        className={`capability-era-number capability-era-number--${era.id}`}
+        style={{ opacity }}
+        textAnchor="middle"
+        x={ORBIT_CENTER}
+        y={ORBIT_CENTER + 31}
+      >
+        {era.number}
+      </motion.text>
+      <motion.text
+        className="capability-era-release"
+        style={{ opacity }}
+        textAnchor="middle"
+        x={ORBIT_CENTER}
+        y={ORBIT_CENTER + 61}
+      >
+        {era.releaseLabel}
+      </motion.text>
+    </>
   )
 }
 
@@ -260,7 +276,10 @@ function MobileEraReadout({
   return (
     <motion.div className="mobile-era-readout" style={{ opacity }}>
       <p>
-        GPT / {era.number} <span>{era.title}</span>
+        GPT / {era.number}{" "}
+        <span>
+          {era.releaseLabel} · {era.title}
+        </span>
       </p>
       <small>
         {era.capabilities.map((capability) => capability.label).join(" · ")}
@@ -341,7 +360,7 @@ export function CapabilityOrbit({
             className="capability-core-label"
             textAnchor="middle"
             x={ORBIT_CENTER}
-            y={ORBIT_CENTER - 17}
+            y={ORBIT_CENTER - 27}
           >
             GPT
           </text>
@@ -369,7 +388,7 @@ export function CapabilityOrbitDescription() {
     <ol className="sr-only" id="hero-capability-summary">
       {CAPABILITY_ERAS.map((era) => (
         <li key={era.id}>
-          GPT {era.number}:{" "}
+          GPT {era.number} ({era.releaseLabel.replace(" 👀", "")}):{" "}
           {era.capabilities.map(({ label }) => label).join(", ")}
           {era.id === "future" ? ". Illustrative future capabilities." : "."}
         </li>
