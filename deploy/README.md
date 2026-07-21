@@ -17,6 +17,15 @@ Construction, Labyrinth Run, Mini RTS Skirmish, and Crossroads Conquest. The API
 checked-in hashes/evidence at startup and serves them without depending on `runs/`, `exports/`, or
 files from the machine that performed the deployment.
 
+**Automatic video pickup:** a normal `git clone` or `git pull origin main` brings these videos onto
+the host with the rest of the repository. No video upload, path setting, or environment variable is
+needed. When `worldeval-lab-api.service` starts or restarts, the backend finds the packages under
+`godot/showcases/`, verifies their pinned evidence and hashes, and exposes them immediately in the
+Lab's **Pre-run saves** library. After pulling a newer revision, rebuild the dashboard and restart
+the service so both the UI and API use the newly checked-out media. Missing or modified core media
+causes startup verification to fail instead of silently falling back to files under `runs/` or
+`exports/`.
+
 ## Install or update
 
 From the repository root on the host:
