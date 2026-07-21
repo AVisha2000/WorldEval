@@ -382,6 +382,16 @@ export function CapabilityFrontier() {
           role="img"
           aria-label="One continuous nested camera pullback begins on an OpenAI laptop, exits through the house window, rises above its street and city, and continues past Earth, satellites, a rocket and the Moon to the Sun."
         >
+          <div aria-hidden="true" className="goblin-asset-preload">
+            <img alt="" decoding="async" loading="lazy" src={maleAstronautGoblin} />
+            <img
+              alt=""
+              decoding="async"
+              loading="lazy"
+              src={femaleAstronautGoblin}
+            />
+          </div>
+
           {PLATES.map((plate, index) => (
             <NestedZoomPlate
               index={index}

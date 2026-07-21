@@ -539,6 +539,18 @@
 .nested-image-portal img.nested-image-portal--contain {
   object-fit: contain;
 }
+.goblin-asset-preload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.goblin-asset-preload img {
+  width: 1px;
+  height: 1px;
+}
 .goblin-flyby {
   position: absolute;
   z-index: 20;
