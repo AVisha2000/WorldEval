@@ -43,7 +43,7 @@ jobs:
         run: pnpm test
       - name: Build Pages site
         env:
-          VITE_BASE_PATH: /WorldArena/
+          VITE_BASE_PATH: /WorldEval/
           VITE_CONTROLLER_LAB_URL: ${{ vars.CONTROLLER_LAB_URL }}
           VITE_YOUTUBE_SOLO_ID: ${{ vars.YOUTUBE_SOLO_ID }}
           VITE_YOUTUBE_DUEL_ID: ${{ vars.YOUTUBE_DUEL_ID }}

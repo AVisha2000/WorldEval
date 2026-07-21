@@ -43,7 +43,7 @@ pnpm build
 ```
 
 The dedicated GitHub Pages build selects the static WorldEval marketing site and defaults to the
-`/WorldArena/` base path:
+`/WorldEval/` base path:
 
 ```bash
 pnpm build:pages

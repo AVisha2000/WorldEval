@@ -326,7 +326,7 @@ pnpm build
 pnpm build:pages
 ```
 
-The Pages build uses the `/WorldArena/` base.
+The Pages build uses the `/WorldEval/` base.
 
 Run the deterministic simulation and Controller Lab regression loop:
 
@@ -384,7 +384,7 @@ interactive download steps; import contracts are included, but no gated asset wa
 | [`backend/genesis_arena/embodiment/`](backend/genesis_arena/embodiment/) | Demo/live provider boundary, managed runtimes, safe evaluation, and replay archives |
 | [`godot/scripts/embodiment/`](godot/scripts/embodiment/) | Solo, duo, and trio authority plus participant presentation and versioned replay |
 | [`game/embodiment_protocol_packages/`](game/embodiment_protocol_packages/) | Immutable additive `llm-controller` protocol packages and registry |
-| [`dashboard/`](dashboard/) | Local Controller Lab and `/WorldArena/` GitHub Pages site |
+| [`dashboard/`](dashboard/) | Local Controller Lab and `/WorldEval/` GitHub Pages site |
 | [`backend/genesis_arena/arena/`](backend/genesis_arena/arena/) | Protocol, runtime, artifacts, evaluator, and season scheduler |
 | [`godot/scripts/arena/`](godot/scripts/arena/) | Authoritative simulation, controller, and presentation |
 | [`godot/data/arena/`](godot/data/arena/) | Versioned map and benchmark contract |

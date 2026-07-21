@@ -84,7 +84,9 @@ describe("cached RTS showcase routes", () => {
   }
 
   it("reads only safe cached metadata and has no browser replay route", async () => {
-    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const fetch = vi.fn<
+      (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+    >(async (input) => {
       const route = String(input)
       return response(route.endsWith("/evaluation") ? evaluation : showcase)
     })
