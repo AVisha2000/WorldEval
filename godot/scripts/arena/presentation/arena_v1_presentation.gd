@@ -42,6 +42,14 @@ const KENNEY_MINIMAP_RING := "res://assets/external/kenney_ui_pack_adventure/Vec
 const COMPACT_MAP_SCALE := 0.46
 const COMPACT_RADIUS_SCALE := 0.72
 
+const GRASS_TEXTURE := "res://art/textures/grass-warcraft-v1.png"
+const WATER_TEXTURE := "res://art/textures/water-warcraft-v1.png"
+const DIRT_PATH_TEXTURE := "res://art/textures/dirt-path-warcraft-v1.png"
+const WOOD_TEXTURE := "res://art/textures/wood-warcraft-v1.png"
+const ROCK_TEXTURE := "res://art/textures/rock-warcraft-v1.png"
+const ROOF_TEXTURE := "res://art/textures/roof-warcraft-v1.png"
+const CRYSTAL_TEXTURE := "res://art/textures/crystal-warcraft-v1.png"
+
 const FACTION_IDS := ["sol", "terra", "luna"]
 const FACTION_NAMES := {"sol": "Sol", "terra": "Terra", "luna": "Luna"}
 const FACTION_COLORS := {
@@ -624,8 +632,10 @@ func _build_triangle_ground() -> void:
 	water_mesh.size = Vector2(430, 430)
 	water.mesh = water_mesh
 	water.position.y = -2.5
-	var water_material := _material(Color("0f3c58"))
-	water_material.albedo_color = Color("0f3c58")
+	var water_material := _material(Color("b9d8e0"))
+	water_material.albedo_texture = load(WATER_TEXTURE)
+	water_material.texture_repeat = true
+	water_material.uv1_scale = Vector3(9.0, 9.0, 9.0)
 	# PlaneMesh and custom terrain need two-sided faces in the compatibility
 	# renderer; otherwise the overview back-face culls the whole island.
 	water_material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -660,9 +670,7 @@ func _build_triangle_ground() -> void:
 			height -= coast * 4.0
 			vertices.append(Vector3(x, height, z))
 			normals.append(Vector3.UP)
-			# Keep the hand-painted tile continuous across the island.  Repeating a
-			# vertical gradient every few metres creates distracting checker bands.
-			uvs.append(Vector2((x + HALF) / (HALF * 2.0), (z + HALF) / (HALF * 2.0)))
+			uvs.append(Vector2(x / 42.0, z / 42.0))
 	for z_index in range(GRID):
 		for x_index in range(GRID):
 			var a := z_index * (GRID + 1) + x_index
@@ -680,7 +688,9 @@ func _build_triangle_ground() -> void:
 	var terrain := MeshInstance3D.new()
 	terrain.name = "OpenWorldIslandTerrain"
 	terrain.mesh = terrain_mesh
-	var terrain_material := _material(Color("2f6848"))
+	var terrain_material := _material(Color("d9e6bf"))
+	terrain_material.albedo_texture = load(GRASS_TEXTURE)
+	terrain_material.texture_repeat = true
 	terrain_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	terrain_material.roughness = 0.95
 	terrain.material_override = terrain_material
@@ -731,7 +741,9 @@ func _build_road_segment(start: Vector3, finish: Vector3) -> void:
 	road.mesh = road_mesh
 	road.position = (start + finish) * 0.5 + Vector3(0, 0.36, 0)
 	road.rotation.y = atan2(direction.x, direction.z)
-	road.material_override = _material(Color("6b4a2d"))
+	road.material_override = _material(Color("e2c99b"))
+	(road.material_override as StandardMaterial3D).albedo_texture = load(DIRT_PATH_TEXTURE)
+	(road.material_override as StandardMaterial3D).texture_repeat = true
 	links_root.add_child(road)
 
 
