@@ -1,0 +1,15 @@
+An agent can describe a plan perfectly and still fail when the plan has physical dependencies. If a car needs fuel, walking to the petrol station leaves the car behind. WorldArena measures whether an AI can act through those dependencies, not just explain them.
+
+WorldArena is a deterministic, embodied agent evaluation arena. A model controls one operator through bounded movement, look, and interaction inputs. Godot, not the model, owns physics, collision, resources, and the outcome.
+
+The solo curriculum makes that concrete. First, orient to a visible beacon. Then collect and deliver a resource. In Construction, an agent finds material, gathers it, carries it to a relay, deposits it, reaches a build pad, and holds the build action until a barricade is complete.
+
+At each decision boundary, the agent receives a participant-scoped camera frame and visible state. It submits a bounded controller action, and fixed-tick Godot simulation resolves the consequence. This is not teleporting between screenshots.
+
+That boundary also makes outcomes inspectable. Spectator state, credentials, and raw provider material stay out of public replays. A malformed or timed-out response becomes recorded no-input, not a hidden repair. Episodes produce receipts, checkpoints, evaluation data, and replay evidence that can be verified offline.
+
+After solo control, WorldArena runs a mirrored two-leg duel. Both entrants use identical bodies and controls, then swap sides. We evaluate task completion, valid actions, interaction receipts, timeout behaviour, and replay integrity, not just a final win screen.
+
+We built WorldArena with Codex and GPT-5.6. Codex accelerated the Godot authority, FastAPI boundaries, dashboard, tests, and this production workflow. GPT-5.6 is integrated through the OpenAI controller adapter for live participant-scoped runs. The gameplay shown here is a deterministic local demo, so it is reproducible without keys or network calls.
+
+WorldArena makes agent behavior visible, fair, and replayable, so developers can evaluate what an AI does, not only what it says.

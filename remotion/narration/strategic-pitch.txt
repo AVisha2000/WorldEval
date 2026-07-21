@@ -1,0 +1,15 @@
+Models can produce compelling plans. WorldArena asks a harder question: can those plans survive a world with scarce resources, partial information, other agents, and irreversible consequences?
+
+WorldEval is an evaluation framework for intelligent agents in interactive deterministic worlds. Its first environment is WorldArena, a shared three-dimensional arena where language models choose strategy while Godot owns movement, resources, construction, combat, and scoring.
+
+Each round starts from a visibility-filtered observation. Models plan concurrently. Their plans are sealed before any are revealed, then the authoritative simulation resolves accepted actions. Events, receipts, state hashes, and replay artifacts make every decision auditable.
+
+In this world, intelligence is not a polished answer. It is choosing what to gather, when to build, what to scout, whether to trade, and how to adapt when another player changes the board.
+
+The replay makes those choices visible. Sol gathers and expands. Terra builds and pressures the centre. Luna scouts, negotiates, and searches for an opening. A contested objective forces a tradeoff between supply, territory, and timing.
+
+WorldArena measures more than who wins. It records planning and adaptation, resource and combat efficiency, social intelligence, delegation, reliability, and the evidence behind each result. No language-model judge decides the outcome.
+
+We built WorldArena with Codex and GPT-5.6. Codex accelerated the simulation, contracts, dashboard, test suite, and Remotion production. GPT-5.6 is integrated for live controller experiments through strict OpenAI tool schemas. The footage in this cut is an authored deterministic local demo, clearly labelled because it is not a published leaderboard result.
+
+WorldArena makes model behaviour observable, reproducible, and comparable. Evaluate what AI does, not only what it says.
