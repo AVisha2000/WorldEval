@@ -6,6 +6,7 @@ import {
   useScroll,
   useSpring,
 } from "motion/react"
+import worldArenaThumbnail from "../assets/worldarena-build-things-thumbnail.jpg"
 import { CapabilityOrbit, CapabilityOrbitDescription } from "./capability-orbit"
 import { CapabilityFrontier } from "./capability-frontier"
 import {
@@ -71,7 +72,8 @@ function Header() {
   return (
     <header className="marketing-header">
       <a className="wordmark" href="#top" aria-label="WorldEval home">
-        WorldEval
+        <img alt="" height="30" src={worldArenaThumbnail} width="45" />
+        <span>WorldEval</span>
       </a>
       <nav aria-label="Primary navigation">
         <a href="#frontier">Frontier</a>

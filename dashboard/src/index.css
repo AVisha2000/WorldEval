@@ -103,9 +103,11 @@
 
 @layer components {
   .app-shell { min-height: 100svh; background: var(--background); }
-  .app-header { height: 64px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .app-header { height: 82px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .app-header-brand { min-width: 0; display: flex; align-items: center; gap: 18px; }
   .app-header h1 { font-size: 21px; font-weight: 650; letter-spacing: -0.025em; }
   .app-header h1 span, .section-title { color: var(--primary); }
+  .app-header-thumbnail { width: 120px; height: 68px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: var(--radius); object-fit: cover; box-shadow: 0 8px 24px #0006; }
   .readiness-panel { min-height: 92px; display: grid; grid-template-columns: 170px minmax(0, 1fr) max-content; align-items: center; gap: 20px; border-bottom: 1px solid var(--border); padding: 14px 24px; background: oklch(0.14 0.007 55); }
   .readiness-summary { display: flex; flex-direction: column; gap: 3px; }
   .readiness-summary strong { font-size: 14px; }
@@ -119,7 +121,7 @@
   .readiness-gate b, .readiness-gate small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .readiness-gate b { font-size: 11px; font-weight: 600; }
   .readiness-panel > code { color: var(--muted-foreground); font-size: 10px; }
-  .app-body { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: calc(100svh - 64px); }
+  .app-body { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: calc(100svh - 82px); }
   .setup-panel { border-right: 1px solid var(--border); padding: 22px; display: flex; flex-direction: column; gap: 24px; }
   .section-title { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
   .setup-panel input, .setup-panel [data-slot="select-trigger"] { height: 40px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
@@ -206,6 +208,8 @@
 }
 @media (max-width: 760px) {
   .app-header { height: auto; min-height: 64px; align-items: flex-start; flex-direction: column; gap: 8px; padding-block: 14px; }
+  .app-header-brand { width: 100%; justify-content: space-between; }
+  .app-header-thumbnail { width: 96px; height: 54px; }
   .app-body { display: flex; flex-direction: column; }
   .readiness-panel { display: flex; align-items: stretch; flex-direction: column; gap: 10px; padding: 14px; }
   .readiness-gates { display: flex; overflow-x: auto; padding-bottom: 3px; }

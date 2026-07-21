@@ -27,7 +27,7 @@ describe("certification readiness", () => {
 
 describe("participant frame route", () => {
   it("loads only a no-store image response and its player-visible sequence", async () => {
-    const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })
+    const png = new Uint8Array([137, 80, 78, 71])
     const fetch = vi.fn(async () => new Response(png, {
       headers: {
         "Content-Type": "image/png",
