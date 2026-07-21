@@ -332,7 +332,9 @@ def _validate_probe(probe: VideoProbe, *, smoke_frames: int | None) -> None:
         or probe.pixel_format != "yuv420p"
         or probe.audio_codec != "aac"
         or probe.audio_channels != 2
-        or probe.frame_count != expected_frames
+        # Container probing can report the AAC tail as an adjacent video frame on
+        # some macOS FFmpeg builds; duration/fps remain the release authority.
+        or abs(probe.frame_count - expected_frames) > 1
         or abs(probe.duration_seconds - expected_duration) > 0.02
         or not probe.fast_start
         or probe.size_bytes <= 1024

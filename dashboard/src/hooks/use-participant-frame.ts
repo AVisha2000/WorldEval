@@ -6,7 +6,9 @@ export function useParticipantFrame(episode: EpisodeView) {
   return useQuery({
     queryKey: ["participant-frame", episode.episodeId, episode.status],
     queryFn: () => getParticipantFrame(episode.episodeId),
-    enabled: episode.kind === "episode",
+    // Labyrinth Run is a public replay race, not a solo authority episode.  Its visual output
+    // arrives through the verified maze-video endpoint, so never poll the solo frame route.
+    enabled: episode.kind === "episode" && episode.taskId !== "trio-maze-race-v1",
     refetchInterval: terminal ? false : 750,
     refetchIntervalInBackground: true,
     gcTime: 0,

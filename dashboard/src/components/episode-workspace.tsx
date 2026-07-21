@@ -27,6 +27,7 @@ import {
   getSavedReplay,
   getSavedReplayEvaluation,
   getSavedReplays,
+  liveMazeVideoUrl,
   savedReplayVideoUrl,
   seriesParticipantVideoUrl,
 } from "@/api"
@@ -161,7 +162,9 @@ function RunView({
           </Button>
         ) : null}
       </div>
-      {episode.kind === "episode" ? (
+      {episode.taskId === "trio-maze-race-v1" ? (
+        <LiveMazeViewport episode={episode} />
+      ) : episode.kind === "episode" ? (
         <ParticipantFrame episode={episode} frame={frame} />
       ) : episode.kind === "series" && episode.taskId === "rts-skirmish-v0" ? (
         <RtsSkirmishViewport
@@ -180,6 +183,36 @@ function RunView({
       )}
     </main>
   )
+}
+
+function LiveMazeViewport({ episode }: { episode: EpisodeView }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const ready = episode.liveMazeVideoState === "ready"
+  const running = episode.status === "queued" || episode.status === "running"
+  return <section className="arena-viewport participant-frame" aria-label="Live Labyrinth Run broadcast">
+    {ready ? <>
+      <video ref={videoRef} className="saved-replay-video" aria-label="Live Labyrinth Run video" controls autoPlay muted playsInline>
+        <source src={liveMazeVideoUrl(episode.episodeId)} type="video/mp4" />
+        Your browser cannot play this live Labyrinth Run video.
+      </video>
+      <ReplaySpeedControls videoRef={videoRef} />
+    </> : <div className="participant-frame-empty">
+      <LoaderCircleIcon className="frame-spinner" />
+      <h2>{running ? "Labyrinth Run is in progress" : "Preparing verified race broadcast"}</h2>
+      <p>{running
+        ? "Three private controllers are racing concurrently. The public replay is rendered after authority verification."
+        : episode.status === "failure"
+          ? "The live race could not start. Re-enter a valid provider key and try again."
+          : "The race is sealed; native video is still being prepared."}</p>
+    </div>}
+    <div className={`participant-frame-status frame-${running ? "live" : "finished"}`}>
+      <span><i />{running ? "Live race" : "Verified race"}</span>
+      {episode.result ? `${episode.result.windows} provider calls` : "Three private maze views"}
+    </div>
+    <div className="participant-frame-privacy">
+      <ShieldCheckIcon /> Public replay only · no prompts, raw output, credentials, hidden state, or spectator input
+    </div>
+  </section>
 }
 
 function RtsSkirmishViewport({

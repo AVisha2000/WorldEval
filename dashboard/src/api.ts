@@ -256,6 +256,8 @@ export type EpisodeView = {
   evaluationProfileId?: string
   failureCode?: string | null
   replay?: SavedReplayAvailability
+  /** Present only for a live Labyrinth Run; the race has an MP4 rather than a player camera. */
+  liveMazeVideoState?: "saving" | "ready" | "unavailable"
   timeline: TimelineRow[]
   result?: {
     finalStateHash: string
@@ -676,12 +678,15 @@ export async function createRun(setup: EpisodeSetup): Promise<EpisodeView> {
 
 function normalizeLiveMaze(raw: Record<string, unknown>): EpisodeView {
   const state = String(raw.state ?? "queued")
+  const replay = raw.replay as Record<string, unknown> | undefined
+  const raceResult = replay?.result as Record<string, unknown> | undefined
+  const video = raw.video as Record<string, unknown> | undefined
   return {
     kind: "episode",
     episodeId: String(raw.episode_id),
     status: state === "completed" ? "success" : state === "failed" ? "failure" : state === "cancelled" ? "cancelled" : state === "running" ? "running" : "queued",
-    observationSeq: 0,
-    tick: 0,
+    observationSeq: typeof replay?.provider_calls === "number" ? replay.provider_calls : 0,
+    tick: typeof replay?.elapsed_ticks === "number" ? replay.elapsed_ticks : 0,
     taskId: "trio-maze-race-v1",
     taskLabel: "Labyrinth Run · live",
     entrants: Array.isArray(raw.entrants) ? raw.entrants.map((value) => {
@@ -689,9 +694,24 @@ function normalizeLiveMaze(raw: Record<string, unknown>): EpisodeView {
       return { entrantId: String(entrant.entrant_id), displayName: String(entrant.display_name), model: String(entrant.model) }
     }) : undefined,
     failureCode: typeof raw.failure === "string" ? raw.failure : null,
+    liveMazeVideoState: video?.state === "saving" || video?.state === "ready" || video?.state === "unavailable"
+      ? video.state
+      : "unavailable",
     replay: { state: "unavailable" },
+    result: raceResult ? {
+      finalStateHash: typeof replay?.final_state_sha256 === "string" ? replay.final_state_sha256 : "",
+      providerFailures: Array.isArray(replay?.racers)
+        ? replay.racers.reduce((total, value) => total + (typeof (value as Record<string, unknown>).invalid_decisions === "number" ? (value as Record<string, unknown>).invalid_decisions as number : 0), 0)
+        : 0,
+      outcome: typeof raceResult.winner_id === "string" ? "success" : String(raceResult.reason ?? "completed"),
+      windows: typeof replay?.provider_calls === "number" ? replay.provider_calls : 0,
+    } : undefined,
     timeline: [],
   }
+}
+
+export function liveMazeVideoUrl(episodeId: string): string {
+  return `/api/embodiment/maze-races/${encodeURIComponent(episodeId)}/video`
 }
 
 export async function cancelRun(episodeId: string): Promise<void> {
@@ -712,6 +732,12 @@ export async function getEpisode(episodeId: string): Promise<EpisodeView> {
     const status = await checked<Record<string, unknown>>(
       await fetch(`/api/embodiment/maze-races/${episodeId}`, { cache: "no-store" })
     )
+    if (status.state === "completed") {
+      const replay = await checked<Record<string, unknown>>(
+        await fetch(`/api/embodiment/maze-races/${episodeId}/replay`, { cache: "no-store" })
+      )
+      return normalizeLiveMaze({ ...status, replay })
+    }
     return normalizeLiveMaze(status)
   }
   if (episodeId.startsWith("trio_")) return getTrioSeries(episodeId)

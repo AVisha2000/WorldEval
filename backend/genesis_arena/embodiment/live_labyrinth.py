@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import secrets
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping, Protocol, Sequence, runtime_checkable
@@ -35,6 +36,7 @@ from .scratchpad import EpisodeScratchpad, ScratchpadError
 LIVE_TASK_ID = "trio-maze-race-v1"
 LIVE_REPLAY_SCHEMA = "worldarena/live-labyrinth-run-replay/1"
 MAX_LIVE_PROVIDER_CALLS = 180
+_PROVIDER_TIMEOUT_NS = 45 * 1_000_000_000
 _SYSTEM_PROMPT = (
     "You control one racer in a private maze lane. Return exactly the MazeTaskPlan JSON object. "
     "Choose only a currently visible relative passage or wait."
@@ -240,7 +242,10 @@ async def run_live_labyrinth_race(
                     episode_id=episode_id,
                     participant_id=value.entrant.participant_id,
                     observation_seq=value.observation_seq,
-                    deadline_monotonic_ns=1_000_000_000 + tick * 1_000_000,
+                    # Provider adapters compare this against the process monotonic clock.  A
+                    # synthetic tick-derived value is already far in the past on a running
+                    # process, which turns every live request into an immediate timeout.
+                    deadline_monotonic_ns=time.monotonic_ns() + _PROVIDER_TIMEOUT_NS,
                     model=value.entrant.model,
                     system_prompt=_SYSTEM_PROMPT,
                     observation_json=canonical_json_bytes(
@@ -618,6 +623,15 @@ class LiveLabyrinthService:
                 max_provider_calls=max_provider_calls,
                 cancel_event=record.cancel_event,
             )
+            provider_failures = [
+                decision.provider_failure
+                for decision in record.execution.protected_decisions
+                if decision.provider_failure is not None
+            ]
+            if provider_failures and len(provider_failures) == len(record.execution.protected_decisions):
+                record.state = "failed"
+                record.failure = _live_provider_failure_code(provider_failures)
+                return
             record.state = "completed"
             if self._render_video is not None:
                 record.video_state = "saving"
@@ -701,6 +715,19 @@ class LiveLabyrinthService:
             "entrants": [value.public_dict() for value in record.entrants],
             "video": {"state": record.video_state},
         }
+
+
+def _live_provider_failure_code(failures: Sequence[str]) -> str:
+    """Publish only a stable, credential-safe reason for an all-provider outage."""
+
+    kinds = set(failures)
+    if kinds == {"credential_error"}:
+        return "live_provider_credential_rejected"
+    if kinds in ({"rate_limit_error"}, {"quota_error"}):
+        return "live_provider_rate_limited"
+    if kinds == {"timeout"}:
+        return "live_provider_timed_out"
+    return "live_provider_unavailable"
 
 
 __all__ = [

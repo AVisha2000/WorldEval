@@ -19,3 +19,4 @@ exports/
 remotion/node_modules/
 remotion/out/
 remotion/.remotion/
+outputs/

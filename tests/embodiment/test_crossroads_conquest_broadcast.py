@@ -7,7 +7,6 @@ import pytest
 
 from scripts import render_crossroads_conquest_broadcast as renderer
 
-
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 
@@ -51,10 +50,14 @@ def test_crossroads_release_profile_is_exact_and_size_bounded() -> None:
         size_bytes=renderer.MAX_VIDEO_BYTES,
     )
     renderer._validate_probe(probe, smoke_frames=None)
+    renderer._validate_probe(
+        renderer.VideoProbe(**{**probe.__dict__, "frame_count": 5399}),
+        smoke_frames=None,
+    )
 
     with pytest.raises(renderer.CrossroadsBroadcastRenderError, match="exact 1920"):
         renderer._validate_probe(
-            renderer.VideoProbe(**{**probe.__dict__, "frame_count": 5399}),
+            renderer.VideoProbe(**{**probe.__dict__, "frame_count": 5398}),
             smoke_frames=None,
         )
     with pytest.raises(renderer.CrossroadsBroadcastRenderError, match="exact 1920"):

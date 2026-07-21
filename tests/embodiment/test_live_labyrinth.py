@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections import deque
 
 import pytest
@@ -17,6 +18,7 @@ from genesis_arena.embodiment.live_labyrinth import (
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
 from genesis_arena.embodiment.providers.contracts import (
     ProviderCallResult,
+    ProviderFailureKind,
     ProviderRequest,
     ProviderTelemetry,
 )
@@ -46,6 +48,15 @@ class ScriptedMazeProvider:
         }
         return ProviderCallResult.success(
             canonical_json_bytes(payload), ProviderTelemetry(latency_ms=0)
+        )
+
+
+class FailedMazeProvider:
+    provider_name = "fake"
+
+    async def request(self, _request: ProviderRequest) -> ProviderCallResult:
+        return ProviderCallResult.failed(
+            ProviderFailureKind.CREDENTIAL, ProviderTelemetry(latency_ms=0)
         )
 
 
@@ -124,6 +135,7 @@ async def test_live_race_runs_three_private_provider_calls_and_seals_public_repl
             "at_exit",
         }
         assert "participant_0" not in provider.requests[0].system_prompt
+        assert provider.requests[0].deadline_monotonic_ns > time.monotonic_ns()
     serialized = repr(execution.replay).casefold()
     assert all(term not in serialized for term in ("scratchpad", "raw_output", "private route"))
     assert any(
@@ -183,6 +195,23 @@ async def test_service_returns_public_entrants_and_runs_cleanup_once() -> None:
     assert status["state"] == "completed"
     assert [value["display_name"] for value in status["entrants"]] == ["Sol", "Terra", "Luna"]
     assert cleaned == 1
+
+
+@pytest.mark.asyncio
+async def test_service_reports_a_safe_credential_failure_instead_of_a_tick_zero_success() -> None:
+    service = LiveLabyrinthService()
+    created = await service.create(
+        entrants=_entrants(),
+        providers={participant_id: FailedMazeProvider() for participant_id in ("participant_0", "participant_1", "participant_2")},
+        max_provider_calls=3,
+    )
+    for _ in range(20):
+        status = await service.status(created["episode_id"])
+        if status["state"] not in {"queued", "running"}:
+            break
+        await asyncio.sleep(0)
+    assert status["state"] == "failed"
+    assert status["failure"] == "live_provider_credential_rejected"
 
 
 def test_verifier_rejects_public_protected_material() -> None:

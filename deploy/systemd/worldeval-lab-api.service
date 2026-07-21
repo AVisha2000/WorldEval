@@ -1,6 +1,7 @@
 [Unit]
 Description=WorldEval Controller Lab API
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
@@ -10,9 +11,14 @@ WorkingDirectory=/home/lissan/codex-build-week/WorldEval
 Environment=GENESIS_HOST=127.0.0.1
 Environment=GENESIS_PORT=18083
 Environment=GENESIS_GODOT_EXECUTABLE=/tmp/worldeval-godot-4.5/Godot_v4.5-stable_linux.x86_64
+Environment=GENESIS_FFMPEG_EXECUTABLE=/usr/bin/ffmpeg
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/usr/bin/test -x /tmp/worldeval-godot-4.5/Godot_v4.5-stable_linux.x86_64
+ExecStartPre=/usr/bin/test -x /usr/bin/ffmpeg
 ExecStart=/home/lissan/codex-build-week/WorldEval/.venv/bin/uvicorn genesis_arena.main:app --host 127.0.0.1 --port 18083 --no-access-log
 Restart=on-failure
 RestartSec=5
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

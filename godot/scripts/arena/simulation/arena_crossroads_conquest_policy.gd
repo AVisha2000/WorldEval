@@ -59,7 +59,7 @@ func _opening(observation: Dictionary, orders: Array) -> void:
 	elif round_number == 6:
 		if _capture_ready(observation, mine, faction):
 			_build(observation, orders, "outpost", mine, _units_at(observation, "worker", mine).slice(0, 2))
-		_gather(orders, home, "forest", home_workers.slice(0, 1))
+		_gather(orders, home, "animals" if faction == "sol" else "forest", home_workers.slice(0, 1))
 	elif round_number == 7:
 		_build(observation, orders, "mine", mine, _units_at(observation, "worker", mine).slice(0, 2))
 		_gather(orders, home, "animals", home_workers.slice(0, 1))
@@ -70,90 +70,111 @@ func _sol(observation: Dictionary, orders: Array) -> void:
 	var round_number := int(observation.round)
 	var center := _district(observation, "crossroads")
 	var center_owner := str(center.get("owner", ""))
-	var center_outpost := str(center.get("outpost_id", ""))
 	var home_workers := _units_at(observation, "worker", "home_sol")
 	var mine_workers := _units_at(observation, "worker", "mine_st")
 	var center_workers := _units_at(observation, "worker", "crossroads")
 	if round_number == 8:
 		_gather(orders, "mine_st", "iron", mine_workers.slice(0, 1))
 		_gather(orders, "mine_st", "forest", mine_workers.slice(1, 2))
-		_train(observation, orders, "militia")
+		_move(orders, _units_at(observation, "commander", "mine_st"), "wild_ls")
 	elif round_number == 9:
-		_build(observation, orders, "workshop", "home_sol", home_workers.slice(0, 2))
-		_move(orders, _units_at(observation, "militia", "core_sol"), "home_sol")
+		_move(orders, home_workers, "wild_ls")
+		# Leave the first crew member on its existing iron task for one more round;
+		# the second brings in the stone required for Sol's forward build chain.
+		_gather(orders, "mine_st", "stone", mine_workers.slice(1, 2))
 	elif round_number == 10:
-		if _has_structure(observation, "home_sol", "workshop"):
-			_research(observation, orders, "fieldcraft", "home_sol", home_workers.slice(0, 2))
-		_move(orders, _units_at(observation, "militia", "home_sol"), "mine_st")
+		_move(orders, mine_workers, "home_sol")
 	elif round_number == 11:
-		if observation.technology.completed.has("fieldcraft"):
-			_research(observation, orders, "ironworking", "home_sol", home_workers.slice(0, 2))
-			_train(observation, orders, "guard")
-	elif _capture_ready(observation, "crossroads", "sol") and not _has_structure(observation, "crossroads", "outpost"):
-		_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 2))
-	elif not center_outpost.is_empty() and center_owner == "terra":
-		_attack(orders, _combat_units(observation), "crossroads")
-		if observation.technology.completed.has("fieldcraft"): _train(observation, orders, "guard")
-		_gather(orders, "home_sol", "forest", home_workers)
-	elif center_owner != "sol":
-		_attack(orders, _combat_units(observation), "crossroads")
-		_move(orders, mine_workers, "crossroads")
-	elif not _has_structure(observation, "crossroads", "outpost"):
-		_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 2))
-	elif not _has_structure(observation, "crossroads", "mine"):
+		_build(observation, orders, "outpost", "wild_ls", _units_at(observation, "worker", "wild_ls").slice(0, 2))
+	elif round_number == 12:
+		_attack(orders, _units_at(observation, "commander", "wild_ls"), "crossroads")
+		_build(observation, orders, "workshop", "home_sol", _units_at(observation, "worker", "home_sol").slice(0, 2))
+	elif round_number == 13:
+		_research(observation, orders, "fieldcraft", "home_sol", _units_at(observation, "worker", "home_sol").slice(0, 2))
+		_gather(orders, "wild_ls", "forest", _units_at(observation, "worker", "wild_ls"))
+	elif round_number == 14:
+		_move(orders, _units_at(observation, "worker", "wild_ls"), "crossroads")
+		_train(observation, orders, "militia")
+	elif round_number == 15:
+		if _capture_ready(observation, "crossroads", "sol"):
+			_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 2))
+		_research(observation, orders, "ironworking", "home_sol", _units_at(observation, "worker", "home_sol").slice(0, 2))
+		_move(orders, _units_at(observation, "militia", "core_sol"), "crossroads")
+	elif round_number == 16:
+		_gather(orders, "crossroads", "stone", center_workers)
+		_gather(orders, "home_sol", "animals", _units_at(observation, "worker", "home_sol"))
+	elif round_number == 17:
 		_build(observation, orders, "mine", "crossroads", center_workers.slice(0, 2))
-	elif not _has_unit(observation, "siege"):
+	elif round_number == 18:
 		_gather(orders, "crossroads", "crystal", center_workers)
+	elif round_number == 19:
+		# Queue the siege while the supplied home workshop is still intact: Terra's
+		# counter-raid is deliberately about to remove that production option.
 		_train(observation, orders, "siege")
+	elif round_number >= 23:
+		_attack(orders, _combat_units(observation), "core_terra")
+	elif not _has_unit(observation, "siege"):
+		# A legal policy must wait for the authoritative training completion rather
+		# than blindly retrying after the workshop has fallen.
+		_think(orders)
+	elif round_number >= 20 and _units_at(observation, "siege", "crossroads").is_empty():
+		_move(orders, _units_of_kind(observation, "siege"), "crossroads")
 	else:
-		var siege_at_center := _units_at(observation, "siege", "crossroads")
-		if siege_at_center.is_empty():
-			_move(orders, _units_of_kind(observation, "siege"), "crossroads")
-		else:
-			_attack(orders, _combat_units(observation), "core_terra")
+		_think(orders)
 
 
 func _terra(observation: Dictionary, orders: Array) -> void:
 	var round_number := int(observation.round)
-	var center := _district(observation, "crossroads")
 	var center_workers := _units_at(observation, "worker", "crossroads")
+	var mine_workers := _units_at(observation, "worker", "mine_tl")
 	if round_number == 8:
-		_move(orders, _units_at(observation, "worker", "mine_tl"), "crossroads")
-		_gather(orders, "home_terra", "forest", _units_at(observation, "worker", "home_terra"))
-	elif _capture_ready(observation, "crossroads", "terra") and not _has_structure(observation, "crossroads", "outpost"):
-		_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 2))
-		_move(orders, _units_at(observation, "worker", "home_terra"), "mine_tl")
-	elif str(center.get("owner", "")) == "terra" and not _has_structure(observation, "crossroads", "mine"):
-		_build(observation, orders, "mine", "crossroads", center_workers.slice(0, 2))
-		_gather(orders, "mine_tl", "forest", _units_at(observation, "worker", "mine_tl"))
+		_move(orders, mine_workers.slice(0, 1), "crossroads")
+		_gather(orders, "mine_tl", "forest", mine_workers.slice(1, 2))
+		_train(observation, orders, "militia")
+	elif round_number == 9:
+		_build(observation, orders, "outpost", "crossroads", center_workers.slice(0, 1))
+		_gather(orders, "mine_tl", "stone", mine_workers.slice(0, 1))
+	elif round_number == 10:
+		_gather(orders, "mine_tl", "iron", mine_workers.slice(0, 1))
+	elif round_number == 11:
+		_build(observation, orders, "mine", "crossroads", center_workers.slice(0, 1))
+		_gather(orders, "mine_tl", "iron", mine_workers.slice(0, 1))
 		_train(observation, orders, "militia")
 	elif round_number == 12:
-		_gather(orders, "crossroads", "iron", center_workers.slice(0, 1))
-		_gather(orders, "crossroads", "stone", center_workers.slice(1, 2))
-		_train(observation, orders, "militia")
+		var retreating := _units_at(observation, "commander", "crossroads")
+		retreating.append_array(center_workers)
+		_move(orders, retreating, "home_terra")
+		_gather(orders, "mine_tl", "animals", mine_workers.slice(0, 1))
 	elif round_number == 13:
-		_move(orders, _units_at(observation, "worker", "mine_tl"), "home_terra")
-		_move(orders, _units_at(observation, "militia", "core_terra").slice(0, 1), "crossroads")
+		var mobile_workers := center_workers
+		mobile_workers.append_array(mine_workers)
+		_move(orders, mobile_workers, "wild_tl")
+		_train(observation, orders, "militia")
 	elif round_number == 14:
-		_train(observation, orders, "scout")
 		_gather(orders, "home_terra", "forest", _units_at(observation, "worker", "home_terra"))
 	elif round_number == 15:
+		_gather(orders, "home_terra", "forest", _units_at(observation, "worker", "home_terra"))
+	elif round_number == 16:
 		_build(observation, orders, "wall", "home_terra", _units_at(observation, "worker", "home_terra").slice(0, 2))
-	elif round_number <= 16 and str(center.get("owner", "")) == "terra":
-		_train(observation, orders, "militia")
 	elif round_number == 17:
 		var raiders := _units_at(observation, "commander", "core_terra")
-		raiders.append_array(_units_at(observation, "militia", "core_terra").slice(0, 2))
-		raiders.append_array(_units_at(observation, "scout", "core_terra").slice(0, 1))
+		# A deliberately small counterforce: enough to leave Sol near one quarter
+		# strength, not enough to win the match before the siege can escape.  It
+		# first clears the outer district, buying Sol a final production window.
+		raiders.append_array(_units_at(observation, "militia", "core_terra").slice(0, 3))
 		_move(orders, raiders, "wild_st")
-	elif round_number >= 18:
-		var raid_force := _combat_units_in(observation, ["wild_st", "home_sol", "core_sol"])
-		if float(observation.public_scores.sol.core_hp) < 900.0:
-			_move(orders, raid_force, "wild_st")
-		elif not raid_force.is_empty():
-			_attack(orders, raid_force, "core_sol")
+	elif round_number == 18:
+		var raid_force := _combat_units_in(observation, ["home_terra", "wild_st"])
+		_attack(orders, raid_force, "home_sol")
+	elif round_number == 19:
+		_move(orders, _combat_units_in(observation, ["home_sol", "mine_st"]), "core_sol")
+	elif round_number == 20:
+		_attack(orders, _combat_units_in(observation, ["core_sol", "home_sol", "mine_st"]), "core_sol")
+	elif round_number >= 20 and float(observation.public_scores.sol.core_hp) <= 400.0:
+		_move(orders, _combat_units_in(observation, ["core_sol", "home_sol", "wild_st"]), "wild_st")
+		_move(orders, _units_at(observation, "worker", "core_sol"), "wild_st")
 	else:
-		_train(observation, orders, "militia")
+		_think(orders)
 
 
 func _luna(observation: Dictionary, orders: Array) -> void:
@@ -172,12 +193,19 @@ func _luna(observation: Dictionary, orders: Array) -> void:
 	elif round_number == 10:
 		if _has_structure(observation, "home_luna", "workshop"):
 			_research(observation, orders, "fieldcraft", "home_luna", home_workers.slice(0, 2))
-	elif round_number in [11, 12]:
+		_build(observation, orders, "storage", "mine_ls", mine_workers.slice(0, 2))
+	elif round_number == 11:
+		_gather(orders, "mine_ls", "stone", mine_workers.slice(0, 1))
+		_gather(orders, "mine_ls", "animals", mine_workers.slice(1, 2))
 		if observation.technology.completed.has("fieldcraft"): _train(observation, orders, "guard")
+	elif round_number == 12:
+		if observation.technology.completed.has("fieldcraft"): _train(observation, orders, "guard")
+		_build(observation, orders, "storage", "mine_ls", mine_workers.slice(0, 2))
 	elif round_number in [13, 14]:
 		_train(observation, orders, "militia")
-	elif round_number >= 23:
+	elif round_number >= 15:
 		_move(orders, _combat_units(observation), "mine_ls")
+		_think(orders)
 	else:
 		_gather(orders, "home_luna", "animals", home_workers.slice(0, 1))
 		_think(orders)
@@ -211,6 +239,14 @@ func _combat_units_in(observation: Dictionary, districts: Array) -> Array:
 	var ids: Array = []
 	for unit in observation.groups:
 		if str(unit.kind) != "worker" and districts.has(str(unit.district)): ids.append(str(unit.id))
+	ids.sort()
+	return ids
+
+
+func _unit_ids_in(observation: Dictionary, districts: Array) -> Array:
+	var ids: Array = []
+	for unit in observation.groups:
+		if districts.has(str(unit.district)): ids.append(str(unit.id))
 	ids.sort()
 	return ids
 

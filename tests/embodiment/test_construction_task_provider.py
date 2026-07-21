@@ -94,7 +94,7 @@ async def test_construction_task_provider_calls_model_once_then_replays_local_ti
 
 
 @pytest.mark.asyncio
-async def test_construction_task_provider_rejects_hidden_or_invalid_milestone() -> None:
+async def test_construction_task_provider_waits_for_an_invalid_milestone() -> None:
     package = EmbodimentProtocolPackage.from_repository(ROOT)
     provider = _Provider(
         {
@@ -108,4 +108,6 @@ async def test_construction_task_provider_rejects_hidden_or_invalid_milestone() 
     )
     result = await ConstructionTaskProvider(provider, package).request(_request())
 
-    assert result.failure is not None
+    assert result.failure is None
+    assert result.raw_output is not None
+    assert b'"autonomous_task":"wait"' in result.raw_output

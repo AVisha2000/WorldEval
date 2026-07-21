@@ -216,6 +216,8 @@ function renderApp() {
 
 async function selectLiveProvider(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("radio", { name: "Live games" }))
+  await user.click(screen.getByRole("combobox", { name: "Live game" }))
+  await user.click(await screen.findByRole("option", { name: "Hybrid solo curriculum" }))
 }
 
 describe("Controller dashboard", () => {
@@ -507,7 +509,7 @@ describe("Controller dashboard", () => {
     expect(JSON.stringify(mutations[0].state)).not.toContain(secret)
   })
 
-  it("launches a credential-free scripted opponent without retaining the model key", async () => {
+  it("launches live RTS entrants with one session credential and does not retain it", async () => {
     const user = userEvent.setup()
     const fetch = lifecycleFetch()
     vi.stubGlobal("fetch", fetch)
@@ -515,14 +517,10 @@ describe("Controller dashboard", () => {
     const secret = "duel-session-alpha"
 
     await selectLiveProvider(user)
-    await user.click(screen.getByRole("combobox", { name: "Workflow" }))
-    await user.click(await screen.findByRole("option", { name: "Symmetric two-leg 1v1" }))
-    expect(screen.getByText("Configure a symmetric two-leg series")).toBeInTheDocument()
-    expect(screen.getByText(/Scripted opponents require no key/)).toBeInTheDocument()
-    expect(screen.getByLabelText("Scripted tier")).toBeInTheDocument()
-    expect(screen.queryByLabelText("Opponent API key")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("combobox", { name: "Live game" }))
+    await user.click(await screen.findByRole("option", { name: "Mini RTS Skirmish · 1v1" }))
     await user.type(screen.getByLabelText("API key"), secret)
-    await user.click(screen.getByRole("button", { name: "Start live two-leg game" }))
+    await user.click(screen.getByRole("button", { name: "Start live two-leg RTS Skirmish" }))
 
     await waitFor(() => {
       expect(screen.getByLabelText("API key")).toHaveValue("")
@@ -531,9 +529,9 @@ describe("Controller dashboard", () => {
     expect(post).toBeDefined()
     expect(JSON.parse(String(post?.[1]?.body)).entrants).toEqual([
       expect.objectContaining({ provider: "openai", api_key: secret }),
-      { provider: "scripted", model: "balanced-v1" },
+      { provider: "openai", model: "gpt-5.6-terra", api_key: secret },
     ])
-    expect(JSON.parse(String(post?.[1]?.body)).max_live_provider_calls).toBe(360)
+    expect(JSON.parse(String(post?.[1]?.body)).max_live_provider_calls).toBe(720)
     const mutations = queryClient.getMutationCache().getAll()
     expect(mutations).toHaveLength(1)
     expect(mutations[0].state.variables).toBeUndefined()

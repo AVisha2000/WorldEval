@@ -5,7 +5,7 @@ extends SceneTree
 ## failures.  This file is intentionally separate from the immutable showcase runner.
 
 const ArenaSimulation := preload("res://scripts/arena/simulation/arena_simulation.gd")
-const CrossroadsPolicy := preload("res://scripts/arena/simulation/arena_crossroads_conquest_policy.gd")
+const CrossroadsPolicy := preload("res://scripts/arena/simulation/crossroads_conquest_tuning_policy.gd")
 const FACTIONS := ["sol", "terra", "luna"]
 const SEED := 424242
 const MAX_ROUNDS := 29

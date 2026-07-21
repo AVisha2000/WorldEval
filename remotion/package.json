@@ -8,11 +8,14 @@
     "compositions": "remotion compositions src/index.ts",
     "render:intro": "remotion render src/index.ts WorldArenaIntro out/worldarena-intro.mp4",
     "render:explainer": "remotion render src/index.ts WorldArenaExplainer out/worldarena-explainer.mp4",
+    "render:hackathon": "remotion render src/index.ts WorldEvalHackathonDemo out/worldeval-hackathon-demo.mp4",
+    "render:opener": "remotion render src/index.ts WorldEvalHackathonOpener out/worldeval-hackathon-opener.mp4",
     "render:frame": "remotion still src/index.ts WorldArenaIntro out/worldarena-intro.png --frame=120",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@remotion/cli": "4.0.491",
+    "@remotion/media": "4.0.491",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "remotion": "4.0.491"

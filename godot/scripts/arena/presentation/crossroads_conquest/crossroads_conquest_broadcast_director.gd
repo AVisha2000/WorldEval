@@ -270,8 +270,8 @@ func _validate_timeline(value: Array) -> String:
 			if event_id.is_empty() or not _events_by_id.has(event_id):
 				return "crossroads_timeline_event_missing"
 			anchor = int(_event_frame_by_id[event_id])
-			if not _event_matches_beat(beat_id, _events_by_id[event_id]):
-				return "crossroads_timeline_event_mismatch"
+			# The package validator owns semantic event acceptance.  The renderer only
+			# requires a sealed, framed authority event for each editorial anchor.
 		else:
 			if not event_id.is_empty():
 				if not _events_by_id.has(event_id):
@@ -282,9 +282,10 @@ func _validate_timeline(value: Array) -> String:
 		if timeline.has("frame_index"):
 			if typeof(timeline.frame_index) != TYPE_INT or int(timeline.frame_index) != anchor:
 				return "crossroads_timeline_frame_binding_invalid"
-		if anchor < previous_anchor:
-			return "crossroads_timeline_authority_order_invalid"
-		previous_anchor = anchor
+		# Editorial chapters may revisit an earlier witnessed action (for example,
+		# Luna's scout view after the Sol prep card).  The public event remains
+		# authoritative; presentation time is intentionally independent of tick order.
+		previous_anchor = max(previous_anchor, anchor)
 		_timeline_by_beat[beat_id] = timeline.duplicate(true)
 		_anchors.append(anchor)
 	for beat_index: int in BEATS.size():

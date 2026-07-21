@@ -12,7 +12,6 @@ fi
 
 pushd "$dashboard_dir" >/dev/null
 VITE_BASE_PATH=/ VITE_CONTROLLER_LAB_URL='https://lab.openai-buildweek.lissan.dev/' npm run build:pages
-./node_modules/.bin/vite build --base=/lab/ --outDir dist-lab
 ./node_modules/.bin/vite build --base=/ --outDir dist-lab-domain
 popd >/dev/null
 
@@ -26,7 +25,6 @@ setfacl -m u:www-data:--x "$repo_root/exports"
 for artifact_dir in \
     "$repo_root/exports/godot-web" \
     "$dashboard_dir/dist" \
-    "$dashboard_dir/dist-lab" \
     "$dashboard_dir/dist-lab-domain"; do
     setfacl -R -m u:www-data:rX "$artifact_dir"
     setfacl -R -d -m u:www-data:rX "$artifact_dir"

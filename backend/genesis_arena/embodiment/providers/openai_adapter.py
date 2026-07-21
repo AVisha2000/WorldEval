@@ -6,6 +6,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import time
 from typing import Any, Callable
 
@@ -17,6 +18,9 @@ from .contracts import (
     ProviderRequest,
     ProviderTelemetry,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIProviderAdapter:
@@ -111,6 +115,15 @@ class OpenAIProviderAdapter:
             self._record(request, result, started_ns, completed_ns)
             return result
         except Exception as error:  # SDK failures are deliberately collapsed to safe enums.
+            # Keep this intentionally limited to provider metadata: request content, output, and
+            # credentials are protected episode material and must never reach application logs.
+            logger.warning(
+                "OpenAI Responses request failed: type=%s status=%s code=%s parameter=%s",
+                type(error).__name__,
+                getattr(error, "status_code", None),
+                getattr(error, "code", None),
+                getattr(error, "param", None),
+            )
             return self._finish(request, started_ns, _classify_failure(error))
 
     def _finish(
