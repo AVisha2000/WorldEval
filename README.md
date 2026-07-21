@@ -1,6 +1,6 @@
-![Rendered WorldArena gameplay](docs/assets/worldarena-rendered-gameplay.png)
+![Three AI agents gathering, building, and exploring a shared world](docs/assets/worldarena-build-things-illustration.png)
 
-*Rendered gameplay from WorldArena.*
+*WorldArena agents can gather, build, and explore—not just describe what they would do.*
 
 # WorldArena
 
