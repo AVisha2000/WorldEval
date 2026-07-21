@@ -34,7 +34,7 @@ const CAPABILITY_ERAS: readonly CapabilityEra[] = [
     id: "3",
     number: "3",
     radius: 126,
-    start: 0.03,
+    start: 0,
     title: "Language generation",
   },
   {
@@ -94,12 +94,16 @@ function arcPath(radius: number, arc: CapabilityArc) {
 function getEraTimeline(era: CapabilityEra) {
   const revealEnd = era.start + ERA_REVEAL_DURATION
   const isFinal = era.id === "future"
+  const isInitial = era.id === "3"
 
   return {
-    input: isFinal
-      ? [era.start, revealEnd, 1]
-      : [era.start, revealEnd, era.end, Math.min(1, era.end + 0.045)],
+    input: isInitial
+      ? [0, era.end, Math.min(1, era.end + 0.045)]
+      : isFinal
+        ? [era.start, revealEnd, 1]
+        : [era.start, revealEnd, era.end, Math.min(1, era.end + 0.045)],
     isFinal,
+    isInitial,
     revealEnd,
   }
 }
@@ -143,7 +147,7 @@ function OrbitLabel({
       dy={capability.arc === "top" ? -10 : 22}
       style={{
         filter: reducedMotion ? "none" : filter,
-        opacity: reducedMotion ? 1 : opacity,
+        opacity,
       }}
     >
       <textPath
@@ -166,11 +170,11 @@ function CapabilityRing({
   progress: MotionValue<number>
   reducedMotion: boolean
 }) {
-  const { input, isFinal, revealEnd } = getEraTimeline(era)
+  const { input, isFinal, isInitial, revealEnd } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
     input,
-    isFinal ? [0, 1, 1] : [0, 1, 1, 0.38]
+    isInitial ? [1, 1, 0.38] : isFinal ? [0, 1, 1] : [0, 1, 1, 0.38]
   )
   const pathLength = useTransform(progress, [era.start, revealEnd], [0, 1])
   const pathId = `capability-orbit-${era.id}`
@@ -183,7 +187,7 @@ function CapabilityRing({
           cx={ORBIT_CENTER}
           cy={ORBIT_CENTER}
           r={era.radius}
-          style={{ opacity: reducedMotion ? 1 : opacity }}
+          style={{ opacity }}
         />
       ) : (
         <motion.circle
@@ -192,7 +196,7 @@ function CapabilityRing({
           cy={ORBIT_CENTER}
           pathLength={reducedMotion ? 1 : pathLength}
           r={era.radius}
-          style={{ opacity: reducedMotion ? 1 : opacity }}
+          style={{ opacity }}
         />
       )}
       {era.capabilities.map((capability, index) => (
@@ -221,11 +225,11 @@ function EraMarker({
   progress: MotionValue<number>
   reducedMotion: boolean
 }) {
-  const { input, isFinal, revealEnd } = getEraTimeline(era)
+  const { input, isFinal, isInitial, revealEnd } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
     input,
-    isFinal ? [0, 1, 1] : [0, 1, 1, 0]
+    isInitial ? [1, 1, 0] : isFinal ? [0, 1, 1] : [0, 1, 1, 0]
   )
   const scale = useTransform(progress, [era.start, revealEnd], [0.72, 1])
 
@@ -233,7 +237,7 @@ function EraMarker({
     <motion.text
       className={`capability-era-number capability-era-number--${era.id}`}
       style={{
-        opacity: reducedMotion ? (isFinal ? 1 : 0) : opacity,
+        opacity,
         scale: reducedMotion ? 1 : scale,
       }}
       textAnchor="middle"
@@ -248,26 +252,19 @@ function EraMarker({
 function MobileEraReadout({
   era,
   progress,
-  reducedMotion,
 }: {
   era: CapabilityEra
   progress: MotionValue<number>
-  reducedMotion: boolean
 }) {
-  const isFinal = era.id === "future"
+  const { input, isFinal, isInitial } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
-    isFinal
-      ? [era.start - 0.02, era.start + 0.035, 1]
-      : [era.start - 0.02, era.start + 0.035, era.end - 0.02, era.end + 0.025],
-    isFinal ? [0, 1, 1] : [0, 1, 1, 0]
+    input,
+    isInitial ? [1, 1, 0] : isFinal ? [0, 1, 1] : [0, 1, 1, 0]
   )
 
   return (
-    <motion.div
-      className="mobile-era-readout"
-      style={{ opacity: reducedMotion ? (isFinal ? 1 : 0) : opacity }}
-    >
+    <motion.div className="mobile-era-readout" style={{ opacity }}>
       <p>
         GPT / {era.number} <span>{era.title}</span>
       </p>
@@ -371,7 +368,6 @@ export function CapabilityOrbit({
             era={era}
             key={era.id}
             progress={progress}
-            reducedMotion={reducedMotion}
           />
         ))}
       </div>
