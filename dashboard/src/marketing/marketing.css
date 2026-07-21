@@ -79,7 +79,7 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 82px;
+  height: 144px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -95,8 +95,8 @@
 }
 
 .wordmark img {
-  width: 72px;
-  height: 48px;
+  width: 180px;
+  height: 120px;
   border: 1px solid rgb(234 174 88 / 0.5);
   border-radius: 4px;
   object-fit: cover;
@@ -1069,15 +1069,15 @@
     width: min(100% - 36px, 1440px);
   }
   .marketing-header {
-    height: 68px;
+    height: 112px;
   }
   .wordmark {
     gap: 8px;
     font-size: 22px;
   }
   .wordmark img {
-    width: 54px;
-    height: 36px;
+    width: 144px;
+    height: 96px;
   }
   .header-repository {
     border: 0;
@@ -1102,7 +1102,7 @@
     );
   }
   .hero-copy {
-    top: 100px;
+    top: 142px;
     right: 18px;
     left: 18px;
     width: auto;
@@ -1130,7 +1130,7 @@
     justify-content: space-between;
   }
   .capability-orbit {
-    top: 67%;
+    top: 72%;
     right: auto;
     left: 50%;
     width: min(132vw, 590px);

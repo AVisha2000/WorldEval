@@ -72,7 +72,7 @@ function Header() {
   return (
     <header className="marketing-header">
       <a className="wordmark" href="#top" aria-label="WorldEval home">
-        <img alt="" height="48" src={worldArenaThumbnail} width="72" />
+        <img alt="" height="120" src={worldArenaThumbnail} width="180" />
         <span>WorldEval</span>
       </a>
       <nav aria-label="Primary navigation">
