@@ -1,10 +1,17 @@
 # Feature: LLM Controller × WorldArena MVP
 
-**Status:** Approved implementation plan  
+**Status:** Historical approved MVP plan; foundation substantially implemented
+
 **Protocol:** `llm-controller/0.1.0`  
 **Primary environment:** WorldArena / Godot 4.5  
 **MVP outcome:** A local researcher can run a hybrid-perception solo curriculum and a
 verified, symmetric two-leg model-versus-model 1v1 through a web dashboard.
+
+> **Continuation:** Remaining offline-first product work, the Demo provider, solo control games,
+> per-run evaluation UI, scripted duo progression, trio, and final media publication now follow
+> [`LLM_CONTROLLER_WORLDARENA_SCRIPTED_GAMEPLAY_FEATURE.md`](LLM_CONTROLLER_WORLDARENA_SCRIPTED_GAMEPLAY_FEATURE.md).
+> That plan supersedes this document's remaining delivery order and delegation rule while
+> preserving its authority, privacy, fairness, replay, and credential boundaries.
 
 ## Product decision
 
@@ -193,8 +200,10 @@ Use Codex skills as follows:
 
 ## Delegation model
 
-Use four active slots: root integration owner plus three agents. Root alone owns shared manifests,
-protocol versions, project settings, dependency files, exports, and public API wiring.
+Use four active slots when useful: one final review owner plus three agents. Subagents may own
+bounded integration work, including shared manifests, protocol versions, project settings,
+dependency files, exports, and public API wiring. Assign one explicit owner per shared surface,
+coordinate overlapping edits, and require final cross-suite review of the combined result.
 
 | Wave | Agent A | Agent B | Agent C | Root |
 | --- | --- | --- | --- | --- |
