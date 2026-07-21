@@ -19,6 +19,7 @@ type CapabilityEra = {
 }
 
 const ORBIT_CENTER = 420
+const ERA_REVEAL_DURATION = 0.07
 
 const CAPABILITY_ERAS: readonly CapabilityEra[] = [
   {
@@ -90,6 +91,19 @@ function arcPath(radius: number, arc: CapabilityArc) {
   return `M ${left} ${ORBIT_CENTER} A ${radius} ${radius} 0 0 ${sweep} ${right} ${ORBIT_CENTER}`
 }
 
+function getEraTimeline(era: CapabilityEra) {
+  const revealEnd = era.start + ERA_REVEAL_DURATION
+  const isFinal = era.id === "future"
+
+  return {
+    input: isFinal
+      ? [era.start, revealEnd, 1]
+      : [era.start, revealEnd, era.end, Math.min(1, era.end + 0.045)],
+    isFinal,
+    revealEnd,
+  }
+}
+
 function OrbitLabel({
   capability,
   dimAt,
@@ -152,13 +166,10 @@ function CapabilityRing({
   progress: MotionValue<number>
   reducedMotion: boolean
 }) {
-  const revealEnd = era.start + 0.07
-  const isFinal = era.id === "future"
+  const { input, isFinal, revealEnd } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
-    isFinal
-      ? [era.start, revealEnd, 1]
-      : [era.start, revealEnd, era.end, Math.min(1, era.end + 0.045)],
+    input,
     isFinal ? [0, 1, 1] : [0, 1, 1, 0.38]
   )
   const pathLength = useTransform(progress, [era.start, revealEnd], [0, 1])
@@ -210,24 +221,13 @@ function EraMarker({
   progress: MotionValue<number>
   reducedMotion: boolean
 }) {
-  const isFinal = era.id === "future"
+  const { input, isFinal, revealEnd } = getEraTimeline(era)
   const opacity = useTransform(
     progress,
-    isFinal
-      ? [era.start - 0.025, era.start + 0.035, 1]
-      : [
-          era.start - 0.025,
-          era.start + 0.035,
-          era.end - 0.025,
-          era.end + 0.025,
-        ],
+    input,
     isFinal ? [0, 1, 1] : [0, 1, 1, 0]
   )
-  const scale = useTransform(
-    progress,
-    [era.start - 0.025, era.start + 0.035],
-    [0.72, 1]
-  )
+  const scale = useTransform(progress, [era.start, revealEnd], [0.72, 1])
 
   return (
     <motion.text

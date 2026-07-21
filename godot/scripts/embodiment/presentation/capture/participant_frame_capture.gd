@@ -122,6 +122,22 @@ func take_frame_bytes(transport_ref: String) -> Dictionary:
 	return {"ok": true, "bytes": bytes, "record": record}
 
 
+func discard_frame(transport_ref: String) -> Dictionary:
+	if _closed:
+		return _failure("frame_store_closed")
+	if not _frames.has(transport_ref) or not _records.has(transport_ref):
+		return _failure("frame_not_found")
+	var record: Dictionary = (_records[transport_ref] as Dictionary).duplicate(true)
+	var boundary_key := "%s:%d" % [record.participant_id, record.observation_sequence]
+	var scrubbed: PackedByteArray = _frames[transport_ref]
+	_stored_bytes -= scrubbed.size()
+	scrubbed.fill(0)
+	_frames.erase(transport_ref)
+	_records.erase(transport_ref)
+	_boundary_refs.erase(boundary_key)
+	return {"ok": true}
+
+
 func capture_record(transport_ref: String) -> Dictionary:
 	if _closed:
 		return _failure("frame_store_closed")

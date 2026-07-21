@@ -49,6 +49,9 @@
     "held_buttons": ["interact", "primary", "guard"],
     "edge_buttons": ["dash", "ability_1", "ability_2", "cycle_item", "cancel"]
   },
+  "managed_solo_task_plans": {
+    "construction-v0": "schemas/construction-task-plan.v1.schema.json"
+  },
   "timing": {
     "default_track": "step-locked-v1",
     "tracks": ["step-locked-v1"],

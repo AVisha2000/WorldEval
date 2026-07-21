@@ -1,13 +1,14 @@
 import { useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import type { EpisodeSetup } from "@/api"
-import { cancelRun, createRun, getEpisode, getReadiness } from "@/api"
+import { cancelRun, createRun, getEpisode, getEpisodeTimeline, getReadiness } from "@/api"
 import { EpisodeWorkspace } from "@/components/episode-workspace"
 import { ReadinessPanel } from "@/components/readiness-panel"
 import { SetupPanel } from "@/components/setup-panel"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const INITIAL_SETUP: EpisodeSetup = {
+  controllerMode: "scripted_demo",
   mode: "solo",
   provider: "openai",
   model: "gpt-5.6-sol",
@@ -50,6 +51,15 @@ export function App() {
       : false,
     refetchIntervalInBackground: true,
   })
+  const timeline = useQuery({
+    queryKey: ["episode-timeline", episodeId],
+    queryFn: () => getEpisodeTimeline(episodeId!),
+    enabled: episodeId !== null && view === "timeline" && !episodeId.startsWith("series_"),
+    refetchInterval: () => status.data === undefined || ["queued", "running"].includes(status.data.status)
+      ? 1000
+      : false,
+    refetchIntervalInBackground: true,
+  })
   const cancel = useMutation({
     mutationFn: () => {
       if (episodeId === null) throw new Error("Run identifier is unavailable")
@@ -63,7 +73,10 @@ export function App() {
     refetchInterval: 10_000,
     retry: false,
   })
-  const episode = status.data ?? create.data
+  const statusEpisode = status.data ?? create.data
+  const episode = statusEpisode && timeline.data !== undefined
+    ? { ...statusEpisode, timeline: timeline.data }
+    : statusEpisode
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -91,6 +104,7 @@ export function App() {
         />
         <EpisodeWorkspace
           episode={episode}
+          controllerMode={setup.controllerMode}
           mode={setup.mode}
           view={view}
           selected={selected}
@@ -101,7 +115,8 @@ export function App() {
       </div>
       {create.isError || status.isError ? (
         <div role="alert" className="error-banner">
-          Episode service unavailable. The API key was not retained by the browser.
+          The episode is no longer available. Refresh the page and start a new run; provider keys
+          are session-only and are never retained by the browser.
         </div>
       ) : null}
     </div>

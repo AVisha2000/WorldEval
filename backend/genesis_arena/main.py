@@ -23,6 +23,10 @@ from .embodiment.api import router as embodiment_router
 from .embodiment.dashboard import mount_built_dashboard
 from .embodiment.duel.live_runtime import default_duel_series_service
 from .embodiment.live_runtime import default_episode_service
+from .embodiment.presentation.preview_ingress import (
+    InternalParticipantPreviewIngress,
+    internal_preview_router,
+)
 from .embodiment.readiness import PilotReadinessStore
 from .embodiment.transport import ManagedWebSocketEndpoint
 from .models import Observation, SimulationConfig
@@ -42,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         godot_project_path=settings.godot_project_path,
     )
     app.state.embodiment_gateway = ManagedWebSocketEndpoint()
+    app.state.embodiment_preview_ingress = InternalParticipantPreviewIngress()
     app.state.embodiment_readiness = PilotReadinessStore(
         settings.embodiment_readiness_path
     )
@@ -51,7 +56,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         godot_project_path=settings.godot_project_path,
         gateway_port=settings.port,
         endpoint=app.state.embodiment_gateway,
+        preview_ingress=app.state.embodiment_preview_ingress,
         provider_timeout_s=settings.decision_timeout_seconds,
+        runs_dir=settings.runs_dir,
+        ffmpeg_executable=settings.ffmpeg_executable,
     )
     app.state.embodiment_series = default_duel_series_service(
         repository_root=REPOSITORY_ROOT,
@@ -66,6 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         await app.state.embodiment_series.aclose()
         await app.state.embodiment_episodes.aclose()
+        app.state.embodiment_preview_ingress.close()
         await app.state.duel_matches.aclose()
 
 
@@ -79,6 +88,7 @@ app = FastAPI(
 )
 app.include_router(duel_router)
 app.include_router(embodiment_router)
+app.include_router(internal_preview_router)
 
 
 @app.websocket("/ws/embodiment/{ticket}")

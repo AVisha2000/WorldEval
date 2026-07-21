@@ -20,7 +20,9 @@ const PresentationScene := preload(
 	"res://scenes/embodiment/embodiment_presentation_scene.tscn"
 )
 
-const FRAMES_PER_BOUNDARY := 15
+const RENDER_FRAMES_PER_AUTHORITY_TICK := 3
+const MAX_RENDER_DURATION_TICKS := 20
+const INITIAL_SNAPSHOT_FRAMES := 15
 const INTRO_FRAMES := 30
 const OUTRO_FRAMES := 30
 
@@ -84,15 +86,28 @@ func _play_verified_replay(path: String) -> bool:
 		HybridAdapter.scene_snapshot(current_render), authority, str(initial_result.authority_hash)
 	):
 		return false
-	for frame: int in FRAMES_PER_BOUNDARY:
+	for frame: int in INITIAL_SNAPSHOT_FRAMES:
 		await process_frame
-	for step: Dictionary in replay.steps:
-		authority.step_window(step.decision_window)
+	for step_variant: Variant in replay.steps:
+		if typeof(step_variant) != TYPE_DICTIONARY:
+			_fail("embodiment_movie_maker_replay_step_invalid")
+			return false
+		var step: Dictionary = step_variant
+		var decision_window_variant: Variant = step.get("decision_window")
+		if typeof(decision_window_variant) != TYPE_DICTIONARY:
+			_fail("embodiment_movie_maker_duration_invalid")
+			return false
+		var decision_window: Dictionary = decision_window_variant
+		var frame_count := render_frames_for_duration(decision_window.get("duration_ticks"))
+		if frame_count == 0:
+			_fail("embodiment_movie_maker_duration_invalid")
+			return false
+		authority.step_window(decision_window)
 		var after_result := _filtered_snapshot(authority, participant_id)
 		if not bool(after_result.get("ok", false)):
 			return false
-		for frame: int in FRAMES_PER_BOUNDARY:
-			var progress_milli := int((frame + 1) * 1000 / FRAMES_PER_BOUNDARY)
+		for frame: int in frame_count:
+			var progress_milli := int((frame + 1) * 1000 / frame_count)
 			var interpolated := HybridAdapter.interpolated_scene_snapshot(
 				current_render, after_result.snapshot, progress_milli
 			)
@@ -103,6 +118,15 @@ func _play_verified_replay(path: String) -> bool:
 			await process_frame
 		current_render = after_result.snapshot
 	return true
+
+
+static func render_frames_for_duration(duration: Variant) -> int:
+	if typeof(duration) != TYPE_INT:
+		return 0
+	var duration_ticks: int = duration
+	if duration_ticks < 1 or duration_ticks > MAX_RENDER_DURATION_TICKS:
+		return 0
+	return duration_ticks * RENDER_FRAMES_PER_AUTHORITY_TICK
 
 
 func _filtered_snapshot(authority: Object, participant_id: String) -> Dictionary:

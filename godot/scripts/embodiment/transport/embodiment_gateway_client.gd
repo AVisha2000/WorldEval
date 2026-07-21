@@ -121,7 +121,10 @@ func _fail(code: String) -> void:
 	_url = ""
 	_host.close()
 	if _socket.get_ready_state() in [WebSocketPeer.STATE_OPEN, WebSocketPeer.STATE_CONNECTING]:
-		_socket.close(4400, "embodiment authority failure")
+		# Codes originate from this local authority and are restricted to stable identifiers.
+		# Returning one through the close reason lets the managed owner diagnose a failed
+		# authority boundary without exposing observations, prompts, or provider material.
+		_socket.close(4400, code.left(95))
 	set_process(false)
 	managed_failed.emit(code)
 

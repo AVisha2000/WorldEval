@@ -16,6 +16,13 @@ const INTERACTION_RANGE_SQUARED := INTERACTION_RANGE_MT * INTERACTION_RANGE_MT
 const GATHER_TICKS_PER_UNIT := 4
 const CARRY_LIMIT_UNITS := 2
 const RESOURCE_STARTING_UNITS := 4
+# The local scripted Construction showcase uses the existing long episode horizon rather than a
+# hidden presentation flag.  It remains an ordinary deterministic Stage-C scenario: the larger
+# visible resource supply simply gives the operator enough material trips to demonstrate walking,
+# turning, gathering, carrying, and depositing for roughly two minutes before the final build.
+# Standard (including all frozen 600-tick) Construction configurations retain four units.
+const LONG_HORIZON_RESOURCE_STARTING_UNITS := 25
+const LONG_HORIZON_MINIMUM_EPISODE_TICKS := 1_200
 
 const CODE_IDLE := "interaction_idle"
 const CODE_CANCELLED := "interaction_cancelled"
@@ -42,11 +49,18 @@ const EVENT_NOTHING_TO_DEPOSIT := "nothing_to_deposit"
 
 
 static func reset(authority: Object) -> void:
-	authority.resource_units_remaining = RESOURCE_STARTING_UNITS
+	authority.resource_units_remaining = _starting_resource_units(authority)
 	authority.gather_progress_ticks = 0
 	authority.inventory_material_units = 0
 	authority.deposited_material_units = 0
 	authority.active_interaction = TARGET_NONE
+
+
+static func _starting_resource_units(authority: Object) -> int:
+	if str(authority.task_id) == "construction-v0" \
+		and int(authority.maximum_episode_ticks) >= LONG_HORIZON_MINIMUM_EPISODE_TICKS:
+		return LONG_HORIZON_RESOURCE_STARTING_UNITS
+	return RESOURCE_STARTING_UNITS
 
 
 static func apply_tick(

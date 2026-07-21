@@ -25,6 +25,7 @@ const STATE_ALIASES := {
 	&"dash": &"run",
 	&"guarding": &"guard",
 }
+const MIXAMO_VISUAL_FORWARD_CORRECTION_Y := PI
 
 @export var clip_scenes: Dictionary = {}
 
@@ -80,6 +81,8 @@ func last_error() -> String:
 func _initialize_animation_mapping() -> void:
 	if _ready_for_states:
 		return
+	if not _apply_visual_axis_correction():
+		return
 	_animation_player = get_node_or_null("AnimationPlayer") as AnimationPlayer
 	_animation_tree = get_node_or_null("AnimationTree") as AnimationTree
 	if _animation_player == null or _animation_tree == null:
@@ -121,6 +124,19 @@ func _initialize_animation_mapping() -> void:
 	_last_error = ""
 	set_meta("asset_identity", "mixamo-y-bot")
 	set_meta("presentation_placeholder", false)
+
+
+func _apply_visual_axis_correction() -> bool:
+	# The approved Mixamo Y Bot's source forward is +Z, while the authority and Godot
+	# third-person convention use -Z as forward. Rotate only the visual skeleton: root
+	# position, camera, authority coordinates, and deterministic replay hashes stay intact.
+	var skeleton := get_node_or_null("Skeleton3D") as Node3D
+	if skeleton == null:
+		_last_error = "y_bot_skeleton_missing"
+		return false
+	skeleton.rotation.y = MIXAMO_VISUAL_FORWARD_CORRECTION_Y
+	skeleton.set_meta("visual_forward_axis", "-z_authority")
+	return true
 
 
 func _animation_from_scene(scene: PackedScene) -> Animation:

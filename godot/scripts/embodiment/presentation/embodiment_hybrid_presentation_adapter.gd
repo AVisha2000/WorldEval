@@ -63,7 +63,12 @@ func capture_boundary(participant_id: String) -> Dictionary:
 		return _failure("hybrid_digest_binding_rejected")
 	if not _scene.apply_snapshot(scene_snapshot(render_snapshot)):
 		return _failure("hybrid_scene_rejected")
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# The managed authority keeps this SubViewport alive throughout an active episode.  A capture
+	# is merely a serialization boundary, not the lifetime of the presentation: UPDATE_ONCE would
+	# stop the viewport after this PNG and leave subsequent cached executor ticks visually frozen.
+	# Keep rendering continuously so scene updates below remain visible locally, while only fresh
+	# boundaries pay the PNG capture / transport / evidence cost.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	await Engine.get_main_loop().process_frame
 	await Engine.get_main_loop().process_frame
 	var captured: Dictionary = _capture.capture(
@@ -102,8 +107,69 @@ func frame_bytes(transport_ref: String) -> Dictionary:
 	return _capture.frame_bytes(transport_ref) if not _closed else _failure("hybrid_adapter_closed")
 
 
+func frame_record(transport_ref: String) -> Dictionary:
+	return _capture.capture_record(transport_ref) if not _closed else _failure("hybrid_adapter_closed")
+
+
 func take_frame_bytes(transport_ref: String) -> Dictionary:
 	return _capture.take_frame_bytes(transport_ref) if not _closed else _failure("hybrid_adapter_closed")
+
+
+func discard_frame(transport_ref: String) -> Dictionary:
+	return _capture.discard_frame(transport_ref) if not _closed else _failure("hybrid_adapter_closed")
+
+
+func observe_with_cached_frame(participant_id: String, frame_metadata: Dictionary) -> Dictionary:
+	## Cached pixels are only used between autonomous executor ticks.  The semantic projection is
+	## still rebuilt from the current participant-filtered authority snapshot; a fresh capture is
+	## forced before an external planner boundary, task completion, terminal state, or stale limit.
+	if _closed:
+		return _failure("hybrid_adapter_closed")
+	if _authority == null or _scene == null or _viewport == null:
+		return _failure("hybrid_adapter_unavailable")
+	if not _valid_frame_metadata(frame_metadata):
+		return _failure("hybrid_cached_frame_invalid")
+	var authority_hash_before: String = _authority.checkpoint_hash()
+	var source: Dictionary = (
+		_authority.presentation_source_snapshot_for(participant_id)
+		if _authority.has_method("presentation_source_snapshot_for")
+		else _authority.presentation_source_snapshot()
+	)
+	var visible_ids: Array[String] = (
+		_authority.presentation_visible_entity_ids_for(participant_id)
+		if _authority.has_method("presentation_visible_entity_ids_for")
+		else _authority.presentation_visible_entity_ids()
+	)
+	var filtered: Dictionary = SnapshotFilter.filter_for_participant(
+		source, participant_id, visible_ids
+	)
+	if not bool(filtered.get("ok", false)):
+		return _failure("hybrid_snapshot_rejected")
+	var render_snapshot: Dictionary = filtered.snapshot
+	# Keep the live presentation scene synchronized to the latest safe projection even when this
+	# executor tick reuses its canonical frame bytes.  No viewport capture happens here, and the
+	# scene receives only participant-filtered entities/semantics.
+	if not _scene.apply_snapshot(scene_snapshot(render_snapshot)):
+		return _failure("hybrid_scene_rejected")
+	# A caller must never be able to leave a managed participant viewport in one-shot mode.  This
+	# does not read pixels or create frame evidence; it only lets Godot render the current, already
+	# participant-filtered scene between canonical frame captures.
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	var text_result: Dictionary = SnapshotFilter.project_visible_text(render_snapshot)
+	if not bool(text_result.get("ok", false)):
+		return _failure("hybrid_text_projection_rejected")
+	var observation: Dictionary = (
+		_authority.observe(participant_id).duplicate(true)
+		if _authority.has_method("presentation_source_snapshot_for")
+		else _authority.observe().duplicate(true)
+	)
+	if not _text_matches_authority(text_result.projection, observation):
+		return _failure("hybrid_text_authority_mismatch")
+	observation["profile"] = "hybrid-visible-v1"
+	observation["frame"] = frame_metadata.duplicate(true)
+	if _authority.checkpoint_hash() != authority_hash_before:
+		return _failure("presentation_mutated_authority")
+	return {"ok": true, "observation": observation}
 
 
 func close() -> void:
@@ -241,6 +307,24 @@ func _text_matches_authority(projection: Dictionary, observation: Dictionary) ->
 		if projection.self.get(field) != observation.self.get(field):
 			return false
 	return projection.visible_entities == observation.visible_entities
+
+
+func _valid_frame_metadata(value: Dictionary) -> bool:
+	if value.size() != 6:
+		return false
+	if value.get("sensor_id") != "operator-follow-v1" \
+		or value.get("mime_type") != "image/png" \
+		or value.get("width") != 1280 or value.get("height") != 720:
+		return false
+	var digest: Variant = value.get("sha256")
+	var transport_ref: Variant = value.get("transport_ref")
+	if typeof(digest) != TYPE_STRING or digest.length() != 64 \
+		or typeof(transport_ref) != TYPE_STRING or not transport_ref.begins_with("frame:"):
+		return false
+	for code: int in digest.to_utf8_buffer():
+		if not ((code >= 48 and code <= 57) or (code >= 97 and code <= 102)):
+			return false
+	return true
 
 
 func _failure(code: String) -> Dictionary:

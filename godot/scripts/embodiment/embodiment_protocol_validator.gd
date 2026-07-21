@@ -282,7 +282,7 @@ func _validate_action_shape(action: Dictionary) -> String:
 		return "observation_seq_invalid"
 	if typeof(action.action_id) != TYPE_STRING or not _valid_action_id(action.action_id):
 		return "action_id_invalid"
-	if not action.control is Dictionary or not _has_exact_fields(action.control, REQUIRED_CONTROL_FIELDS):
+	if not action.control is Dictionary or not _has_control_fields(action.control):
 		return "control_shape_invalid"
 	for axis: String in ["move_x", "move_y", "look_x", "look_y"]:
 		if typeof(action.control[axis]) != TYPE_INT or action.control[axis] < -1000 \
@@ -305,6 +305,14 @@ func _validate_action_shape(action: Dictionary) -> String:
 	if action.memory_update.to_utf8_buffer().size() > MAX_MEMORY_UTF8_BYTES:
 		return "memory_update_too_large"
 	return ""
+
+
+func _has_control_fields(control: Dictionary) -> bool:
+	if _has_exact_fields(control, REQUIRED_CONTROL_FIELDS):
+		return true
+	return control.size() == REQUIRED_CONTROL_FIELDS.size() + 1 and control.has("autonomous_task") \
+		and typeof(control.autonomous_task) == TYPE_STRING \
+		and control.autonomous_task in ["gather_materials", "deliver_materials", "build_barricade", "wait"]
 
 
 func _restore_integers(value: Variant) -> Variant:

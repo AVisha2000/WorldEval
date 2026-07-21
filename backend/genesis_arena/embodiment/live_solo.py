@@ -33,13 +33,19 @@ from .providers.contracts import (
     ProviderTelemetry,
 )
 from .scratchpad import EpisodeScratchpad
+from .scripted_solo_demo import is_scripted_solo_demo
 
 _MAX_INPUT_BYTES = 8_388_608
 _MAX_OUTPUT_BYTES = 4_096
+_REALTIME_AUTHORITY_TICK_NS = 100_000_000
 
 
 class LiveSoloError(RuntimeError):
     """Stable live-runner failure that contains no provider payload."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
 
 
 @dataclass(frozen=True)
@@ -70,6 +76,7 @@ class _ActionAttempt:
     request: ProviderRequest
     adapter_audits: Tuple[ProviderAuditRecord, ...]
     parsing_disposition: str
+    task_continuation: bool
 
 
 class LiveSoloRunner:
@@ -87,6 +94,7 @@ class LiveSoloRunner:
         provider_timeout_s: float = 45.0,
         fallback_duration_ticks: int = 10,
         frame_publisher: Callable[[str, int, bytes], Awaitable[None]] | None = None,
+        progress_publisher: Callable[[int, int], Awaitable[None]] | None = None,
     ) -> None:
         if config.mode != "solo-curriculum-v0" or len(config.participant_ids) != 1:
             raise ValueError("LiveSoloRunner requires a solo episode")
@@ -107,6 +115,13 @@ class LiveSoloRunner:
         self.provider_timeout_s = float(provider_timeout_s)
         self.fallback_duration_ticks = fallback_duration_ticks
         self.frame_publisher = frame_publisher
+        self.progress_publisher = progress_publisher
+        # Hybrid observations may deliberately reuse the same participant-visible frame while a
+        # deterministic Construction executor advances.  Keep exactly one immutable image so a
+        # repeated transport_ref cannot trigger another frame socket round-trip or browser PNG
+        # publication.  The cache key includes the advertised digest as defence-in-depth.
+        self._cached_frame_key: tuple[str, str, str, str] | None = None
+        self._cached_frame_png: bytes | None = None
 
     async def run(self, *, cancel_event: asyncio.Event | None = None) -> LiveSoloOutcome:
         cancel = cancel_event or asyncio.Event()
@@ -132,6 +147,7 @@ class LiveSoloRunner:
         )
         windows = 0
         failures = 0
+        consecutive_failures = 0
         try:
             observations = await self.session.reset()
             observation = observations[participant_id]
@@ -143,9 +159,11 @@ class LiveSoloRunner:
                 observations=observations,
                 terminal=observation["terminal"],
             )
+            await self._publish_progress(observation)
             while not observation["terminal"]["ended"]:
                 if cancel.is_set():
                     raise asyncio.CancelledError
+                authority_tick_started_ns = time.monotonic_ns()
                 request_scratchpad = scratchpad.utf8
                 attempt = await self._request_action(
                     participant_id=participant_id,
@@ -156,6 +174,9 @@ class LiveSoloRunner:
                 result = attempt.result
                 if result.failure is not None:
                     failures += 1
+                    consecutive_failures += 1
+                else:
+                    consecutive_failures = 0
                 reason = None
                 if action is None:
                     reason = (
@@ -177,28 +198,48 @@ class LiveSoloRunner:
                 )
                 step = await self.session.step(window)
                 windows += 1
+                # Credential-free solo demos advance one authority tick at a time.  This makes
+                # walking, turns, interaction, and neutral combat observable at 10 Hz while
+                # preserving immediate authority/replay semantics. Sleep only for the unused
+                # portion of the 100 ms budget: a fixed sleep *after* frame/render work makes a
+                # nominal real-time demo drift beyond its intended duration.
+                if (
+                    is_scripted_solo_demo(
+                        provider=self.provider.provider_name,
+                        model=self.model,
+                        task_id=self.config.task_id,
+                    )
+                    and action is not None
+                    and not step.terminal.ended
+                ):
+                    remaining_ns = _REALTIME_AUTHORITY_TICK_NS - (
+                        time.monotonic_ns() - authority_tick_started_ns
+                    )
+                    if remaining_ns > 0:
+                        await asyncio.sleep(remaining_ns / 1_000_000_000)
                 if action is not None:
                     scratchpad.set(action.memory_update)
-                recorder.record_provider_call(
-                    observation_seq=observation["observation_seq"],
-                    prompt=self.system_prompt,
-                    raw_output=attempt.raw_output,
-                    scratchpad_utf8=request_scratchpad,
-                    scratchpad_after_utf8=scratchpad.utf8,
-                    telemetry={
-                        **result.telemetry.as_dict(),
-                        "failure": None if result.failure is None else result.failure.value,
-                        "provider": self.provider.provider_name,
-                    },
-                    frame_png=attempt.frame,
-                    frame_metadata=(
-                        dict(observation["frame"])
-                        if isinstance(observation.get("frame"), Mapping)
-                        else None
-                    ),
-                    participant_id=participant_id,
-                    provider_evidence=self._provider_evidence(attempt),
-                )
+                if not attempt.task_continuation:
+                    recorder.record_provider_call(
+                        observation_seq=observation["observation_seq"],
+                        prompt=self.system_prompt,
+                        raw_output=attempt.raw_output,
+                        scratchpad_utf8=request_scratchpad,
+                        scratchpad_after_utf8=scratchpad.utf8,
+                        telemetry={
+                            **result.telemetry.as_dict(),
+                            "failure": None if result.failure is None else result.failure.value,
+                            "provider": self.provider.provider_name,
+                        },
+                        frame_png=attempt.frame,
+                        frame_metadata=(
+                            dict(observation["frame"])
+                            if isinstance(observation.get("frame"), Mapping)
+                            else None
+                        ),
+                        participant_id=participant_id,
+                        provider_evidence=self._provider_evidence(attempt),
+                    )
                 recorder.record_boundary(
                     observation_seq=observation["observation_seq"] + 1,
                     state_hash=step.state_hash,
@@ -209,26 +250,27 @@ class LiveSoloRunner:
                 )
                 observation = step.observations[participant_id]
                 state_hash = step.state_hash
+                await self._publish_progress(observation)
+                # Every invalid response has already advanced a recorded neutral window. Do not
+                # then burn the full episode budget in a tight no-input loop when the provider is
+                # clearly unavailable or cannot produce this task contract.
+                if consecutive_failures >= 3:
+                    raise LiveSoloError("embodiment_provider_unavailable")
 
             terminal = dict(observation["terminal"])
             terminal_frame = observation.get("frame")
             if isinstance(terminal_frame, Mapping):
-                terminal_png = await self.session.render(
-                    participant_id,
-                    str(terminal_frame["sensor_id"]),
-                    str(terminal_frame["transport_ref"]),
-                    int(observation["observation_seq"]),
+                terminal_png = await self._frame_for_observation(
+                    participant_id=participant_id,
+                    observation=observation,
                 )
+                if terminal_png is None:
+                    raise LiveSoloError("embodiment_terminal_frame_unavailable")
                 recorder.record_frame(
                     observation_seq=int(observation["observation_seq"]),
                     participant_id=participant_id,
                     frame_metadata=terminal_frame,
                     frame_png=terminal_png,
-                )
-                await self._publish_frame(
-                    participant_id,
-                    int(observation["observation_seq"]),
-                    terminal_png,
                 )
             bundles = self._seal_if_replay_available(
                 recorder,
@@ -253,16 +295,10 @@ class LiveSoloRunner:
         observation: Mapping[str, Any],
         scratchpad: EpisodeScratchpad,
     ) -> _ActionAttempt:
-        frame = None
-        frame_metadata = observation.get("frame")
-        if isinstance(frame_metadata, Mapping):
-            frame = await self.session.render(
-                participant_id,
-                str(frame_metadata["sensor_id"]),
-                str(frame_metadata["transport_ref"]),
-                int(observation["observation_seq"]),
-            )
-            await self._publish_frame(participant_id, int(observation["observation_seq"]), frame)
+        frame = await self._frame_for_observation(
+            participant_id=participant_id,
+            observation=observation,
+        )
         provider_observation = dict(observation)
         # Scratchpad state is Python-owned. Godot receives memory_update only as protocol input
         # and never owns or persists the episode scratchpad.
@@ -301,11 +337,21 @@ class LiveSoloRunner:
                 ProviderFailureKind.INTERNAL,
                 ProviderTelemetry(latency_ms=(time.monotonic_ns() - started) // 1_000_000),
             )
+        task_continuation = result.failure is None and bool(
+            getattr(self.provider, "last_request_was_continuation", False)
+        )
         adapter_audits = self._drain_adapter_audits(request)
         raw_output = result.raw_output
         if raw_output is None:
             return _ActionAttempt(
-                None, result, frame, None, request, adapter_audits, "not_attempted"
+                None,
+                result,
+                frame,
+                None,
+                request,
+                adapter_audits,
+                "not_attempted",
+                task_continuation,
             )
         if len(raw_output) > request.max_output_bytes:
             return _ActionAttempt(
@@ -316,6 +362,7 @@ class LiveSoloRunner:
                 request,
                 adapter_audits,
                 "output_too_large",
+                task_continuation,
             )
         try:
             action = parse_controller_action(raw_output, package=self.package)
@@ -336,11 +383,69 @@ class LiveSoloRunner:
             request,
             adapter_audits,
             "accepted" if action is not None else "rejected",
+            task_continuation,
         )
+
+    async def _frame_for_observation(
+        self,
+        *,
+        participant_id: str,
+        observation: Mapping[str, Any],
+    ) -> bytes | None:
+        """Return a locally cached participant frame or fetch one at a fresh boundary.
+
+        Godot binds a frame to a content-addressed transport reference.  During a locally
+        generated autonomous task the reference is intentionally stable, so requesting it again
+        would only consume transport, PNG processing, and browser work.  Semantics in the
+        observation remain current; this helper caches pixels only.
+        """
+
+        metadata = observation.get("frame")
+        if not isinstance(metadata, Mapping):
+            return None
+        sensor_id = str(metadata["sensor_id"])
+        transport_ref = str(metadata["transport_ref"])
+        frame_sha256 = str(metadata["sha256"])
+        key = (participant_id, sensor_id, transport_ref, frame_sha256)
+        if key == self._cached_frame_key and self._cached_frame_png is not None:
+            return self._cached_frame_png
+        frame = await self.session.render(
+            participant_id,
+            sensor_id,
+            transport_ref,
+            int(observation["observation_seq"]),
+        )
+        self._cached_frame_key = key
+        self._cached_frame_png = frame
+        await self._publish_frame(participant_id, int(observation["observation_seq"]), frame)
+        return frame
 
     async def _publish_frame(self, participant_id: str, observation_seq: int, frame: bytes) -> None:
         if self.frame_publisher is not None:
             await self.frame_publisher(participant_id, observation_seq, frame)
+
+    async def _publish_progress(self, observation: Mapping[str, Any]) -> None:
+        """Expose only monotonic public timing, never observation contents or authority state."""
+
+        if self.progress_publisher is None:
+            return
+        observation_seq = observation.get("observation_seq")
+        tick = observation.get("tick")
+        if (
+            isinstance(observation_seq, bool)
+            or isinstance(tick, bool)
+            or not isinstance(observation_seq, int)
+            or not isinstance(tick, int)
+            or observation_seq < 0
+            or tick < 0
+        ):
+            return
+        # The dashboard lifecycle projection is strictly best effort.  It cannot be allowed to
+        # delay, reject, or otherwise alter a deterministic authority step.
+        try:
+            await self.progress_publisher(observation_seq, tick)
+        except Exception:
+            pass
 
     def _drain_adapter_audits(self, request: ProviderRequest) -> Tuple[ProviderAuditRecord, ...]:
         audit_log = getattr(self.provider, "audit_log", None)
@@ -448,6 +553,7 @@ def parse_controller_action(
             look_y=control["look_y"],
             duration_ticks=control["duration_ticks"],
             buttons=ControllerButtons(**buttons),
+            autonomous_task=control.get("autonomous_task"),
         ),
         intent_label=value["intent_label"],
         memory_update=value["memory_update"],

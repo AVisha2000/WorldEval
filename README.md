@@ -1,6 +1,6 @@
-![Rendered WorldArena gameplay](docs/assets/worldarena-rendered-gameplay.png)
+![Three AI agents gathering, building, and exploring a shared world](docs/assets/worldarena-build-things-illustration.png)
 
-*Rendered gameplay from WorldArena.*
+*WorldArena agents can gather, build, and explore—not just describe what they would do.*
 
 # WorldArena
 
@@ -57,6 +57,15 @@ This makes the benchmark useful for studying:
 WorldArena evaluates **strategic agent behaviour**, not visual perception or robot safety. Models
 currently receive structured semantic observations rather than pixels; “embodied” means their
 decisions are grounded in a persistent simulated world with irreversible consequences.
+
+### Embodied controller pilot
+
+The managed solo pilot adds a smaller physical-world test: a model selects a visible milestone,
+then the Godot operator must actually turn, walk, gather, carry, and build before it can choose
+again. A useful illustrative dependency check is refuelling a car: “the station is five minutes
+away” is not enough to choose walking when the objective is to drive the car there. WorldArena
+records these prerequisite chains so they can be evaluated as physical-world understanding rather
+than accepted as plausible language alone.
 
 ## How a match works
 

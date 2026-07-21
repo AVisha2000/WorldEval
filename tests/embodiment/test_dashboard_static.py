@@ -22,6 +22,7 @@ def test_dashboard_mount_preserves_api_routes_and_serves_vite_build(tmp_path: Pa
         response = client.get("/")
         assert response.status_code == 200
         assert "Controller Lab" in response.text
+        assert response.headers["cache-control"] == "no-store"
 
 
 def test_dashboard_mount_is_absent_until_the_build_exists(tmp_path: Path) -> None:

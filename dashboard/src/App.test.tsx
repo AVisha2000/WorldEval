@@ -58,6 +58,10 @@ function renderApp() {
   return queryClient
 }
 
+async function selectLiveProvider(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("radio", { name: "Live provider" }))
+}
+
 describe("Controller dashboard", () => {
   beforeEach(() => {
     localStorage.clear()
@@ -69,10 +73,13 @@ describe("Controller dashboard", () => {
     cleanup()
     document.body.removeAttribute("style")
   })
-  it("renders setup and real lifecycle navigation without demo evidence", () => {
+  it("defaults to the credential-free scripted solo demos", () => {
     render(<QueryClientProvider client={new QueryClient()}><App /></QueryClientProvider>)
     expect(screen.getByRole("heading", { name: /WorldArena Controller Lab/i })).toBeInTheDocument()
-    expect(screen.getByLabelText("API key")).toHaveAttribute("autocomplete", "off")
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Start scripted demo" })).toBeEnabled()
+    expect(screen.getByRole("combobox", { name: "Workflow" })).toBeDisabled()
+    expect(screen.getByRole("combobox", { name: "Task" })).toHaveTextContent("construction-v0")
     expect(screen.getByRole("tab", { name: "Timeline" })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "Replay" })).toBeInTheDocument()
     expect(screen.getByText("Configure a hybrid solo episode")).toBeInTheDocument()
@@ -86,6 +93,7 @@ describe("Controller dashboard", () => {
   it("keeps the credential in component state and never browser storage", async () => {
     const user = userEvent.setup()
     render(<QueryClientProvider client={new QueryClient()}><App /></QueryClientProvider>)
+    await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), "secret-session-key")
     expect(screen.getByLabelText("API key")).toHaveValue("secret-session-key")
     expect(JSON.stringify(localStorage)).not.toContain("secret-session-key")
@@ -98,6 +106,7 @@ describe("Controller dashboard", () => {
     const queryClient = renderApp()
     const secret = "solo-session-secret"
 
+    await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), secret)
     await user.click(screen.getByRole("button", { name: "Start episode" }))
 
@@ -121,8 +130,9 @@ describe("Controller dashboard", () => {
     const queryClient = renderApp()
     const secret = "duel-session-alpha"
 
-    await user.click(document.getElementById("run-mode")!)
-    await user.click(await screen.findByText("Symmetric two-leg 1v1"))
+    await selectLiveProvider(user)
+    await user.click(screen.getByRole("combobox", { name: "Workflow" }))
+    await user.click(await screen.findByRole("option", { name: "Symmetric two-leg 1v1" }))
     expect(screen.getByText("Configure a symmetric two-leg series")).toBeInTheDocument()
     expect(screen.getByText(/Scripted opponents require no key/)).toBeInTheDocument()
     expect(screen.getByLabelText("Scripted tier")).toBeInTheDocument()
@@ -185,12 +195,66 @@ describe("Controller dashboard", () => {
     }))
     renderApp()
 
+    await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), "polling-session-secret")
     await user.click(screen.getByRole("button", { name: "Start episode" }))
 
     expect(await screen.findByText("● running")).toBeInTheDocument()
     expect(await screen.findByText("● success", {}, { timeout: 2500 })).toBeInTheDocument()
     expect(statusReads).toBeGreaterThanOrEqual(2)
+  })
+
+  it("defers the public timeline request until the Timeline view opens", async () => {
+    const user = userEvent.setup()
+    let timelineReads = 0
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/certification/readiness")) return response(readiness)
+      if (init?.method === "POST") {
+        return response({
+          config: { task_id: "construction-v0" },
+          episode_id: "ep_deferred_timeline",
+          state: "running",
+        })
+      }
+      if (url.endsWith("/frame")) {
+        return new Response(null, { status: 204, headers: { "X-Frame-State": "loading" } })
+      }
+      if (url.endsWith("/timeline")) {
+        timelineReads += 1
+        return response({
+          events: [{
+            kind: "action_receipts",
+            value: {
+              observation_seq: 1,
+              participants: {
+                participant_0: {
+                  action_id: "task_gather_materials_1",
+                  codes: ["accepted"],
+                  disposition: "accepted",
+                  start_tick: 1,
+                  end_tick: 2,
+                },
+              },
+            },
+          }],
+        })
+      }
+      return response({
+        config: { task_id: "construction-v0" },
+        episode_id: "ep_deferred_timeline",
+        state: "running",
+      })
+    }))
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Start scripted demo" }))
+    expect(await screen.findByText("● running")).toBeInTheDocument()
+    expect(timelineReads).toBe(0)
+
+    await user.click(screen.getByRole("tab", { name: "Timeline" }))
+    await waitFor(() => expect(timelineReads).toBe(1))
+    expect(await screen.findByText("task_gather_materials_1")).toBeInTheDocument()
   })
 
   it("shows the current participant frame and retains a finished player-visible view", async () => {
@@ -241,6 +305,7 @@ describe("Controller dashboard", () => {
     vi.stubGlobal("fetch", fetch)
     renderApp()
 
+    await selectLiveProvider(user)
     await user.type(screen.getByLabelText("API key"), "camera-session-secret")
     await user.click(screen.getByRole("button", { name: "Start episode" }))
 
@@ -253,5 +318,6 @@ describe("Controller dashboard", () => {
     expect(await screen.findByText("● success", {}, { timeout: 2500 })).toBeInTheDocument()
     expect(await screen.findByText("Finished")).toBeInTheDocument()
     expect(screen.getByText("Observation 2")).toBeInTheDocument()
+    expect(screen.getByLabelText("Authority tick")).toHaveTextContent("Tick 2")
   })
 })

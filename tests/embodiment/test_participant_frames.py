@@ -1,9 +1,11 @@
+import asyncio
 import struct
 import zlib
 
 import pytest
 from genesis_arena.embodiment.presentation.participant_frames import (
     ParticipantFrameStore,
+    ParticipantPreviewHub,
     sanitize_participant_png,
 )
 
@@ -60,3 +62,19 @@ def test_participant_frame_store_is_solo_scoped_and_monotonic() -> None:
 
     assert store.snapshot() is not None
     assert store.snapshot().observation_seq == 2
+
+
+def test_preview_hub_keeps_only_the_newest_sanitized_participant_frame() -> None:
+    store = ParticipantFrameStore()
+    hub = ParticipantPreviewHub()
+    _, queue = hub.subscribe()
+    store.publish("participant_0", 1, _png())
+    assert store.snapshot() is not None
+    hub.publish(store.snapshot())
+    store.publish("participant_0", 2, _png())
+    hub.publish(store.snapshot())
+
+    received = queue.get_nowait()
+    assert received.observation_seq == 2
+    with pytest.raises(asyncio.QueueEmpty):
+        queue.get_nowait()

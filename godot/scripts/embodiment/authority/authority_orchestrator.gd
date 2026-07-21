@@ -18,6 +18,7 @@ const InteractionSystem := preload("res://scripts/embodiment/authority/interacti
 const ConstructionSystem := preload("res://scripts/embodiment/authority/construction_system.gd")
 const CombatSystem := preload("res://scripts/embodiment/authority/combat_system.gd")
 const NeutralController := preload("res://scripts/embodiment/authority/neutral_controller.gd")
+const ConstructionTaskExecutor := preload("res://scripts/embodiment/authority/construction_task_executor.gd")
 
 const PROTOCOL_VERSION := "llm-controller/0.1.0"
 const TICK_HZ := 10
@@ -238,6 +239,7 @@ func step_window(window: Dictionary) -> Dictionary:
 
 func _apply_action_window(action: Dictionary, duration_ticks: int) -> Dictionary:
 	var control: Dictionary = action.control
+	var autonomous_task := str(control.get("autonomous_task", ""))
 	var start_tick := tick
 	var effects := {"distance_moved_mt": 0, "heading_steps": 0, "beacon_hold_ticks": 0}
 	var task_before := _task_effect_snapshot()
@@ -250,9 +252,12 @@ func _apply_action_window(action: Dictionary, duration_ticks: int) -> Dictionary
 			break
 		var before := operator_position_mt
 		var heading_before := operator_heading
-		ControllerExecutor.apply_tick(self, control, action_tick == 0)
+		var applied_control: Dictionary = control
+		if not autonomous_task.is_empty():
+			applied_control = ConstructionTaskExecutor.control_for_tick(self, autonomous_task)
+		ControllerExecutor.apply_tick(self, applied_control, action_tick == 0)
 		for code: String in _apply_task_tick(
-			control, action_tick == 0, events, detailed_task_effects
+			applied_control, action_tick == 0, events, detailed_task_effects
 		):
 			_append_unique(task_codes, code)
 		effects.distance_moved_mt += (
@@ -263,6 +268,9 @@ func _apply_action_window(action: Dictionary, duration_ticks: int) -> Dictionary
 		applied_ticks += 1
 		TerminalEvaluator.update_goal(self, events)
 		TerminalEvaluator.enforce_time_limit(self, events)
+		if not autonomous_task.is_empty() and ConstructionTaskExecutor.is_complete(self, autonomous_task):
+			_append_unique(task_codes, "autonomous_task_complete")
+			break
 	effects.beacon_hold_ticks = beacon_hold_ticks
 	# memory_update is validated as controller input but owned by the Python episode runner.
 	# Authority checkpoints and player observations therefore never retain provider scratchpad.
@@ -517,6 +525,12 @@ func presentation_source_snapshot() -> Dictionary:
 
 
 func _presentation_agency(control: Dictionary, receipt: Variant, intent_label: String) -> Dictionary:
+	# Presentation has its own frozen controller shape. Autonomous task selection is authority
+	# execution metadata, not a player-visible controller axis, so never pass it into the render
+	# snapshot (where it would invalidate the privacy filter's exact contract).
+	var projected_controller := {}
+	for field: String in ["move_x", "move_y", "look_x", "look_y", "duration_ticks", "buttons"]:
+		projected_controller[field] = control[field].duplicate(true) if control[field] is Dictionary else control[field]
 	var projected_receipt: Variant = null
 	if receipt is Dictionary:
 		projected_receipt = {
@@ -527,7 +541,7 @@ func _presentation_agency(control: Dictionary, receipt: Variant, intent_label: S
 			"codes": receipt.codes.duplicate(),
 		}
 	return {
-		"controller": control.duplicate(true),
+		"controller": projected_controller,
 		"receipt": projected_receipt,
 		"intent_label": intent_label,
 	}
@@ -641,7 +655,7 @@ func _validate_action(action: Dictionary, window_duration_ticks: int) -> PackedS
 		errors.append("control_invalid")
 		return errors
 	var control: Dictionary = action.control
-	if not _has_exact_fields(control, REQUIRED_CONTROL_FIELDS):
+	if not _has_control_fields(control):
 		errors.append("control_shape_invalid")
 		return errors
 	for axis: String in ["move_x", "move_y", "look_x", "look_y"]:
@@ -671,6 +685,15 @@ func _validate_action(action: Dictionary, window_duration_ticks: int) -> PackedS
 	elif action.memory_update.to_utf8_buffer().size() > MAX_MEMORY_UTF8_BYTES:
 		errors.append("memory_update_too_large")
 	return errors
+
+
+func _has_control_fields(control: Dictionary) -> bool:
+	if _has_exact_fields(control, REQUIRED_CONTROL_FIELDS):
+		return true
+	return control.size() == REQUIRED_CONTROL_FIELDS.size() + 1 \
+		and control.has("autonomous_task") and typeof(control.autonomous_task) == TYPE_STRING \
+		and control.autonomous_task in ["gather_materials", "deliver_materials", "build_barricade", "wait"] \
+		and task_id == "construction-v0" and mode == "solo-curriculum-v0"
 
 
 func _validate_window(window: Dictionary) -> PackedStringArray:

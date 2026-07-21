@@ -92,6 +92,10 @@
         "edge_buttons": {"const": ["dash", "ability_1", "ability_2", "cycle_item", "cancel"]}
       }
     },
+    "managed_solo_task_plans": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
     "timing": {
       "type": "object",
       "additionalProperties": false,

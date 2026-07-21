@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+from genesis_arena.embodiment.construction_task_provider import ConstructionTaskProvider
 from genesis_arena.embodiment.contracts import (
     ActionReceipt,
     CapabilityStatus,
@@ -15,6 +16,7 @@ from genesis_arena.embodiment.contracts import (
 from genesis_arena.embodiment.live_solo import LiveSoloRunner
 from genesis_arena.embodiment.protocol import (
     EmbodimentProtocolPackage,
+    canonical_json_bytes,
     canonical_sha256,
 )
 from genesis_arena.embodiment.providers.contracts import (
@@ -185,6 +187,122 @@ class _Session:
         return self._frames[observation_seq]
 
 
+class _TaskPlanProvider:
+    provider_name = "scripted"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def request(self, request):
+        self.calls += 1
+        return ProviderCallResult.success(
+            canonical_json_bytes(
+                {
+                    "protocol_version": "llm-controller/0.1.0",
+                    "episode_id": request.episode_id,
+                    "observation_seq": request.observation_seq,
+                    "task_id": "wait",
+                    "intent_label": "hold position",
+                    "memory_update": "",
+                }
+            ),
+            ProviderTelemetry(1),
+        )
+
+
+class _CachedFrameTaskSession:
+    """Small authority double with three executor ticks and one reused frame reference."""
+
+    def __init__(self, config: EpisodeConfig, package: EmbodimentProtocolPackage) -> None:
+        self.episode_id = config.episode_id
+        self.closed = False
+        self.render_calls: list[tuple[str, int]] = []
+        self._index = 0
+        self._shared_png = _frame_png(7)
+        self._terminal_png = _frame_png(8)
+        self._ledger = ReplayLedger(
+            config.as_dict(), canonical_sha256(config.as_dict()), package.package_sha256
+        )
+        self.replay_bytes = None
+
+    def _observation(self, *, seq: int, ended: bool, terminal: bool = False) -> dict:
+        png = self._terminal_png if terminal else self._shared_png
+        value = _hybrid_observation(
+            self.episode_id,
+            seq=seq,
+            tick=seq,
+            ended=ended,
+            png=png,
+        )
+        value["frame"]["transport_ref"] = (
+            "frame:participant_0.terminal" if terminal else "frame:participant_0.shared"
+        )
+        if ended:
+            value["terminal"] = {
+                "ended": True,
+                "outcome": "success",
+                "reason": "objective_complete",
+            }
+        return value
+
+    async def reset(self):
+        observation = self._observation(seq=0, ended=False)
+        observations = {"participant_0": observation}
+        self._ledger.record_initial(observations=observations, state_hash="1" * 64)
+        return observations
+
+    async def state(self):
+        return {"state_hash": "1" * 64}
+
+    async def step(self, window):
+        self._index += 1
+        ended = self._index == 3
+        observation = self._observation(seq=self._index, ended=ended, terminal=ended)
+        action = window.decisions["participant_0"].action
+        assert action is not None
+        receipt = ActionReceipt(
+            action_id=action.action_id,
+            observation_seq=window.observation_seq,
+            accepted=True,
+            start_tick=window.start_tick,
+            end_tick=window.start_tick + 1,
+            applied_ticks=1,
+            codes=("autonomous_task_complete",) if ended else ("autonomous_task_active",),
+        )
+        observation["previous_receipt"] = receipt.as_dict()
+        terminal = TerminalState(
+            ended,
+            "success" if ended else "running",
+            "objective_complete" if ended else "running",
+        )
+        result = MultiParticipantStepResult(
+            observations={"participant_0": observation},
+            receipts={"participant_0": receipt},
+            public_events=(),
+            state_hash=f"{self._index + 1:064x}",
+            terminal=terminal,
+        )
+        self._ledger.record_step(decision_window=window.as_dict(), result=result.as_dict())
+        if ended:
+            self.replay_bytes = self._ledger.seal(
+                final_terminal=terminal.as_dict(),
+                final_state_hash=result.state_hash,
+            )
+        return result
+
+    async def render(self, participant_id, sensor_id, transport_ref, observation_seq):
+        assert participant_id == "participant_0"
+        assert sensor_id == "operator-follow-v1"
+        self.render_calls.append((transport_ref, observation_seq))
+        if transport_ref == "frame:participant_0.shared":
+            return self._shared_png
+        assert transport_ref == "frame:participant_0.terminal"
+        return self._terminal_png
+
+    async def close(self):
+        self.closed = True
+
+
 @pytest.mark.asyncio
 async def test_invalid_provider_output_records_neutral_window_and_advances_time() -> None:
     config = EpisodeConfig(
@@ -284,3 +402,52 @@ async def test_hybrid_runner_publishes_player_frame_at_each_decision_boundary() 
         ("participant_0", 0, frames[0]),
         ("participant_0", 1, frames[1]),
     ]
+
+
+@pytest.mark.asyncio
+async def test_construction_continuations_reuse_frame_and_skip_duplicate_provider_evidence(
+) -> None:
+    config = EpisodeConfig(
+        episode_id="ep_live_cached_task_frames",
+        mode="solo-curriculum-v0",
+        task_id="construction-v0",
+        seed=3,
+        observation_profile="hybrid-visible-v1",
+        capability_status=CapabilityStatus(
+            implemented_observation_profiles=("hybrid-visible-v1",),
+            implemented_tasks=("construction-v0",),
+        ),
+    )
+    package = EmbodimentProtocolPackage.from_repository(ROOT)
+    planner = _TaskPlanProvider()
+    session = _CachedFrameTaskSession(config, package)
+    published: list[tuple[str, int, bytes]] = []
+
+    async def publish(participant_id: str, observation_seq: int, png: bytes) -> None:
+        published.append((participant_id, observation_seq, png))
+
+    outcome = await LiveSoloRunner(
+        config=config,
+        session=session,
+        provider=ConstructionTaskProvider(planner, package),
+        model="construction-demo-v1",
+        system_prompt="Return strict JSON.",
+        protocol_package=package,
+        frame_publisher=publish,
+    ).run()
+
+    assert outcome.bundles is not None
+    assert planner.calls == 1
+    assert session.render_calls == [
+        ("frame:participant_0.shared", 0),
+        ("frame:participant_0.terminal", 3),
+    ]
+    assert [item[:2] for item in published] == [
+        ("participant_0", 0),
+        ("participant_0", 3),
+    ]
+    frames = json.loads(outcome.bundles.protected.read("frames"))
+    telemetry = json.loads(outcome.bundles.protected.read("telemetry"))
+    assert [frame["observation_seq"] for frame in frames] == [0, 3]
+    assert [record["observation_seq"] for record in telemetry] == [0]
+    assert session.closed

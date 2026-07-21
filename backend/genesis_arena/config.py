@@ -24,6 +24,23 @@ def _default_godot_executable() -> Path:
     return Path(discovered) if discovered else candidates[0]
 
 
+def _default_ffmpeg_executable() -> Path:
+    """Use the checked-in local video tool when one is available."""
+
+    candidates = (
+        REPOSITORY_ROOT
+        / ".video-tools/lib/python3.9/site-packages/imageio_ffmpeg/binaries/"
+        "ffmpeg-macos-aarch64-v7.1",
+        Path("/opt/homebrew/bin/ffmpeg"),
+        Path("/usr/local/bin/ffmpeg"),
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    discovered = shutil.which("ffmpeg")
+    return Path(discovered) if discovered else candidates[0]
+
+
 class Settings(BaseSettings):
     """Runtime configuration loaded from GENESIS_* variables and .env."""
 
@@ -48,3 +65,4 @@ class Settings(BaseSettings):
     )
     godot_executable: Path = Field(default_factory=_default_godot_executable)
     godot_project_path: Path = REPOSITORY_ROOT / "godot"
+    ffmpeg_executable: Path = Field(default_factory=_default_ffmpeg_executable)

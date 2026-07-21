@@ -98,7 +98,46 @@ func _run() -> void:
 			"v_resource_1", "v_relay_1", "v_build_pad_1", "v_build_pad_1_barricade",
 		]:
 			_check(presentation.projection_node(entity_id) != null, "%s was not projected" % entity_id)
-	_check(authority.checkpoint_hash() == hash_before, "presentation changed authority hash")
+		_check(authority.checkpoint_hash() == hash_before, "capture presentation changed authority hash")
+		# The managed executor may retain the canonical frame bytes between autonomous ticks.  Its
+		# scene must nevertheless advance using the latest participant-filtered authority snapshot;
+		# only the PNG transport reference remains stable.
+		var continued: Dictionary = authority.step_window(fixture.steps[17].decision_window)
+		_check(continued == fixture.steps[17].result, "Stage-C cached-scene setup diverged")
+		var hash_after_continued: String = authority.checkpoint_hash()
+		var reused: Dictionary = adapter.observe_with_cached_frame("participant_0", observation.frame)
+		_check(bool(reused.get("ok", false)), "cached hybrid observation failed: %s" % str(reused))
+		if bool(reused.get("ok", false)):
+			var latest_scene: Dictionary = presentation.snapshot_copy()
+			_check(
+				int(latest_scene.tick) == authority.tick
+				and int(latest_scene.observation_seq) == authority.observation_seq,
+				"cached hybrid observation did not apply the latest safe snapshot",
+			)
+			_check(
+				latest_scene.operator.position_mt == [
+					authority.operator_position_mt.x, authority.operator_position_mt.y,
+				],
+				"cached hybrid observation projected a stale operator position",
+			)
+			_check(
+				reused.observation.frame == observation.frame,
+				"cached hybrid observation changed canonical frame metadata",
+			)
+			_check(
+				int(reused.observation.observation_seq) == authority.observation_seq,
+				"cached hybrid observation did not retain current visible semantics",
+			)
+		_check(
+			viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS,
+			"hybrid capture disabled continuous participant viewport rendering",
+		)
+		_check(
+			authority.checkpoint_hash() == hash_after_continued,
+			"cached presentation changed authority hash",
+		)
+	else:
+		_check(authority.checkpoint_hash() == hash_before, "presentation changed authority hash")
 	adapter.close()
 	viewport.queue_free()
 	_finish()

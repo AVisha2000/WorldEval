@@ -20,6 +20,13 @@ const PHASE_RUNNING := "running"
 const PHASE_COMPLETE := "complete"
 const PHASE_FAILED := "failed"
 
+## A model only plans at an autonomous-task boundary.  Reusing an already participant-visible
+## frame between executor ticks prevents PNG capture/transport from delaying deterministic 10 Hz
+## authority.  The short wait horizon matches the task-plan contract; other tasks get a forced
+## refresh before their deterministic safety timeout can cause another planner request.
+const AUTONOMOUS_FRAME_REFRESH_TICKS := 180
+const WAIT_FRAME_REFRESH_TICKS := 10
+
 var _authority = null
 var _codec = null
 var _phase := PHASE_UNCONFIGURED
@@ -28,7 +35,11 @@ var _attachment_ticket := ""
 var _config_hash := ""
 var _participant_ids: Array[String] = ["participant_0"]
 var _observation_profile := "text-visible-v1"
+var _task_id := ""
 var _presentation = null
+var _cached_frame_metadata := {}
+var _active_autonomous_task := ""
+var _active_autonomous_ticks := 0
 
 
 func configure(
@@ -58,6 +69,7 @@ func configure(
 	if not errors.is_empty():
 		return errors
 	_observation_profile = str(config.get("observation_profile", ""))
+	_task_id = str(config.get("task_id", ""))
 	_participant_ids.assign(config.get("participant_ids", []))
 	if _observation_profile == "hybrid-visible-v1":
 		if presentation_scene == null or viewport == null:
@@ -132,7 +144,7 @@ func _receive_auth(frame: Dictionary) -> Dictionary:
 		return _fail("auth_invalid")
 	_attachment_ticket = ""
 	_phase = PHASE_RUNNING
-	var observation_result := await _boundary_observations()
+	var observation_result := await _boundary_observations(true)
 	if not bool(observation_result.get("ok", false)):
 		return _fail(str(observation_result.get("code", "hybrid_capture_failed")))
 	return _codec.encode("episode_ready", _config_hash, {
@@ -151,7 +163,8 @@ func _receive_running(frame: Dictionary) -> Dictionary:
 			if not _exact_body(frame.body, ["window"]) or not frame.body.window is Dictionary:
 				return _fail("decision_window_body_invalid")
 			var result: Dictionary = _authority.step_window(frame.body.window)
-			var observation_result := await _boundary_observations()
+			var capture_fresh_frame := _should_capture_fresh_frame(frame.body.window, result)
+			var observation_result := await _boundary_observations(capture_fresh_frame)
 			if not bool(observation_result.get("ok", false)):
 				return _fail(str(observation_result.get("code", "hybrid_capture_failed")))
 			result.observations = observation_result.observations
@@ -169,7 +182,7 @@ func _receive_running(frame: Dictionary) -> Dictionary:
 	return _fail("message_type_out_of_phase")
 
 
-func _boundary_observations() -> Dictionary:
+func _boundary_observations(capture_fresh_frame: bool) -> Dictionary:
 	var observations := {}
 	for participant_id: String in _participant_ids:
 		if _observation_profile != "hybrid-visible-v1":
@@ -180,10 +193,20 @@ func _boundary_observations() -> Dictionary:
 			continue
 		if _presentation == null:
 			return _failure("hybrid_presentation_unavailable")
-		var captured: Dictionary = await _presentation.capture_boundary(participant_id)
-		if not bool(captured.get("ok", false)):
-			return _failure(str(captured.get("code", "hybrid_capture_failed")))
-		observations[participant_id] = captured.observation
+		if capture_fresh_frame or not _cached_frame_metadata.has(participant_id):
+			_discard_cached_frame(participant_id)
+			var captured: Dictionary = await _presentation.capture_boundary(participant_id)
+			if not bool(captured.get("ok", false)):
+				return _failure(str(captured.get("code", "hybrid_capture_failed")))
+			observations[participant_id] = captured.observation
+			_cached_frame_metadata[participant_id] = captured.observation.frame.duplicate(true)
+		else:
+			var reused: Dictionary = _presentation.observe_with_cached_frame(
+				participant_id, _cached_frame_metadata[participant_id]
+			)
+			if not bool(reused.get("ok", false)):
+				return _failure(str(reused.get("code", "hybrid_cached_frame_failed")))
+			observations[participant_id] = reused.observation
 	return {"ok": true, "observations": observations}
 
 
@@ -197,10 +220,13 @@ func _receive_frame_request(frame: Dictionary) -> Dictionary:
 		or typeof(frame.body.observation_seq) != TYPE_INT \
 		or typeof(frame.body.transport_ref) != TYPE_STRING:
 		return _fail("frame_request_invalid")
-	var fetched: Dictionary = _presentation.take_frame_bytes(frame.body.transport_ref)
+	var fetched: Dictionary = _presentation.frame_bytes(frame.body.transport_ref)
 	if not bool(fetched.get("ok", false)):
 		return _fail("frame_request_invalid")
-	var record: Dictionary = fetched.record
+	var fetched_record: Dictionary = _presentation.frame_record(frame.body.transport_ref)
+	if not bool(fetched_record.get("ok", false)):
+		return _fail("frame_request_invalid")
+	var record: Dictionary = fetched_record.record
 	if record.participant_id != frame.body.participant_id \
 		or record.observation_sequence != frame.body.observation_seq \
 		or record.frame.sensor_id != frame.body.sensor_id \
@@ -212,6 +238,66 @@ func _receive_frame_request(frame: Dictionary) -> Dictionary:
 		"participant_id": record.participant_id,
 		"png_base64": Marshalls.raw_to_base64(fetched.bytes),
 	})
+
+
+func _should_capture_fresh_frame(window: Dictionary, result: Dictionary) -> bool:
+	# This optimization is deliberately scoped to the managed Construction task-plan executor.
+	# Other hybrid tasks and every duel retain their prior fresh-boundary behavior.
+	if _observation_profile != "hybrid-visible-v1" or _task_id != "construction-v0":
+		return true
+	var task := _autonomous_task(window)
+	if task.is_empty():
+		_active_autonomous_task = ""
+		_active_autonomous_ticks = 0
+		return true
+	if task != _active_autonomous_task:
+		_active_autonomous_task = task
+		_active_autonomous_ticks = 1
+		return true
+	_active_autonomous_ticks += 1
+	if bool(result.get("terminal", {}).get("ended", false)) or _task_completed(result):
+		_active_autonomous_task = ""
+		_active_autonomous_ticks = 0
+		return true
+	var refresh_limit := WAIT_FRAME_REFRESH_TICKS if task == "wait" else AUTONOMOUS_FRAME_REFRESH_TICKS
+	if _active_autonomous_ticks >= refresh_limit:
+		_active_autonomous_ticks = 0
+		return true
+	return false
+
+
+func _autonomous_task(window: Dictionary) -> String:
+	if not window.has("decisions") or not window.decisions is Dictionary:
+		return ""
+	if _participant_ids.is_empty():
+		return ""
+	var decision: Variant = window.decisions.get(_participant_ids[0])
+	if not decision is Dictionary or decision.get("disposition") != "accepted":
+		return ""
+	var action: Variant = decision.get("action")
+	if not action is Dictionary or not action.get("control") is Dictionary:
+		return ""
+	var task: Variant = action.control.get("autonomous_task")
+	return task if typeof(task) == TYPE_STRING else ""
+
+
+func _task_completed(result: Dictionary) -> bool:
+	var receipts: Variant = result.get("receipts")
+	if not receipts is Dictionary:
+		return false
+	for participant_id: String in _participant_ids:
+		var receipt: Variant = receipts.get(participant_id)
+		if receipt is Dictionary and receipt.get("codes") is Array \
+			and "autonomous_task_complete" in receipt.codes:
+			return true
+	return false
+
+
+func _discard_cached_frame(participant_id: String) -> void:
+	var metadata: Variant = _cached_frame_metadata.get(participant_id)
+	if metadata is Dictionary:
+		_presentation.discard_frame(str(metadata.get("transport_ref", "")))
+	_cached_frame_metadata.erase(participant_id)
 
 
 func _fail(code: String) -> Dictionary:

@@ -151,6 +151,7 @@ class EmbodimentProtocolPackage:
     SCHEMA_FILES = {
         "environment-manifest": "environment-manifest.v1.schema.json",
         "controller-action": "controller-action.v1.schema.json",
+        "construction-task-plan": "construction-task-plan.v1.schema.json",
         "observation": "observation.v1.schema.json",
         "action-receipt": "action-receipt.v1.schema.json",
         "authority-event": "authority-event.v1.schema.json",

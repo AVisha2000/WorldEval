@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import struct
 import zlib
@@ -28,6 +29,10 @@ class ParticipantFrameStore:
         self._snapshot: ParticipantFrameSnapshot | None = None
 
     def publish(self, participant_id: str, observation_seq: int, png: bytes) -> None:
+        self.publish_sanitized(participant_id, observation_seq, sanitize_participant_png(png))
+
+    def publish_sanitized(self, participant_id: str, observation_seq: int, png: bytes) -> None:
+        """Publish pixels already sanitized off the authority event loop."""
         if participant_id != "participant_0":
             raise ValueError("only the active solo participant frame may be published")
         if (
@@ -38,11 +43,12 @@ class ParticipantFrameStore:
             raise ValueError("observation sequence is invalid")
         if self._snapshot is not None and observation_seq < self._snapshot.observation_seq:
             raise ValueError("participant frame sequence moved backwards")
-        sanitized = sanitize_participant_png(png)
+        if not isinstance(png, bytes):
+            raise TypeError("participant frame pixels must be immutable bytes")
         self._snapshot = ParticipantFrameSnapshot(
             observation_seq=observation_seq,
-            png=sanitized,
-            sha256=hashlib.sha256(sanitized).hexdigest(),
+            png=png,
+            sha256=hashlib.sha256(png).hexdigest(),
         )
 
     def snapshot(self) -> ParticipantFrameSnapshot | None:
@@ -50,6 +56,36 @@ class ParticipantFrameStore:
 
     def close(self) -> None:
         self._snapshot = None
+
+
+class ParticipantPreviewHub:
+    """Newest-frame-only local fan-out; it carries participant pixels only."""
+
+    def __init__(self) -> None:
+        self._subscribers: dict[int, asyncio.Queue[ParticipantFrameSnapshot]] = {}
+        self._next_id = 0
+
+    def publish(self, snapshot: ParticipantFrameSnapshot) -> None:
+        for queue in tuple(self._subscribers.values()):
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            queue.put_nowait(snapshot)
+
+    def subscribe(self) -> tuple[int, asyncio.Queue[ParticipantFrameSnapshot]]:
+        token = self._next_id
+        self._next_id += 1
+        queue: asyncio.Queue[ParticipantFrameSnapshot] = asyncio.Queue(maxsize=1)
+        self._subscribers[token] = queue
+        return token, queue
+
+    def unsubscribe(self, token: int) -> None:
+        self._subscribers.pop(token, None)
+
+    def close(self) -> None:
+        self._subscribers.clear()
 
 
 def sanitize_participant_png(value: bytes) -> bytes:
@@ -110,9 +146,12 @@ def sanitize_participant_png(value: bytes) -> bytes:
         raise ValueError("participant frame PNG format is unsupported")
 
     decompressor = zlib.decompressobj()
-    scanlines = decompressor.decompress(
-        b"".join(compressed_parts), _RGBA_SCANLINE_BYTES * FRAME_HEIGHT + 1
-    )
+    # Verify the compressed pixel stream, but retain its validated IDAT data instead of
+    # recompressing 3.5 MiB of scanlines for every presentation frame.  Rebuilding the PNG from
+    # only IHDR/IDAT/IEND still strips every source metadata chunk, while avoiding a synchronous
+    # zlib deflate on the real-time preview path.
+    compressed = b"".join(compressed_parts)
+    scanlines = decompressor.decompress(compressed, _RGBA_SCANLINE_BYTES * FRAME_HEIGHT + 1)
     if (
         not decompressor.eof
         or decompressor.unused_data
@@ -125,7 +164,7 @@ def sanitize_participant_png(value: bytes) -> bytes:
         (
             PNG_SIGNATURE,
             _chunk(b"IHDR", ihdr),
-            _chunk(b"IDAT", zlib.compress(scanlines, level=6)),
+            _chunk(b"IDAT", compressed),
             _chunk(b"IEND", b""),
         )
     )

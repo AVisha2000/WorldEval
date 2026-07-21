@@ -276,7 +276,11 @@ func _build_event_audio() -> void:
 
 func _apply_operator(operator_state: Dictionary, participant_id: String) -> void:
 	_operator.position = _world_position(operator_state["position_mt"], 0.0)
-	_operator.rotation.y = float(int(operator_state["heading_milli"])) * PI / 4000.0
+	# Authority headings use +X for east and +Z for south. Godot's positive yaw rotates a
+	# -Z-facing model toward west, so presentation must invert the authority angle. Keeping
+	# this conversion here preserves deterministic controls while making the Y Bot and its
+	# third-person camera face the direction of travel.
+	_operator.rotation.y = -float(int(operator_state["heading_milli"])) * PI / 4000.0
 	var state := str(operator_state["state"])
 	_operator.set_meta("state", state)
 	_operator.set_meta("participant_id", participant_id)

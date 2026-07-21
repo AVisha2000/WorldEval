@@ -84,6 +84,11 @@ class ManagedWorldArenaSession:
         self._started = False
         self._closed = False
         self._close_task: asyncio.Task[None] | None = None
+        # A hybrid observation may retain a valid participant frame reference while Godot advances
+        # a deterministic autonomous task.  Cache one immutable, integrity-checked response so
+        # callers do not ask the host to serialize the exact same image for every authority tick.
+        self._render_cache_key: tuple[str, str, str, str] | None = None
+        self._render_cache_png: bytes | None = None
 
     async def reset(self) -> Mapping[str, Mapping[str, Any]]:
         if self._started or self._closed:
@@ -220,6 +225,12 @@ class ManagedWorldArenaSession:
             or observation.get("observation_seq") != observation_seq
         ):
             raise ManagedSessionError("embodiment_render_reference_invalid")
+        frame_sha256 = metadata.get("sha256")
+        if not isinstance(frame_sha256, str):
+            raise ManagedSessionError("embodiment_render_reference_invalid")
+        cache_key = (participant_id, sensor_id, transport_ref, frame_sha256)
+        if cache_key == self._render_cache_key and self._render_cache_png is not None:
+            return self._render_cache_png
         socket = self._socket
         assert socket is not None and self._state_hash is not None
         try:
@@ -259,6 +270,8 @@ class ManagedWorldArenaSession:
                 raise ManagedSessionError("embodiment_render_response_invalid")
             png = base64.b64decode(response.body["png_base64"], validate=True)
             _validate_bound_png(png, metadata)
+            self._render_cache_key = cache_key
+            self._render_cache_png = png
             return png
         except asyncio.CancelledError:
             raise
@@ -304,6 +317,8 @@ class ManagedWorldArenaSession:
             elif not self._socket_future.done():
                 self._socket_future.cancel()
         finally:
+            self._render_cache_key = None
+            self._render_cache_png = None
             if process is not None:
                 await process.stop()
 

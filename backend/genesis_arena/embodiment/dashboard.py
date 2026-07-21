@@ -6,6 +6,26 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
+
+
+class _ControllerDashboardFiles(StaticFiles):
+    """Static dashboard files with a fresh application shell on local refresh.
+
+    Vite gives JavaScript and CSS assets content-hashed filenames, but the HTML
+    entrypoint is always ``index.html``.  Leaving that entrypoint to heuristic
+    browser caching can keep a local Controller Lab on an old JavaScript bundle
+    after a rebuild, which is especially confusing while iterating on the
+    dashboard.  Keep the shell non-cacheable while retaining ordinary static
+    delivery for the immutable assets it references.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if path in {"", ".", "index.html"}:
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 def mount_built_dashboard(app: FastAPI, directory: Path) -> bool:
@@ -16,7 +36,7 @@ def mount_built_dashboard(app: FastAPI, directory: Path) -> bool:
         return False
     app.mount(
         "/",
-        StaticFiles(directory=build, html=True, check_dir=True),
+        _ControllerDashboardFiles(directory=build, html=True, check_dir=True),
         name="embodiment-controller-dashboard",
     )
     return True

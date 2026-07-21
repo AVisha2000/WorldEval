@@ -108,6 +108,9 @@ class ControllerState:
     look_y: int
     duration_ticks: int
     buttons: ControllerButtons = field(default_factory=ControllerButtons)
+    # Additive managed-solo hook.  It is never accepted for duel modes and is
+    # expanded by Godot into ordinary stick/button input on every authority tick.
+    autonomous_task: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("move_x", "move_y", "look_x", "look_y"):
@@ -115,6 +118,10 @@ class ControllerState:
         _strict_int("duration_ticks", self.duration_ticks, 1, 20)
         if not isinstance(self.buttons, ControllerButtons):
             raise TypeError("buttons must be ControllerButtons")
+        if self.autonomous_task is not None and self.autonomous_task not in (
+            "gather_materials", "deliver_materials", "build_barricade", "wait"
+        ):
+            raise ValueError("autonomous_task is unsupported")
 
     @classmethod
     def neutral(cls, duration_ticks: int) -> ControllerState:
@@ -123,7 +130,7 @@ class ControllerState:
         return cls(0, 0, 0, 0, duration_ticks)
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        value: Dict[str, Any] = {
             "move_x": self.move_x,
             "move_y": self.move_y,
             "look_x": self.look_x,
@@ -131,6 +138,9 @@ class ControllerState:
             "duration_ticks": self.duration_ticks,
             "buttons": self.buttons.as_dict(),
         }
+        if self.autonomous_task is not None:
+            value["autonomous_task"] = self.autonomous_task
+        return value
 
 
 @dataclass(frozen=True)

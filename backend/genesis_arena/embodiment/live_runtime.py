@@ -9,16 +9,25 @@ from typing import Any, Awaitable, Callable
 
 import httpx
 
+from .construction_task_provider import ConstructionTaskProvider
 from .contracts import CapabilityStatus, EpisodeConfig
 from .credentials import SessionCredential
 from .episode_service import EpisodeRunSpec, EpisodeService
 from .live_solo import LiveSoloOutcome, LiveSoloRunner
 from .managed_process import ManagedLaunchSpec, ManagedProcessLauncher
 from .managed_session import ManagedWorldArenaSession
+from .presentation.preview_ingress import InternalParticipantPreviewIngress
 from .protocol import EmbodimentProtocolPackage, canonical_sha256
 from .providers.anthropic_adapter import AnthropicAdapter, AnthropicHTTPResponse
 from .providers.gemini_adapter import GeminiAdapter, GeminiHTTPResponse
 from .providers.openai_adapter import OpenAIProviderAdapter
+from .replay_archive import SavedReplayArchive
+from .scripted_construction_demo import (
+    SCRIPTED_CONSTRUCTION_PROVIDER,
+    ScriptedConstructionDemoProvider,
+    demo_task_timeout_ticks,
+)
+from .scripted_solo_demo import SCRIPTED_SOLO_TASKS, ScriptedSoloDemoProvider
 from .transport import ManagedWebSocketEndpoint
 
 SYSTEM_PROMPT = """You control one WorldArena participant. Use only the supplied player-visible
@@ -33,7 +42,10 @@ def default_episode_service(
     godot_project_path: Path,
     gateway_port: int,
     endpoint: ManagedWebSocketEndpoint,
+    preview_ingress: InternalParticipantPreviewIngress | None = None,
     provider_timeout_s: float = 45.0,
+    runs_dir: Path | None = None,
+    ffmpeg_executable: Path | None = None,
 ) -> EpisodeService:
     """Assemble the production executor without persisting credentials or evidence."""
 
@@ -43,12 +55,15 @@ def default_episode_service(
         executable=godot_executable,
         project_path=godot_project_path,
     )
+    ingress = preview_ingress or InternalParticipantPreviewIngress()
+    service: EpisodeService
 
     async def execute(
         spec: EpisodeRunSpec,
-        credential: SessionCredential,
+        credential: SessionCredential | None,
         cancel_event: asyncio.Event,
         publish_frame: Callable[[str, int, bytes], Awaitable[None]],
+        publish_progress: Callable[[int, int], Awaitable[None]],
     ) -> LiveSoloOutcome:
         config = EpisodeConfig(
             episode_id=spec.episode_id,
@@ -75,6 +90,15 @@ def default_episode_service(
             connection_id=connection_id,
             session_secret=bytearray(session_secret),
         )
+        preview_registered = False
+
+        async def publish_direct_preview(
+            participant_id: str, observation_seq: int, png: bytes
+        ) -> bool:
+            return await service.publish_live_preview(
+                spec.episode_id, participant_id, observation_seq, png
+            )
+
         launch = ManagedLaunchSpec(
             episode_id=spec.episode_id,
             attachment_ticket=ticket,
@@ -93,8 +117,40 @@ def default_episode_service(
             protocol_package=package,
             step_timeout_s=max(10.0, provider_timeout_s),
         )
-        adapter = provider_adapter(spec.provider, credential)
+        adapter: Any | None = None
         try:
+            # The ingress keeps only a domain-separated HMAC key.  It never sees the provider
+            # credential, canonical decisions, replay, or authority state.
+            # Every solo curriculum stage can publish the same signed, participant-filtered
+            # local preview.  This best-effort channel is intentionally independent from the
+            # authority socket and is registered before any provider is contacted.
+            if spec.task_id in SCRIPTED_SOLO_TASKS:
+                ingress.register(
+                    ticket=ticket,
+                    episode_id=spec.episode_id,
+                    task_id=spec.task_id,
+                    session_secret=session_secret,
+                    sink=publish_direct_preview,
+                )
+                preview_registered = True
+            if spec.provider == SCRIPTED_CONSTRUCTION_PROVIDER:
+                # Local curriculum demos never receive a credential and remain outside every
+                # live-provider/scored path. Construction retains its strict task-plan boundary;
+                # the other curriculum stages retain the frozen direct-controller contract.
+                if spec.task_id == "construction-v0":
+                    adapter = ConstructionTaskProvider(
+                        ScriptedConstructionDemoProvider(),
+                        package,
+                        task_timeout_ticks=demo_task_timeout_ticks,
+                    )
+                else:
+                    adapter = ScriptedSoloDemoProvider(spec.task_id)
+            else:
+                if credential is None:
+                    raise ValueError("live provider credential is unavailable")
+                adapter = provider_adapter(spec.provider, credential)
+                if spec.task_id == "construction-v0":
+                    adapter = ConstructionTaskProvider(adapter, package)
             return await LiveSoloRunner(
                 config=config,
                 session=session,
@@ -104,12 +160,28 @@ def default_episode_service(
                 protocol_package=package,
                 provider_timeout_s=provider_timeout_s,
                 frame_publisher=publish_frame,
+                progress_publisher=publish_progress,
             ).run(cancel_event=cancel_event)
         finally:
+            if preview_registered:
+                ingress.unregister(ticket)
             endpoint.cancel(ticket)
-            await close_provider_adapter(adapter)
+            if adapter is not None:
+                await close_provider_adapter(adapter)
 
-    return EpisodeService(execute)
+    replay_archive = (
+        SavedReplayArchive(
+            runs_dir=runs_dir,
+            protocol_package=package,
+            godot_executable=godot_executable,
+            godot_project_path=godot_project_path,
+            ffmpeg_executable=ffmpeg_executable,
+        )
+        if runs_dir is not None and ffmpeg_executable is not None
+        else None
+    )
+    service = EpisodeService(execute, replay_archive=replay_archive)
+    return service
 
 
 def provider_adapter(provider: str, credential: SessionCredential) -> Any:

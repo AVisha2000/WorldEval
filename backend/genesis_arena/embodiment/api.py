@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from fastapi import APIRouter, Body, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Body,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import FileResponse
 
 from .duel.service import (
     DuelSeriesEvidenceNotReadyError,
@@ -18,6 +28,10 @@ from .episode_service import (
     EpisodeService,
 )
 from .readiness import PilotReadinessStore
+from .scripted_construction_demo import (
+    SCRIPTED_CONSTRUCTION_PROVIDER,
+)
+from .scripted_solo_demo import is_scripted_solo_demo
 
 router = APIRouter(tags=["LLM Controller"])
 _BODY = Body(...)
@@ -34,7 +48,7 @@ _CREATE_FIELDS = frozenset(
 )
 
 
-def _service(request: Request) -> EpisodeService:
+def _service(request: Request | WebSocket) -> EpisodeService:
     service = getattr(request.app.state, "embodiment_episodes", None)
     if not isinstance(service, EpisodeService):
         raise RuntimeError("Embodiment episode service is not configured")
@@ -117,6 +131,47 @@ async def get_episode_frame(request: Request, episode_id: str) -> Response:
     return Response(content=view.snapshot.png, media_type="image/png", headers=headers)
 
 
+@router.websocket("/api/embodiment/episodes/{episode_id}/preview")
+async def stream_episode_preview(websocket: WebSocket, episode_id: str) -> None:
+    """Newest-frame-only participant-pixel preview; no JSON is sent on this channel."""
+    try:
+        token, queue, initial = await _service(websocket).preview_subscription(episode_id)
+    except EpisodeNotFoundError:
+        await websocket.close(code=4404)
+        return
+    await websocket.accept()
+    try:
+        if initial is not None:
+            await websocket.send_bytes(initial.png)
+        while True:
+            await websocket.send_bytes((await queue.get()).png)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await _service(websocket).unsubscribe_preview(episode_id, token)
+
+
+@router.websocket("/api/embodiment/episodes/{episode_id}/preview-live")
+async def stream_live_episode_preview(websocket: WebSocket, episode_id: str) -> None:
+    """Direct Godot presentation pixels only; canonical snapshot/replay traffic stays separate."""
+
+    try:
+        token, queue, initial = await _service(websocket).live_preview_subscription(episode_id)
+    except EpisodeNotFoundError:
+        await websocket.close(code=4404)
+        return
+    await websocket.accept()
+    try:
+        if initial is not None:
+            await websocket.send_bytes(initial.png)
+        while True:
+            await websocket.send_bytes((await queue.get()).png)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await _service(websocket).unsubscribe_live_preview(episode_id, token)
+
+
 @router.get("/api/embodiment/episodes/{episode_id}/result")
 async def get_episode_result(
     request: Request, response: Response, episode_id: str
@@ -150,6 +205,66 @@ async def get_episode_replay(request: Request, episode_id: str) -> Response:
         content=bundle.bundle_bytes,
         media_type="application/json",
         headers={"Cache-Control": "no-store", "X-Content-SHA256": bundle.content_sha256},
+    )
+
+
+@router.get("/api/embodiment/replays")
+async def list_saved_replays(
+    request: Request, response: Response, limit: int = Query(default=50, ge=1, le=100)
+) -> Mapping[str, Any]:
+    """List durable participant-video replays, never their protected authority inputs."""
+
+    response.headers["Cache-Control"] = "no-store"
+    replays = await _service(request).saved_replays(limit=limit)
+    return {"replays": [replay.public_dict() for replay in replays]}
+
+
+@router.get("/api/embodiment/replays/{replay_id}")
+async def get_saved_replay(
+    request: Request, response: Response, replay_id: str
+) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "no-store"
+    replay = await _service(request).saved_replay(replay_id)
+    if replay is None:
+        raise HTTPException(status_code=404, detail={"code": "embodiment_saved_replay_not_found"})
+    return replay.public_dict()
+
+
+@router.api_route("/api/embodiment/replays/{replay_id}/video", methods=["GET", "HEAD"])
+async def get_saved_replay_video(request: Request, replay_id: str) -> Response:
+    """Return only a local participant-pixel MP4; raw replay bytes have no API route."""
+
+    target = await _service(request).saved_replay_video_path(replay_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail={"code": "embodiment_saved_replay_not_found"})
+    return FileResponse(
+        target,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "default-src 'none'; sandbox",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/api/embodiment/replays/{replay_id}/bundle")
+async def get_saved_replay_public_bundle(request: Request, replay_id: str) -> Response:
+    """The same public evidence bundle retained beside the participant video."""
+
+    target = await _service(request).saved_replay_public_bundle_path(replay_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail={"code": "embodiment_saved_replay_not_found"})
+    try:
+        payload = target.read_bytes()
+    except OSError:
+        raise HTTPException(
+            status_code=404, detail={"code": "embodiment_saved_replay_not_found"}
+        ) from None
+    return Response(
+        content=payload,
+        media_type="application/json",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )
 
 
@@ -242,7 +357,7 @@ def _validate_create_payload(payload: Any) -> dict[str, Any]:
     invalid = HTTPException(status_code=422, detail={"code": "invalid_embodiment_episode_request"})
     if not isinstance(payload, dict) or not set(payload) <= _CREATE_FIELDS:
         raise invalid
-    required = {"api_key", "model", "provider", "seed", "task_id"}
+    required = {"model", "provider", "seed", "task_id"}
     if not required <= set(payload):
         raise invalid
     if any(not isinstance(payload[name], str) or not payload[name] for name in required - {"seed"}):
@@ -252,12 +367,23 @@ def _validate_create_payload(payload: Any) -> dict[str, Any]:
     maximum = payload.get("maximum_episode_ticks", 1800)
     if isinstance(maximum, bool) or not isinstance(maximum, int):
         raise invalid
+    provider = payload["provider"]
+    if provider == SCRIPTED_CONSTRUCTION_PROVIDER:
+        if "api_key" in payload or not is_scripted_solo_demo(
+            provider=provider, model=payload["model"], task_id=payload["task_id"]
+        ):
+            raise invalid
+        api_key: str | None = None
+    else:
+        api_key = payload.get("api_key")
+        if not isinstance(api_key, str) or not api_key:
+            raise invalid
     return {
-        "api_key": payload["api_key"],
+        "api_key": api_key,
         "maximum_episode_ticks": maximum,
         "model": payload["model"],
         "observation_profile": payload.get("observation_profile", "hybrid-visible-v1"),
-        "provider": payload["provider"],
+        "provider": provider,
         "seed": payload["seed"],
         "task_id": payload["task_id"],
     }

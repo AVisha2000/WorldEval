@@ -36,6 +36,11 @@ func _test_composition(scene: Node) -> void:
 		_check(scene.has_node("ArenaStatic/%s" % boundary), "%s missing" % boundary)
 	_check(scene.has_node("OperatorProjection/Skeleton3D"), "reviewed Y Bot skeleton missing")
 	_check(scene.has_node("OperatorProjection/AnimationTree"), "Y Bot AnimationTree missing")
+	var skeleton := scene.get_node("OperatorProjection/Skeleton3D") as Node3D
+	_check(
+		skeleton != null and is_equal_approx(skeleton.rotation.y, PI),
+		"Y Bot visual forward-axis correction is missing",
+	)
 	_check(scene.has_node("OperatorProjection/ParticipantCameraRig/ParticipantCamera"), "third-person participant camera missing")
 	_check(not bool(scene.get_node("OperatorProjection").get_meta("presentation_placeholder", true)), "reviewed Y Bot is still marked as a placeholder")
 	_check(str(scene.get_node("OperatorProjection").get_meta("asset_identity", "")) == "mixamo-y-bot", "operator does not identify the approved Y Bot")
@@ -141,8 +146,22 @@ func _test_locomotion_follows_authority_heading(scene: Node) -> void:
 	_check(scene.apply_snapshot(walking), "turning walk snapshot was rejected")
 	var operator := scene.get_node("OperatorProjection") as Node3D
 	_check(
-		is_equal_approx(operator.rotation.y, 3.0 * PI / 4.0),
-		"walking Y Bot did not rotate to the authoritative heading",
+		is_equal_approx(operator.rotation.y, -3.0 * PI / 4.0),
+		"walking Y Bot yaw did not match the authoritative east/south heading",
+	)
+	var walking_forward := (operator.get_node("Skeleton3D") as Node3D).global_transform.basis.z
+	_check(
+		is_equal_approx(walking_forward.x, sqrt(0.5))
+			and is_equal_approx(walking_forward.z, sqrt(0.5)),
+		"walking Y Bot did not face its authoritative direction of travel",
+	)
+	var walking_camera: Camera3D = scene.participant_camera("participant_0")
+	var camera_offset := walking_camera.global_position - operator.global_position
+	var horizontal_camera_offset := Vector2(camera_offset.x, camera_offset.z).normalized()
+	_check(
+		is_equal_approx(horizontal_camera_offset.x, -sqrt(0.5))
+			and is_equal_approx(horizontal_camera_offset.y, -sqrt(0.5)),
+		"third-person camera is not trailing the walking Y Bot",
 	)
 	_check(str(operator.call("animation_state")) == "walk", "turning Y Bot stopped walking")
 	var running := walking.duplicate(true)
@@ -153,8 +172,14 @@ func _test_locomotion_follows_authority_heading(scene: Node) -> void:
 	running.operator.state = "run"
 	_check(scene.apply_snapshot(running), "turning run snapshot was rejected")
 	_check(
-		is_equal_approx(operator.rotation.y, 5.0 * PI / 4.0),
-		"running Y Bot did not continue rotating with authority",
+		is_equal_approx(operator.rotation.y, -5.0 * PI / 4.0),
+		"running Y Bot yaw did not match the authoritative west/south heading",
+	)
+	var running_forward := (operator.get_node("Skeleton3D") as Node3D).global_transform.basis.z
+	_check(
+		is_equal_approx(running_forward.x, -sqrt(0.5))
+			and is_equal_approx(running_forward.z, sqrt(0.5)),
+		"running Y Bot did not face its authoritative direction of travel",
 	)
 	_check(str(operator.call("animation_state")) == "run", "turning Y Bot stopped running")
 	var camera: Camera3D = scene.participant_camera("participant_0")

@@ -10,6 +10,9 @@ const SessionHost := preload(
 const GatewayClient := preload(
 	"res://scripts/embodiment/transport/embodiment_gateway_client.gd"
 )
+const PreviewPublisher := preload(
+	"res://scripts/embodiment/presentation/preview/embodiment_preview_publisher.gd"
+)
 const ProtocolPackageIdentity := preload(
 	"res://scripts/embodiment/protocol/embodiment_protocol_package_identity.gd"
 )
@@ -35,6 +38,9 @@ var _client = null
 var _host = null
 var _finished := false
 var _presentation_viewport: SubViewport = null
+# The publisher is loaded via the explicit preload above; leave this untyped so the managed CLI
+# remains parseable even when Godot has not indexed the new class_name in its global cache yet.
+var _preview_publisher = null
 
 
 func _init() -> void:
@@ -82,6 +88,22 @@ func _bootstrap() -> void:
 	var errors: PackedStringArray = _host.configure(
 		launch, secret, presentation_scene, _presentation_viewport
 	)
+	# Preview publication is deliberately best-effort.  It is configured only after the managed
+	# host has accepted its participant-filtered scene, and failure to configure it cannot affect
+	# authority, replay, scoring, or the canonical PNG snapshot path.
+	if errors.is_empty() and hybrid and str(launch.config.task_id) in [
+		"orientation-v0", "interaction-v0", "construction-v0", "neutral-encounter-v0",
+	]:
+		_preview_publisher = PreviewPublisher.new()
+		root.add_child(_preview_publisher)
+		var preview_errors: PackedStringArray = _preview_publisher.configure(
+			str(launch.gateway_url), str(launch.attachment_ticket), episode_id, secret,
+			_presentation_viewport, presentation_scene,
+		)
+		if not preview_errors.is_empty():
+			_preview_publisher.close()
+			_preview_publisher.queue_free()
+			_preview_publisher = null
 	_scrub_bytes(secret)
 	launch.erase("session_secret")
 	if not errors.is_empty():
@@ -159,6 +181,7 @@ func _on_closed() -> void:
 	if _finished:
 		return
 	_finished = true
+	_close_preview()
 	quit(0)
 
 
@@ -166,12 +189,20 @@ func _fail(code: String) -> void:
 	if _finished:
 		return
 	_finished = true
+	_close_preview()
 	_emit_control({
 		"code": code,
 		"kind": "embodiment_managed_error",
 		"schema_version": SCHEMA_VERSION,
 	})
 	quit(2)
+
+
+func _close_preview() -> void:
+	if _preview_publisher != null:
+		_preview_publisher.close()
+		_preview_publisher.queue_free()
+		_preview_publisher = null
 
 
 func _emit_control(value: Dictionary) -> void:

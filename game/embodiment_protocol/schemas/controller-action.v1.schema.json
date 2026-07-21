@@ -20,6 +20,7 @@
         "look_x": {"type": "integer", "minimum": -1000, "maximum": 1000},
         "look_y": {"type": "integer", "minimum": -1000, "maximum": 1000},
         "duration_ticks": {"type": "integer", "minimum": 1, "maximum": 20},
+        "autonomous_task": {"enum": ["gather_materials", "deliver_materials", "build_barricade", "wait"]},
         "buttons": {
           "type": "object",
           "additionalProperties": false,
