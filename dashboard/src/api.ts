@@ -408,6 +408,30 @@ export type CachedMazeEvaluationView = {
   }
 }
 
+export type CachedSoloShowcaseView = {
+  showcaseId: "solo-multi-action-v0"
+  taskId: "construction-v0"
+  scenarioId: "multi-action-demo-v0"
+  label: string
+  tagline: string
+  status: "ready"
+  cached: true
+  participant: { participantId: "participant_0"; displayName: string; model: string }
+  video: CachedRtsShowcaseView["video"]
+  highlights: Array<{ atSeconds: number; label: string }>
+  verification: {
+    state: "verified"
+    renderer: "godot-movie-maker+ffmpeg"
+    releaseProfile: "worldarena-participant-1080p30-v1"
+    evidenceSha256: string
+    replaySha256: string
+    finalStateSha256: string
+    protocolPackageSha256: string
+    protocolVersion: "llm-controller/0.1.0"
+    authorityTicks: number
+  }
+}
+
 export type CrossroadsFactionId = "sol" | "luna" | "terra"
 
 export type CachedCrossroadsEntrant = {
@@ -1055,6 +1079,16 @@ export async function getCachedMazeEvaluation(): Promise<CachedMazeEvaluationVie
 
 export function cachedMazeVideoUrl(): string {
   return "/api/embodiment/showcases/trio-maze-race-v0/video"
+}
+
+export async function getCachedSoloShowcase(): Promise<CachedSoloShowcaseView> {
+  return parseCachedSoloShowcase(await checked<unknown>(
+    await fetch("/api/embodiment/showcases/solo-multi-action-v0", { cache: "force-cache" })
+  ))
+}
+
+export function cachedSoloVideoUrl(): string {
+  return "/api/embodiment/showcases/solo-multi-action-v0/video"
 }
 
 export async function getCachedCrossroadsShowcase(): Promise<CachedCrossroadsShowcaseView> {
@@ -1736,6 +1770,79 @@ function parseCachedRtsShowcase(raw: unknown): CachedRtsShowcaseView {
       width,
     },
     winner: { team }, completion, casualties, highlights,
+  }
+}
+
+function parseCachedSoloShowcase(raw: unknown): CachedSoloShowcaseView {
+  const value = objectValue(raw, "Cached solo showcase")
+  const participant = objectValue(value.participant, "Cached solo participant")
+  const video = objectValue(value.video, "Cached solo video")
+  const verification = objectValue(value.verification, "Cached solo verification")
+  const label = safePublicText(value.label, 180)
+  const tagline = safePublicText(value.tagline, 240)
+  const displayName = safePublicText(participant.display_name, 72)
+  const model = safePublicText(participant.model, 72)
+  const durationSeconds = typeof video.duration_seconds === "number" &&
+    Number.isFinite(video.duration_seconds) && video.duration_seconds > 0
+    ? video.duration_seconds
+    : null
+  const fps = publicPositiveInteger(video.fps)
+  const width = publicPositiveInteger(video.width)
+  const height = publicPositiveInteger(video.height)
+  const authorityTicks = publicPositiveInteger(verification.authority_ticks)
+  if (
+    value.showcase_id !== "solo-multi-action-v0" || value.task_id !== "construction-v0" ||
+    value.scenario_id !== "multi-action-demo-v0" || value.status !== "ready" ||
+    value.cached !== true || participant.participant_id !== "participant_0" ||
+    !label || !tagline || !displayName || !model || !durationSeconds || !fps || !width ||
+    !height || video.mime_type !== "video/mp4" || !sha256Value(video.sha256) ||
+    verification.state !== "verified" || verification.renderer !== "godot-movie-maker+ffmpeg" ||
+    verification.release_profile !== "worldarena-participant-1080p30-v1" ||
+    verification.protocol_version !== "llm-controller/0.1.0" || !authorityTicks ||
+    !sha256Value(verification.evidence_sha256) || !sha256Value(verification.replay_sha256) ||
+    !sha256Value(verification.final_state_sha256) ||
+    !sha256Value(verification.protocol_package_sha256) || !Array.isArray(value.highlights)
+  ) throw new Error("Cached solo showcase is invalid")
+  let previousSecond = -1
+  const highlights = value.highlights.map((child) => {
+    const item = objectValue(child, "Cached solo highlight")
+    const atSeconds = publicNonNegativeInteger(item.at_seconds)
+    const itemLabel = safePublicText(item.label, 180)
+    if (atSeconds === null || atSeconds <= previousSecond || atSeconds > durationSeconds || !itemLabel)
+      throw new Error("Cached solo showcase is invalid")
+    previousSecond = atSeconds
+    return { atSeconds, label: itemLabel }
+  })
+  if (!highlights.length) throw new Error("Cached solo showcase is invalid")
+  return {
+    showcaseId: "solo-multi-action-v0",
+    taskId: "construction-v0",
+    scenarioId: "multi-action-demo-v0",
+    label,
+    tagline,
+    status: "ready",
+    cached: true,
+    participant: { participantId: "participant_0", displayName, model },
+    video: {
+      durationSeconds,
+      fps,
+      height,
+      mimeType: "video/mp4",
+      sha256: video.sha256 as string,
+      width,
+    },
+    highlights,
+    verification: {
+      state: "verified",
+      renderer: "godot-movie-maker+ffmpeg",
+      releaseProfile: "worldarena-participant-1080p30-v1",
+      evidenceSha256: verification.evidence_sha256 as string,
+      replaySha256: verification.replay_sha256 as string,
+      finalStateSha256: verification.final_state_sha256 as string,
+      protocolPackageSha256: verification.protocol_package_sha256 as string,
+      protocolVersion: "llm-controller/0.1.0",
+      authorityTicks,
+    },
   }
 }
 

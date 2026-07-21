@@ -35,6 +35,7 @@ type Props = {
   onQuickStart: () => void
   onTeamQuickStart: () => void
   onRtsQuickStart: () => void
+  onSoloQuickStart: () => void
   onMazeQuickStart: () => void
   onCrossroadsQuickStart: () => void
 }
@@ -78,7 +79,7 @@ const crossroadsEntrants = [
   { name: "Terra", glyph: "□", tone: "terra" },
 ] as const
 
-type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onMazeQuickStart" | "onCrossroadsQuickStart"> & {
+type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onSoloQuickStart" | "onMazeQuickStart" | "onCrossroadsQuickStart"> & {
   mode: EpisodeSetup["mode"]
   onSelectMode: (mode: EpisodeSetup["mode"]) => void
 }
@@ -90,6 +91,7 @@ function DemoLibrary({
   onMazeQuickStart,
   onQuickStart,
   onRtsQuickStart,
+  onSoloQuickStart,
   onSelectMode,
   onTeamQuickStart,
 }: DemoLibraryProps) {
@@ -102,6 +104,15 @@ function DemoLibrary({
         </div>
         <span><CheckCircle2Icon />Ready</span>
       </header>
+
+      <article className="saved-demo saved-demo--solo">
+        <div className="saved-demo-path"><ArchiveIcon /><code>/saves/solo-multi-action.mp4</code></div>
+        <h3>Solo Multi-Action</h3>
+        <p>One verified participant turns, gathers, carries, deposits, builds, and celebrates.</p>
+        <Button type="button" size="lg" disabled={pending} onClick={onSoloQuickStart} className="saved-demo-action saved-demo-action--solo">
+          <PlayIcon data-icon="inline-start" />Play Solo Construction
+        </Button>
+      </article>
 
       <article className="saved-demo saved-demo--maze">
         <div className="saved-demo-path"><ArchiveIcon /><code>/saves/labyrinth-run.mp4</code></div>
@@ -168,7 +179,7 @@ function DemoLibrary({
   )
 }
 
-export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onMazeQuickStart, onCrossroadsQuickStart }: Props) {
+export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onSoloQuickStart, onMazeQuickStart, onCrossroadsQuickStart }: Props) {
   const isScriptedDemo = setup.controllerMode === "scripted_demo"
   const selectScriptedDemo = () => onChange({
     ...setup,
@@ -248,6 +259,7 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
         onMazeQuickStart={onMazeQuickStart}
         onQuickStart={onQuickStart}
         onRtsQuickStart={onRtsQuickStart}
+        onSoloQuickStart={onSoloQuickStart}
         onSelectMode={(mode) => onChange({ ...setup, mode })}
         onTeamQuickStart={onTeamQuickStart}
       /> : null}

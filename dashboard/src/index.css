@@ -251,6 +251,11 @@
     border-color: oklch(0.55 0.1 75 / 0.72);
     background: linear-gradient(145deg, oklch(0.19 0.035 75), oklch(0.155 0.018 295));
   }
+  .saved-demo--solo {
+    --save-accent: oklch(0.76 0.16 42);
+    border-color: oklch(0.58 0.1 42 / 0.72);
+    background: linear-gradient(145deg, oklch(0.2 0.04 42), oklch(0.155 0.018 65));
+  }
   .saved-demo--rts {
     --save-accent: oklch(0.7 0.14 165);
     background: linear-gradient(145deg, oklch(0.175 0.025 155), oklch(0.15 0.014 220));
@@ -330,6 +335,14 @@
     border-color: oklch(0.81 0.13 75 / 0.76);
     background: linear-gradient(135deg, oklch(0.66 0.18 75), oklch(0.51 0.17 295));
     color: white;
+  }
+  .saved-demo-action--solo {
+    border-color: oklch(0.82 0.13 42 / 0.76);
+    background: linear-gradient(135deg, oklch(0.7 0.17 42), oklch(0.58 0.15 70));
+    color: oklch(0.15 0.025 42);
+  }
+  .saved-demo-action--solo:hover {
+    background: linear-gradient(135deg, oklch(0.75 0.18 42), oklch(0.64 0.16 70));
   }
   .saved-demo-action--maze:hover {
     background: linear-gradient(135deg, oklch(0.71 0.19 75), oklch(0.57 0.18 295));

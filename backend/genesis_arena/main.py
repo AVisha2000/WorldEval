@@ -31,6 +31,7 @@ from .embodiment.presentation.preview_ingress import (
 )
 from .embodiment.readiness import PilotReadinessStore
 from .embodiment.rts_showcase import CachedRtsShowcase
+from .embodiment.solo_showcase import CachedSoloShowcase
 from .embodiment.transport import ManagedWebSocketEndpoint
 from .embodiment.trio_games.live_runtime import default_trio_series_service
 from .models import Observation, SimulationConfig
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Starting a dashboard session therefore never spends time or resources re-running the demo.
     app.state.embodiment_rts_showcase = CachedRtsShowcase.load(REPOSITORY_ROOT)
     app.state.embodiment_labyrinth_showcase = CachedLabyrinthRun.load(REPOSITORY_ROOT)
+    app.state.embodiment_solo_showcase = CachedSoloShowcase.load(REPOSITORY_ROOT)
     try:
         app.state.embodiment_crossroads_showcase = CachedCrossroadsShowcase.load(REPOSITORY_ROOT)
     except CrossroadsShowcaseError:

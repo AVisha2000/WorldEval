@@ -47,6 +47,40 @@ const cachedRtsEvaluation = {
   },
 }
 
+const cachedSoloShowcase = {
+  showcase_id: "solo-multi-action-v0",
+  task_id: "construction-v0",
+  scenario_id: "multi-action-demo-v0",
+  label: "Solo Multi-Action Construction",
+  tagline: "Turn, walk, gather, carry, deposit, build, and celebrate in one sealed run.",
+  status: "ready",
+  cached: true,
+  participant: {
+    participant_id: "participant_0",
+    display_name: "Demo Builder",
+    model: "construction-demo-v1",
+  },
+  video: {
+    duration_seconds: 121.9, fps: 30, height: 1080, mime_type: "video/mp4",
+    sha256: "0".repeat(64), width: 1920,
+  },
+  highlights: [
+    { at_seconds: 0, label: "Orient toward the visible worksite" },
+    { at_seconds: 94, label: "Build the visible barricade" },
+  ],
+  verification: {
+    state: "verified",
+    renderer: "godot-movie-maker+ffmpeg",
+    release_profile: "worldarena-participant-1080p30-v1",
+    evidence_sha256: "1".repeat(64),
+    replay_sha256: "2".repeat(64),
+    final_state_sha256: "3".repeat(64),
+    protocol_package_sha256: "4".repeat(64),
+    protocol_version: "llm-controller/0.1.0",
+    authority_ticks: 1194,
+  },
+}
+
 const cachedMazeShowcase = {
   showcase_id: "trio-maze-race-v0",
   task_id: "trio-maze-race-v0",
@@ -178,6 +212,7 @@ const cachedCrossroadsEvaluation = {
 function lifecycleFetch() {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
+    if (url.endsWith("/showcases/solo-multi-action-v0")) return response(cachedSoloShowcase)
     if (url.endsWith("/showcases/rts-skirmish-v0/evaluation")) return response(cachedRtsEvaluation)
     if (url.endsWith("/showcases/rts-skirmish-v0")) return response(cachedRtsShowcase)
     if (url.endsWith("/showcases/trio-maze-race-v0/evaluation")) return response(cachedMazeEvaluation)
@@ -265,6 +300,25 @@ describe("Controller dashboard", () => {
       maximum_episode_ticks: 1300,
     })
     expect(JSON.stringify(payload)).not.toMatch(/api_key|credential/)
+  })
+  it("opens the checked-in solo construction video without starting a run", async () => {
+    const user = userEvent.setup()
+    const fetch = lifecycleFetch()
+    vi.stubGlobal("fetch", fetch)
+    renderApp()
+
+    await user.click(screen.getByRole("button", { name: "Play Solo Construction" }))
+
+    expect(await screen.findByRole("heading", { name: "Solo Multi-Action Construction" }))
+      .toBeInTheDocument()
+    expect(screen.getByLabelText("Cached solo multi-action showcase").querySelector("video"))
+      .toHaveAttribute("src", "/api/embodiment/showcases/solo-multi-action-v0/video")
+    expect(screen.getByText(/1920×1080/)).toBeInTheDocument()
+    expect(fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
+
+    await user.click(screen.getByRole("tab", { name: "Replay" }))
+    expect(await screen.findByText("Immutable native-video identity")).toBeInTheDocument()
+    expect(screen.getByText("1".repeat(64))).toBeInTheDocument()
   })
   it("quick starts the coloured Alpha versus Bravo Central Relay team demo without credentials", async () => {
     const user = userEvent.setup()

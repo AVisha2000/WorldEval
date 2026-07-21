@@ -48,6 +48,7 @@ from .scripted_construction_demo import (
     SCRIPTED_CONSTRUCTION_PROVIDER,
 )
 from .scripted_solo_demo import is_scripted_solo_demo
+from .solo_showcase import CachedSoloShowcase
 from .trio_games.common import TRIO_PARTICIPANT_IDS
 from .trio_games.service import (
     TrioSeriesNotFoundError,
@@ -120,6 +121,13 @@ def _labyrinth_showcase(request: Request) -> CachedLabyrinthRun:
     return showcase
 
 
+def _solo_showcase(request: Request) -> CachedSoloShowcase:
+    showcase = getattr(request.app.state, "embodiment_solo_showcase", None)
+    if not isinstance(showcase, CachedSoloShowcase):
+        raise RuntimeError("Solo showcase is not configured")
+    return showcase
+
+
 def _crossroads_showcase(request: Request) -> CachedCrossroadsShowcase:
     showcase = getattr(request.app.state, "embodiment_crossroads_showcase", None)
     if not isinstance(showcase, CachedCrossroadsShowcase):
@@ -173,6 +181,25 @@ async def get_labyrinth_showcase_video(request: Request) -> FileResponse:
         media_type="video/mp4",
         headers={
             "Cache-Control": "public, max-age=3600",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/api/embodiment/showcases/solo-multi-action-v0")
+async def get_solo_showcase(request: Request, response: Response) -> Mapping[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=3600, immutable"
+    return _solo_showcase(request).public_view()
+
+
+@router.get("/api/embodiment/showcases/solo-multi-action-v0/video")
+async def get_solo_showcase_video(request: Request) -> FileResponse:
+    return FileResponse(
+        _solo_showcase(request).video_path,
+        media_type="video/mp4",
+        headers={
+            "Cache-Control": "public, max-age=3600, immutable",
             "Content-Security-Policy": "default-src 'none'",
             "X-Content-Type-Options": "nosniff",
         },

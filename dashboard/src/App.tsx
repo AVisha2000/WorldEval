@@ -6,6 +6,7 @@ import type {
   CachedMazeShowcaseView,
   CachedRtsEvaluationView,
   CachedRtsShowcaseView,
+  CachedSoloShowcaseView,
   EpisodeSetup,
 } from "@/api"
 import {
@@ -19,6 +20,7 @@ import {
   getCachedMazeShowcase,
   getCachedRtsEvaluation,
   getCachedRtsShowcase,
+  getCachedSoloShowcase,
   getEpisode,
   getEpisodeTimeline,
 } from "@/api"
@@ -26,6 +28,7 @@ import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { CrossroadsWorkspace } from "@/components/crossroads-workspace"
 import { EpisodeWorkspace, ReplaySpeedControls } from "@/components/episode-workspace"
 import { SetupPanel } from "@/components/setup-panel"
+import { SoloShowcaseWorkspace } from "@/components/solo-showcase-workspace"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const INITIAL_SETUP: EpisodeSetup = {
@@ -268,7 +271,7 @@ export function App() {
   const [setup, setSetup] = useState(INITIAL_SETUP)
   const submittedSetup = useRef<EpisodeSetup | null>(null)
   const [episodeId, setEpisodeId] = useState<string | null>(null)
-  const [showcase, setShowcase] = useState<"rts" | "maze" | "crossroads" | null>(null)
+  const [showcase, setShowcase] = useState<"solo" | "rts" | "maze" | "crossroads" | null>(null)
   const [selected, setSelected] = useState(0)
   const [view, setView] = useState("run")
   const create = useMutation({
@@ -330,6 +333,13 @@ export function App() {
     queryKey: ["cached-rts-evaluation"],
     queryFn: getCachedRtsEvaluation,
     enabled: showcase === "rts" && (view === "evaluation" || view === "replay"),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  })
+  const cachedSoloShowcase = useQuery<CachedSoloShowcaseView>({
+    queryKey: ["cached-solo-showcase"],
+    queryFn: getCachedSoloShowcase,
+    enabled: showcase === "solo",
     staleTime: 60 * 60 * 1000,
     retry: false,
   })
@@ -401,6 +411,11 @@ export function App() {
             setEpisodeId(null)
             setView("run")
           }}
+          onSoloQuickStart={() => {
+            setShowcase("solo")
+            setEpisodeId(null)
+            setView("run")
+          }}
           onMazeQuickStart={() => {
             setShowcase("maze")
             setEpisodeId(null)
@@ -412,7 +427,13 @@ export function App() {
             setView("run")
           }}
         />
-        {showcase === "rts" ? (
+        {showcase === "solo" ? (
+          <SoloShowcaseWorkspace
+            showcase={cachedSoloShowcase.data}
+            showcaseError={cachedSoloShowcase.isError}
+            view={view}
+          />
+        ) : showcase === "rts" ? (
           <CachedRtsWorkspace
             evaluation={cachedEvaluation.data}
             evaluationError={cachedEvaluation.isError}

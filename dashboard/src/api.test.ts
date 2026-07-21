@@ -5,6 +5,7 @@ import {
   bundleUrl,
   cachedCrossroadsVideoUrl,
   cachedRtsVideoUrl,
+  cachedSoloVideoUrl,
   cancelRun,
   createEpisode,
   createRun,
@@ -13,6 +14,7 @@ import {
   getCachedCrossroadsShowcase,
   getCachedRtsEvaluation,
   getCachedRtsShowcase,
+  getCachedSoloShowcase,
   getEpisodeEvaluation,
   getEpisodeTimeline,
   getParticipantFrame,
@@ -82,7 +84,7 @@ describe("cached RTS showcase routes", () => {
   }
 
   it("reads only safe cached metadata and has no browser replay route", async () => {
-    const fetch = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
       const route = String(input)
       return response(route.endsWith("/evaluation") ? evaluation : showcase)
     })
@@ -111,6 +113,64 @@ describe("cached RTS showcase routes", () => {
       await expect(getCachedRtsShowcase()).rejects.toThrow("Cached RTS showcase is invalid")
     },
   )
+})
+
+describe("cached solo showcase route", () => {
+  const showcase = {
+    showcase_id: "solo-multi-action-v0",
+    task_id: "construction-v0",
+    scenario_id: "multi-action-demo-v0",
+    label: "Solo Multi-Action Construction",
+    tagline: "Turn, walk, gather, carry, deposit, build, and celebrate in one sealed run.",
+    status: "ready",
+    cached: true,
+    participant: {
+      participant_id: "participant_0",
+      display_name: "Demo Builder",
+      model: "construction-demo-v1",
+    },
+    video: {
+      duration_seconds: 121.9,
+      fps: 30,
+      height: 1080,
+      mime_type: "video/mp4",
+      sha256: "1".repeat(64),
+      width: 1920,
+    },
+    highlights: [
+      { at_seconds: 0, label: "Orient toward the visible worksite" },
+      { at_seconds: 94, label: "Build the visible barricade" },
+    ],
+    verification: {
+      state: "verified",
+      renderer: "godot-movie-maker+ffmpeg",
+      release_profile: "worldarena-participant-1080p30-v1",
+      evidence_sha256: "2".repeat(64),
+      replay_sha256: "3".repeat(64),
+      final_state_sha256: "4".repeat(64),
+      protocol_package_sha256: "5".repeat(64),
+      protocol_version: "llm-controller/0.1.0",
+      authority_ticks: 1194,
+    },
+  }
+
+  it("loads the checked-in solo highlight and exposes its stable video route", async () => {
+    const fetch = vi.fn(async () => response(showcase))
+    vi.stubGlobal("fetch", fetch)
+
+    await expect(getCachedSoloShowcase()).resolves.toMatchObject({
+      showcaseId: "solo-multi-action-v0",
+      video: { durationSeconds: 121.9, width: 1920, height: 1080 },
+      verification: { state: "verified", authorityTicks: 1194 },
+    })
+    expect(cachedSoloVideoUrl()).toBe(
+      "/api/embodiment/showcases/solo-multi-action-v0/video"
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/embodiment/showcases/solo-multi-action-v0",
+      { cache: "force-cache" }
+    )
+  })
 })
 
 describe("cached Crossroads Conquest routes", () => {

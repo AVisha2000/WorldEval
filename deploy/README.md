@@ -12,6 +12,11 @@ for the backend-to-Godot attachment channels. Both prefixes therefore need expli
 handling. MP4s are returned by FastAPI `FileResponse` routes below `/api/`; Nginx forwards range
 headers and streams those responses without temporary-file buffering.
 
+The repository carries four core hosted videos under `godot/showcases/`: Solo Multi-Action
+Construction, Labyrinth Run, Mini RTS Skirmish, and Crossroads Conquest. The API validates their
+checked-in hashes/evidence at startup and serves them without depending on `runs/`, `exports/`, or
+files from the machine that performed the deployment.
+
 ## Install or update
 
 From the repository root on the host:
@@ -38,8 +43,10 @@ as `lissan`, so that user must be able to write `runs/` and read the checked-in 
 ```bash
 curl -fsS https://lab.openai-buildweek.lissan.dev/health
 curl -fsSI https://lab.openai-buildweek.lissan.dev/
-curl -fsSI -H 'Range: bytes=0-1023' \
+curl -fsS -D - -o /dev/null -H 'Range: bytes=0-1023' \
   https://lab.openai-buildweek.lissan.dev/api/embodiment/showcases/trio-maze-race-v0/video
+curl -fsS -D - -o /dev/null -H 'Range: bytes=0-1023' \
+  https://lab.openai-buildweek.lissan.dev/api/embodiment/showcases/solo-multi-action-v0/video
 ```
 
 The ranged video request should return `206 Partial Content`. A live run in the browser additionally
