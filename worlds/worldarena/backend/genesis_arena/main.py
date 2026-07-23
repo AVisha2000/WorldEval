@@ -9,6 +9,9 @@ from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnec
 from pydantic import ValidationError
 from worldarena.conversational_sandbox.api import router as conversational_sandbox_router
 from worldarena.conversational_sandbox.godot import GodotConversationWarehouseRunner
+from worldarena.conversational_sandbox.interpreter import (
+    create_visible_referent_interpreter,
+)
 from worldarena.conversational_sandbox.service import ConversationSandboxService
 from worldarena.paths import WORLDARENA_GAMES_ROOT
 from worldarena.primitive_sandbox.api import router as primitive_sandbox_router
@@ -81,6 +84,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             scenario_path=WORLDARENA_GAMES_ROOT / "conversational-warehouse" / "scenario.json",
         ),
         replay_root=settings.runs_dir / "replays",
+        interpreter=create_visible_referent_interpreter(
+            mode=settings.conversation_mode,
+            model=settings.conversation_model,
+        ),
     )
     app.state.duel_matches = default_duel_match_service(
         port=settings.port,

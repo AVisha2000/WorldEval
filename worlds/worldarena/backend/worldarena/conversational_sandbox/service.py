@@ -18,6 +18,10 @@ from worldeval.replay import (
 )
 
 from .godot import NATIVE_SCHEMA, NATIVE_VERIFIER, GodotConversationWarehouseRunner
+from .interpreter import (
+    DemoVisibleReferentInterpreter,
+    VisibleReferentInterpreter,
+)
 
 SCENARIO_ID = "warehouse-pickup-clarification-v0"
 
@@ -38,6 +42,8 @@ class _Session:
     messages: list[dict[str, str]] = field(default_factory=list)
     snapshot: Mapping[str, Any] | None = None
     intent_id: str | None = None
+    target_id: str | None = None
+    binding_id: str | None = None
     clarification_id: str | None = None
     status: str = "awaiting_message"
     replay: dict[str, Any] = field(
@@ -51,8 +57,19 @@ class _Session:
 
 
 class ConversationSandboxService:
-    def __init__(self, *, runner: GodotConversationWarehouseRunner, replay_root: Path) -> None:
-        self.runner, self.replay_root, self.sessions = runner, Path(replay_root).resolve(), {}
+    def __init__(
+        self,
+        *,
+        runner: GodotConversationWarehouseRunner,
+        replay_root: Path,
+        interpreter: VisibleReferentInterpreter | None = None,
+    ) -> None:
+        self.runner, self.replay_root, self.sessions = (
+            runner,
+            Path(replay_root).resolve(),
+            {},
+        )
+        self.interpreter = interpreter or DemoVisibleReferentInterpreter()
         self.scenario = strict_json_loads(runner.scenario_path.read_bytes())
         self.initialization_hash = (
             "sha256:"
@@ -62,6 +79,15 @@ class ConversationSandboxService:
                 )
             ).hexdigest()
         )
+        self.objects = {
+            str(item["object_id"]): item
+            for item in self.scenario["objects"]
+            if isinstance(item, dict)
+        }
+        self.binding_targets = {
+            "binding-blue-large": "box-blue-large-1",
+            "binding-blue-small": "box-blue-small-1",
+        }
 
     def catalog(self) -> Mapping[str, Any]:
         return {
@@ -70,6 +96,7 @@ class ConversationSandboxService:
             "actionProfile": "warehouse-direct-actions-v1",
             "observationProfile": "warehouse-visible-v1",
             "decisionProfile": "dynamic-step-locked-v1",
+            "groundingInterpreter": self.interpreter.name,
             "scenarios": [
                 {
                     "scenarioId": SCENARIO_ID,
@@ -104,6 +131,21 @@ class ConversationSandboxService:
         )
         if session.intent_id is not None:
             return self._projection(session)
+        candidate_ids = self.interpreter.candidates(
+            text=clean,
+            visible_objects=list(self.objects.values()),
+        )
+        allowed_ids = set(self.binding_targets.values())
+        candidate_ids = tuple(item for item in candidate_ids if item in allowed_ids)
+        if not candidate_ids:
+            session.messages.append(
+                {
+                    "messageId": f"message-{len(session.messages) + 1}",
+                    "role": "agent",
+                    "text": "I cannot identify a visible portable box for that request.",
+                }
+            )
+            return self._projection(session)
         session.intent_id = "intent-001"
         session.history.extend(
             [
@@ -116,7 +158,7 @@ class ConversationSandboxService:
                 {
                     "kind": "binding.request",
                     "intent_id": session.intent_id,
-                    "candidate_ids": ["box-blue-large-1", "box-blue-small-1"],
+                    "candidate_ids": list(candidate_ids),
                 },
             ]
         )
@@ -138,38 +180,56 @@ class ConversationSandboxService:
         if (
             session.status != "clarification_required"
             or clarification_id != session.clarification_id
-            or binding_id != "binding-blue-large"
+            or binding_id not in self.binding_targets
         ):
             raise ConversationSessionConflict("clarification is stale or unavailable")
+        target_id = self.binding_targets[binding_id]
+        target = self.objects[target_id]
+        session.target_id, session.binding_id = target_id, binding_id
         session.history.append(
             {
                 "kind": "binding.resolve",
                 "intent_id": session.intent_id,
                 "binding_id": binding_id,
-                "object_id": "box-blue-large-1",
-                "generation": 1,
+                "object_id": target_id,
+                "generation": int(target["generation"]),
             }
         )
         session.snapshot = self._advance(session)
         # The planner emits individual authority commands. It never delegates a route.
-        for command in self._commands(session, binding_id):
+        for command in self._commands(session, binding_id, target):
             session.history.append({"kind": "command", "command": command})
             session.snapshot = self._advance(session)
-        session.status = "completed" if session.snapshot["terminal"] else "failed"
+        session.status = (
+            "completed"
+            if session.snapshot["replay"]["terminal_outcome"] == "delivered"
+            else "failed"
+        )
+        completion_text = (
+            f"Delivered the {target['traits']['size']} blue box to loading bay B. "
+            "The barrier required an explicit detour."
+            if session.status == "completed"
+            else (
+                f"I delivered the {target['traits']['size']} blue box, but it was not "
+                "the scenario's required box. The attempt is recorded as a failure."
+            )
+        )
         session.messages.append(
             {
                 "messageId": f"message-{len(session.messages) + 1}",
                 "role": "agent",
-                "text": (
-                    "Delivered the large blue box to loading bay B. The barrier "
-                    "required an explicit detour."
-                ),
+                "text": completion_text,
             }
         )
         self._seal(session)
         return self._projection(session)
 
-    def _commands(self, session: _Session, binding_id: str) -> list[dict[str, Any]]:
+    def _commands(
+        self,
+        session: _Session,
+        binding_id: str,
+        target: Mapping[str, Any],
+    ) -> list[dict[str, Any]]:
         assert session.snapshot is not None and session.intent_id is not None
 
         def source() -> dict[str, Any]:
@@ -182,7 +242,7 @@ class ConversationSandboxService:
 
         # Commands are executed one-by-one below, so compute each source lazily.
         templates = [
-            {"type": "move", "target": {"x": 4, "y": 3}},
+            {"type": "move", "target": dict(target["position"])},
             {"type": "pickup"},
             {"type": "move", "target": {"x": 13, "y": 5}},
             {"type": "replan"},
@@ -214,7 +274,7 @@ class ConversationSandboxService:
                 observation = snapshot["observation"]
                 command.setdefault("intent_id", session.intent_id)
                 if command["type"] != "replan":
-                    command.setdefault("binding_id", "binding-blue-large")
+                    command.setdefault("binding_id", session.binding_id)
                 command["source"] = {
                     "observation_seq": observation["observation_seq"],
                     "tick": observation["tick"],
@@ -233,9 +293,10 @@ class ConversationSandboxService:
     def _seal(self, session: _Session) -> None:
         replay = session.snapshot["replay"]
         verification = self.runner.verify_native_replay(replay)
+        target = self.objects[session.target_id or "box-blue-large-1"]
         objective = {
-            "objective_id": "deliver-blue-large-to-bay-b",
-            "instruction": "Deliver the large blue box to loading bay B.",
+            "objective_id": f"deliver-{target['object_id']}-to-bay-b",
+            "instruction": (f"Deliver the {target['traits']['size']} blue box to loading bay B."),
         }
         initialization = {
             "protocol": "worldeval-conversation/0.1.0",
@@ -354,14 +415,24 @@ class ConversationSandboxService:
         }
 
     def _projection(self, session: _Session) -> Mapping[str, Any]:
-        receipts = (
-            []
-            if not session.snapshot
-            else [
-                {"code": item["code"], "accepted": item["accepted"], "tick": item["tick"]}
-                for item in session.snapshot["replay"]["receipts"]
-            ]
-        )
+        native_receipts = [] if not session.snapshot else session.snapshot["replay"]["receipts"]
+        receipts = [
+            {
+                "receiptId": item["receipt_id"],
+                "label": item["code"].replace("_", " "),
+                "state": (
+                    "completed"
+                    if item["accepted"] and item["code"] in {"pickup_complete", "place_complete"}
+                    else "accepted"
+                    if item["accepted"]
+                    else "suspended"
+                    if item["code"] == "movement_blocked"
+                    else "rejected"
+                ),
+            }
+            for item in native_receipts
+        ]
+        binding_status = "bound" if session.binding_id else "candidate"
         return {
             "sessionId": session.session_id,
             "scenarioId": SCENARIO_ID,
@@ -379,30 +450,71 @@ class ConversationSandboxService:
                     {
                         "bindingId": "binding-blue-large",
                         "label": "large blue box",
-                        "objectId": "box-blue-large-1",
-                    }
+                        "status": (
+                            "bound"
+                            if session.binding_id == "binding-blue-large"
+                            else "rejected"
+                            if session.binding_id
+                            else binding_status
+                        ),
+                    },
+                    {
+                        "bindingId": "binding-blue-small",
+                        "label": "small blue box",
+                        "status": (
+                            "bound"
+                            if session.binding_id == "binding-blue-small"
+                            else "rejected"
+                            if session.binding_id
+                            else binding_status
+                        ),
+                    },
                 ],
                 "clarification": None
                 if session.status != "clarification_required"
                 else {
                     "clarificationId": session.clarification_id,
                     "prompt": "Which blue box?",
-                    "options": [{"bindingId": "binding-blue-large", "label": "large blue box"}],
+                    "options": [
+                        {"bindingId": "binding-blue-large", "label": "large blue box"},
+                        {"bindingId": "binding-blue-small", "label": "small blue box"},
+                    ],
                 },
             },
             "constraints": [
-                "Godot is the gameplay authority",
-                "The planner must explicitly route around barriers",
+                {
+                    "constraintId": "godot-authority",
+                    "label": "Godot is the gameplay authority.",
+                    "kind": "hard",
+                    "state": "active",
+                },
+                {
+                    "constraintId": "explicit-detour",
+                    "label": "The planner must explicitly route around barriers.",
+                    "kind": "safety",
+                    "state": "satisfied"
+                    if any(item["code"] == "replan_accepted" for item in native_receipts)
+                    else "active",
+                },
             ],
-            "plan": {
+            "plan": None
+            if not session.intent_id
+            else {
                 "planId": "warehouse-plan-001" if session.intent_id else None,
                 "status": session.status,
                 "steps": [
                     {
-                        "label": receipt["code"],
-                        "status": "completed" if receipt["accepted"] else "interrupted",
+                        "stepId": f"step-{index + 1}",
+                        "label": receipt["label"],
+                        "state": (
+                            "completed"
+                            if receipt["state"] in {"accepted", "completed"}
+                            else "suspended"
+                            if receipt["state"] == "suspended"
+                            else "aborted"
+                        ),
                     }
-                    for receipt in receipts
+                    for index, receipt in enumerate(receipts)
                 ],
             },
             "receipts": receipts,

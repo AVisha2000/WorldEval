@@ -7,6 +7,7 @@ const SCENARIO := "res://../games/conversational-warehouse/scenario.json"
 func _init() -> void:
 	_test_ambiguity_requires_clarification()
 	_test_bound_delivery_requires_explicit_replan()
+	_test_wrong_bound_box_is_a_terminal_failure()
 	_test_revoked_binding_is_rejected()
 	print("CONVERSATIONAL_WAREHOUSE_GODOT_TESTS_OK")
 	quit(0)
@@ -49,6 +50,16 @@ func _test_revoked_binding_is_rejected() -> void:
 	authority.revise_intent("intent-revise", 2)
 	var result: Dictionary = authority.command(_command(authority, "move", "intent-revise", "binding-old", {"x": 4, "y": 3}))
 	assert(result["receipt"]["code"] == "stale_or_revoked_binding")
+
+func _test_wrong_bound_box_is_a_terminal_failure() -> void:
+	var authority = _authority()
+	authority.begin_intent("intent-small", 1, "take the small blue box to bay B")
+	assert(authority.bind_target("intent-small", "binding-small-blue", "box-blue-small-1", 1)["receipt"]["accepted"])
+	_move(authority, "intent-small", "binding-small-blue", {"x": 4, "y": 6})
+	assert(authority.command(_command(authority, "pickup", "intent-small", "binding-small-blue"))["receipt"]["accepted"])
+	_move(authority, "intent-small", "binding-small-blue", {"x": 13, "y": 5})
+	assert(authority.command(_command(authority, "place", "intent-small", "binding-small-blue", {}, "loading-bay-b"))["receipt"]["accepted"])
+	assert(authority.terminal and authority.outcome == "wrong_box_delivered")
 
 func _authority():
 	var authority = Authority.new()

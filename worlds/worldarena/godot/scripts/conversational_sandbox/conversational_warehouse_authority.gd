@@ -254,6 +254,11 @@ func _place(value: Dictionary) -> Dictionary:
 	if placed_id == scenario["success"]["box_id"] and bay_id == scenario["success"]["bay_id"]:
 		terminal = true
 		outcome = "delivered"
+	elif bay_id == scenario["success"]["bay_id"]:
+		# A wrong but explicitly selected box is a terminal, replayable failure.
+		# The game records the outcome; it does not silently substitute a target.
+		terminal = true
+		outcome = "wrong_box_delivered"
 	return _emit_receipt("place", true, "place_complete", {"object_id": placed_id, "bay_id": bay_id})
 
 

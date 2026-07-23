@@ -9,3 +9,7 @@
   barrier interruption/replan, and an offline-verified committed replay. Future
   WEV-0008 work is to promote this candidate through its independent acceptance
   and recorded human behavioral/visual approval gates after cutover.
+- 2026-07-23: The candidate's OpenAI interpreter is deliberately limited to
+  candidate grounding over the current visible object catalog. It cannot emit
+  actions, coordinates, hidden IDs, or implicit continuations; action execution
+  remains validated and authority-owned by Godot.

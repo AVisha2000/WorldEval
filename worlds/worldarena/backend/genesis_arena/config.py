@@ -31,8 +31,7 @@ def _default_ffmpeg_executable() -> Path:
     """Use the checked-in local video tool when one is available."""
 
     candidates = (
-        WORKSPACE_ROOT
-        / ".video-tools/lib/python3.9/site-packages/imageio_ffmpeg/binaries/"
+        WORKSPACE_ROOT / ".video-tools/lib/python3.9/site-packages/imageio_ffmpeg/binaries/"
         "ffmpeg-macos-aarch64-v7.1",
         Path("/opt/homebrew/bin/ffmpeg"),
         Path("/usr/local/bin/ffmpeg"),
@@ -55,6 +54,8 @@ class Settings(BaseSettings):
 
     brain_mode: Literal["demo", "openai", "auto"] = "demo"
     openai_model: str = "gpt-5.6-sol"
+    conversation_mode: Literal["demo", "openai", "auto"] = "auto"
+    conversation_model: str = "gpt-5.6-sol"
     reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
@@ -63,9 +64,7 @@ class Settings(BaseSettings):
     memory_dir: Path = REPOSITORY_ROOT / "legacy" / "survival" / "memory"
     agents_dir: Path = REPOSITORY_ROOT / "legacy" / "survival" / "agents"
     runs_dir: Path = WORKSPACE_ROOT / "runs"
-    embodiment_readiness_path: Path = (
-        WORKSPACE_ROOT / "exports/embodiment-pilot/readiness.json"
-    )
+    embodiment_readiness_path: Path = WORKSPACE_ROOT / "exports/embodiment-pilot/readiness.json"
     godot_executable: Path = Field(default_factory=_default_godot_executable)
     godot_project_path: Path = REPOSITORY_ROOT / "godot"
     ffmpeg_executable: Path = Field(default_factory=_default_ffmpeg_executable)
