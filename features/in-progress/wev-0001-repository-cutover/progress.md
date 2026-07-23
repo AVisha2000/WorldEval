@@ -17,3 +17,4 @@
 - 2026-07-23: Verified the candidate with the conversation protocol tests, FastAPI session flow, provider-free Godot headless authority test, native replay reexecution, replay-bundle verification, and focused Controller Lab tests. The candidate remains governed by WEV-0001 until the cutover merge makes WEV-0008 independently claimable.
 - 2026-07-23: Hardened the conversational candidate after an end-to-end audit: the public session projection now conforms to the Controller Lab's strict safe schema; human clarification offers both visible blue-box candidates; the selected wrong box is a replayable terminal failure rather than a silent substitution; and `GENESIS_CONVERSATION_MODE=openai` enables a visible-object-only structured-output grounding interpreter when credentials are configured.
 - 2026-07-23T11:02:49Z: Completion evidence marked ready by codex-agent-team.
+- 2026-07-23T11:12:17Z: Completion evidence marked ready by codex-agent-team.
