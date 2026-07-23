@@ -13,3 +13,7 @@
   candidate grounding over the current visible object catalog. It cannot emit
   actions, coordinates, hidden IDs, or implicit continuations; action execution
   remains validated and authority-owned by Godot.
+- 2026-07-23: The candidate also exposes an optional one-action-per-decision-
+  boundary OpenAI planner. It is intentionally not an opaque skill executor:
+  only `move`, `pickup`, `place`, or `replan` can pass its validator, and the
+  backend adds the fresh authority source and binding before execution.

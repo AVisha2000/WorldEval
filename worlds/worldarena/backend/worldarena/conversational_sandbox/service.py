@@ -19,7 +19,9 @@ from worldeval.replay import (
 
 from .godot import NATIVE_SCHEMA, NATIVE_VERIFIER, GodotConversationWarehouseRunner
 from .interpreter import (
+    DemoVisibleActionPlanner,
     DemoVisibleReferentInterpreter,
+    VisibleActionPlanner,
     VisibleReferentInterpreter,
 )
 
@@ -63,6 +65,7 @@ class ConversationSandboxService:
         runner: GodotConversationWarehouseRunner,
         replay_root: Path,
         interpreter: VisibleReferentInterpreter | None = None,
+        action_planner: VisibleActionPlanner | None = None,
     ) -> None:
         self.runner, self.replay_root, self.sessions = (
             runner,
@@ -70,6 +73,7 @@ class ConversationSandboxService:
             {},
         )
         self.interpreter = interpreter or DemoVisibleReferentInterpreter()
+        self.action_planner = action_planner or DemoVisibleActionPlanner()
         self.scenario = strict_json_loads(runner.scenario_path.read_bytes())
         self.initialization_hash = (
             "sha256:"
@@ -97,6 +101,7 @@ class ConversationSandboxService:
             "observationProfile": "warehouse-visible-v1",
             "decisionProfile": "dynamic-step-locked-v1",
             "groundingInterpreter": self.interpreter.name,
+            "actionPlanner": self.action_planner.name,
             "scenarios": [
                 {
                     "scenarioId": SCENARIO_ID,
@@ -196,10 +201,7 @@ class ConversationSandboxService:
             }
         )
         session.snapshot = self._advance(session)
-        # The planner emits individual authority commands. It never delegates a route.
-        for command in self._commands(session, binding_id, target):
-            session.history.append({"kind": "command", "command": command})
-            session.snapshot = self._advance(session)
+        self._execute_plan(session, target)
         session.status = (
             "completed"
             if session.snapshot["replay"]["terminal_outcome"] == "delivered"
@@ -224,38 +226,20 @@ class ConversationSandboxService:
         self._seal(session)
         return self._projection(session)
 
-    def _commands(
-        self,
-        session: _Session,
-        binding_id: str,
-        target: Mapping[str, Any],
-    ) -> list[dict[str, Any]]:
-        assert session.snapshot is not None and session.intent_id is not None
-
-        def source() -> dict[str, Any]:
-            observation = session.snapshot["observation"]
-            return {
-                "observation_seq": observation["observation_seq"],
-                "tick": observation["tick"],
-                "state_hash": observation["state_hash"],
-            }
-
-        # Commands are executed one-by-one below, so compute each source lazily.
-        templates = [
-            {"type": "move", "target": dict(target["position"])},
-            {"type": "pickup"},
-            {"type": "move", "target": {"x": 13, "y": 5}},
-            {"type": "replan"},
-            {"type": "move", "target": {"x": 6, "y": 2}},
-            {"type": "move", "target": {"x": 8, "y": 2}},
-            {"type": "move", "target": {"x": 13, "y": 5}},
-            {"type": "place", "bay_id": "loading-bay-b"},
-        ]
-        result: list[dict[str, Any]] = []
-        # Each caller iteration advances; use marker and materialize source just-in-time there.
-        for template in templates:
-            result.append(template)
-        return result
+    def _execute_plan(self, session: _Session, target: Mapping[str, Any]) -> None:
+        """Reconsult the planner after every authority receipt; silence never continues."""
+        assert session.snapshot is not None
+        bay = self.objects["loading-bay-b"]
+        for _ in range(20):
+            replay = session.snapshot["replay"]
+            if replay["terminal_outcome"] != "incomplete":
+                return
+            command = self.action_planner.next_action(
+                observation=session.snapshot["observation"], target=target, bay=bay
+            )
+            session.history.append({"kind": "command", "command": dict(command)})
+            session.snapshot = self._advance(session)
+        raise ConversationSessionConflict("planner exceeded the bounded action budget")
 
     def _advance(self, session: _Session) -> Mapping[str, Any]:
         # Materialize missing source fields from the immediately preceding observation.

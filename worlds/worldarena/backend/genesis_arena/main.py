@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from worldarena.conversational_sandbox.api import router as conversational_sandbox_router
 from worldarena.conversational_sandbox.godot import GodotConversationWarehouseRunner
 from worldarena.conversational_sandbox.interpreter import (
+    create_visible_action_planner,
     create_visible_referent_interpreter,
 )
 from worldarena.conversational_sandbox.service import ConversationSandboxService
@@ -85,6 +86,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ),
         replay_root=settings.runs_dir / "replays",
         interpreter=create_visible_referent_interpreter(
+            mode=settings.conversation_mode,
+            model=settings.conversation_model,
+        ),
+        action_planner=create_visible_action_planner(
             mode=settings.conversation_mode,
             model=settings.conversation_model,
         ),

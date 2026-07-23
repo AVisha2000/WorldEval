@@ -31,6 +31,21 @@ class VisibleReferentInterpreter(Protocol):
         """Return an ordered subset of current visible object IDs only."""
 
 
+class VisibleActionPlanner(Protocol):
+    """Choose exactly one next visible semantic action at a decision boundary."""
+
+    name: str
+
+    def next_action(
+        self,
+        *,
+        observation: Mapping[str, Any],
+        target: Mapping[str, Any],
+        bay: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """Return an unbound action object; authority source is added later."""
+
+
 @dataclass(frozen=True)
 class DemoVisibleReferentInterpreter:
     """Deterministic, credential-free oracle for demos and replay acceptance."""
@@ -56,6 +71,150 @@ class DemoVisibleReferentInterpreter:
         if "small" in lowered:
             boxes = [item for item in boxes if item.get("traits", {}).get("size") == "small"]
         return tuple(sorted(str(item["object_id"]) for item in boxes))
+
+
+@dataclass(frozen=True)
+class DemoVisibleActionPlanner:
+    """Boundary-by-boundary policy used only for deterministic acceptance demos."""
+
+    name: str = "demo-visible-action-planner-v1"
+
+    def next_action(
+        self,
+        *,
+        observation: Mapping[str, Any],
+        target: Mapping[str, Any],
+        bay: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        agent = observation["controlled_assets"][0]
+        position = agent["position"]
+        carrying_id = agent.get("carrying_id", "")
+        if observation["decision_required"].get("replan_required"):
+            return {"type": "replan"}
+        if not carrying_id:
+            if position != target["position"]:
+                return {"type": "move", "target": dict(target["position"])}
+            return {"type": "pickup"}
+        if position == bay["position"]:
+            return {"type": "place", "bay_id": bay["object_id"]}
+        # Try the declared direct route first. If a newly materialized barrier
+        # blocks it, the next authority observation requires an explicit replan.
+        if position == target["position"]:
+            return {"type": "move", "target": dict(bay["position"])}
+        # This is a proposal, not a game shortcut: the authority still applies
+        # each visible move and can interrupt the plan at every boundary.
+        if int(position["x"]) <= 6 and int(position["y"]) != 2:
+            return {"type": "move", "target": {"x": int(position["x"]), "y": 2}}
+        if int(position["x"]) < 8:
+            return {"type": "move", "target": {"x": 8, "y": 2}}
+        return {"type": "move", "target": dict(bay["position"])}
+
+
+class OpenAIVisibleActionPlanner:
+    """Optional structured-output planner for one action per authority boundary."""
+
+    name = "openai-visible-action-planner-v1"
+
+    def __init__(self, *, model: str, api_key: str | None = None) -> None:
+        key = api_key or os.getenv("OPENAI_API_KEY")
+        if not key:
+            raise ConversationInterpretationError(
+                "OpenAI conversation mode requires OPENAI_API_KEY"
+            )
+        self.model, self._api_key = model, key
+
+    def next_action(
+        self,
+        *,
+        observation: Mapping[str, Any],
+        target: Mapping[str, Any],
+        bay: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        try:
+            return asyncio.run(self._request(observation=observation, target=target, bay=bay))
+        except RuntimeError as error:
+            raise ConversationInterpretationError(
+                "OpenAI action planning cannot run inside an active event loop"
+            ) from error
+
+    async def _request(
+        self,
+        *,
+        observation: Mapping[str, Any],
+        target: Mapping[str, Any],
+        bay: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        from openai import AsyncOpenAI
+
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["type"],
+            "properties": {
+                "type": {"type": "string", "enum": ["move", "pickup", "place", "replan"]},
+                "target": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["x", "y"],
+                    "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}},
+                },
+                "bay_id": {"type": "string"},
+            },
+        }
+        client = AsyncOpenAI(api_key=self._api_key, max_retries=0)
+        try:
+            response = await client.responses.create(
+                model=self.model,
+                instructions=(
+                    "Choose one visible semantic action only. You control no hidden "
+                    "state and must never invent object IDs. If movement is blocked, "
+                    "first choose replan; then choose explicit waypoints yourself."
+                ),
+                input=json.dumps({"observation": observation, "target": target, "bay": bay}),
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": "warehouse_action",
+                        "strict": True,
+                        "schema": schema,
+                    }
+                },
+                store=False,
+            )
+            value = json.loads(response.output_text)
+        except Exception as error:
+            raise ConversationInterpretationError(
+                "OpenAI action planning request failed"
+            ) from error
+        finally:
+            await client.close()
+        return _validate_visible_action(value, bay_id=str(bay["object_id"]))
+
+
+def _validate_visible_action(value: Any, *, bay_id: str) -> Mapping[str, Any]:
+    if not isinstance(value, dict) or set(value) - {"type", "target", "bay_id"}:
+        raise ConversationInterpretationError("action response is invalid")
+    kind = value.get("type")
+    if kind == "move":
+        target = value.get("target")
+        if (
+            not isinstance(target, dict)
+            or set(target) != {"x", "y"}
+            or any(
+                isinstance(target[key], bool) or not isinstance(target[key], int) for key in target
+            )
+            or not 0 <= target["x"] < 30
+            or not 0 <= target["y"] < 25
+        ):
+            raise ConversationInterpretationError("move response is invalid")
+        return {"type": "move", "target": dict(target)}
+    if kind == "pickup" and set(value) == {"type"}:
+        return {"type": "pickup"}
+    if kind == "replan" and set(value) == {"type"}:
+        return {"type": "replan"}
+    if kind == "place" and value.get("bay_id") == bay_id and set(value) == {"type", "bay_id"}:
+        return {"type": "place", "bay_id": bay_id}
+    raise ConversationInterpretationError("action response is unsupported")
 
 
 class OpenAIVisibleReferentInterpreter:
@@ -156,3 +315,9 @@ def create_visible_referent_interpreter(*, mode: str, model: str) -> VisibleRefe
     if mode == "openai" or (mode == "auto" and os.getenv("OPENAI_API_KEY")):
         return OpenAIVisibleReferentInterpreter(model=model)
     return DemoVisibleReferentInterpreter()
+
+
+def create_visible_action_planner(*, mode: str, model: str) -> VisibleActionPlanner:
+    if mode == "openai" or (mode == "auto" and os.getenv("OPENAI_API_KEY")):
+        return OpenAIVisibleActionPlanner(model=model)
+    return DemoVisibleActionPlanner()
