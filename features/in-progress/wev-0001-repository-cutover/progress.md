@@ -19,3 +19,4 @@
 - 2026-07-23T11:02:49Z: Completion evidence marked ready by codex-agent-team.
 - 2026-07-23T11:12:17Z: Completion evidence marked ready by codex-agent-team.
 - 2026-07-23: Replaced the candidate's fixed backend action list with a one-action-per-authority-boundary planner interface. In OpenAI mode the model uses structured output for visible grounding and every next semantic action; every output is validated before Godot receives it. The deterministic planner remains the credential-free replay acceptance oracle.
+- 2026-07-23T11:22:11Z: Completion evidence marked ready by codex-agent-team.
