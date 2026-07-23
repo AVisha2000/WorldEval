@@ -41,9 +41,10 @@
   "expires_at": "2026-07-24T01:22:49Z",
   "feature_id": "WEV-0001",
   "owner": "codex-agent-team",
+  "ready_at": "2026-07-23T05:09:25Z",
   "reclaim_history": [],
   "renewed_at": "2026-07-23T01:22:49Z",
   "schema_version": "worldeval/feature-claim/1.0.0",
   "task_id": "root-plan-implementation",
-  "work_state": "active"
+  "work_state": "ready"
 }
