@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/conversation/0.1.0/grounded-task.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "task_id", "revision", "conversation_id", "command_message_id", "source", "intent_id", "bindings", "constraints", "execution", "state", "task_hash"],
+  "properties": {
+    "schema_version": {"const": "grounded-task.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"}, "task_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "revision": {"type": "integer", "minimum": 0}, "conversation_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "command_message_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "source": {"$ref": "common.v1.schema.json#/$defs/source"}, "intent_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "bindings": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "constraints": {"type": "array", "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/constraint"}},
+    "execution": {"$ref": "common.v1.schema.json#/$defs/execution"}, "state": {"enum": ["clarification_required", "ready"]}, "task_hash": {"$ref": "common.v1.schema.json#/$defs/hash"}
+  }
+}

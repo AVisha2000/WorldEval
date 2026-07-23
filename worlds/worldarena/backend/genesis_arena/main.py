@@ -7,6 +7,10 @@ from typing import Any, AsyncIterator, Dict
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
+from worldarena.conversational_sandbox.api import router as conversational_sandbox_router
+from worldarena.conversational_sandbox.godot import GodotConversationWarehouseRunner
+from worldarena.conversational_sandbox.service import ConversationSandboxService
+from worldarena.paths import WORLDARENA_GAMES_ROOT
 from worldarena.primitive_sandbox.api import router as primitive_sandbox_router
 from worldarena.primitive_sandbox.godot import (
     GodotPrimitiveSandboxRunner,
@@ -70,6 +74,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ),
         replay_root=settings.runs_dir / "replays",
     )
+    app.state.conversation_sandbox = ConversationSandboxService(
+        runner=GodotConversationWarehouseRunner(
+            executable=settings.godot_executable,
+            project_path=settings.godot_project_path,
+            scenario_path=WORLDARENA_GAMES_ROOT / "conversational-warehouse" / "scenario.json",
+        ),
+        replay_root=settings.runs_dir / "replays",
+    )
     app.state.duel_matches = default_duel_match_service(
         port=settings.port,
         runs_dir=settings.runs_dir,
@@ -78,9 +90,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.embodiment_gateway = ManagedWebSocketEndpoint()
     app.state.embodiment_preview_ingress = InternalParticipantPreviewIngress()
-    app.state.embodiment_readiness = PilotReadinessStore(
-        settings.embodiment_readiness_path
-    )
+    app.state.embodiment_readiness = PilotReadinessStore(settings.embodiment_readiness_path)
     # A checked-in authority-verified replay/video is reused for the prominent judge path.
     # Starting a dashboard session therefore never spends time or resources re-running the demo.
     app.state.embodiment_rts_showcase = CachedRtsShowcase.load(REPOSITORY_ROOT)
@@ -161,6 +171,7 @@ app.include_router(embodiment_router)
 app.include_router(internal_preview_router)
 app.include_router(worldeval_replay_router)
 app.include_router(primitive_sandbox_router)
+app.include_router(conversational_sandbox_router)
 
 
 @app.websocket("/ws/embodiment/{ticket}")

@@ -76,10 +76,11 @@
       "Repository reorganization and workspace path resolution",
       "Python package and command compatibility facades",
       "Repository-native feature governance and recovery",
-      "Cutover verification"
+      "Cutover verification",
+      "Integration-branch candidate work whose standalone lifecycle claim is delayed by the cutover, including WEV-0008 Conversational Embodied Sandbox"
     ],
     "out": [
-      "Changing gameplay behavior",
+      "Changing released gameplay behavior without an additive feature contract and replay evidence",
       "Modifying released protocol contracts",
       "Splitting the combined web application",
       "Migrating the frozen WorldArena game compatibility capsule"

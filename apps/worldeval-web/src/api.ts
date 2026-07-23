@@ -577,6 +577,87 @@ export type PrimitiveSandboxRunView = {
   }
 }
 
+/**
+ * Public-only projection for the conversational warehouse. The browser never
+ * receives model prompts, provider output, private observations, or the
+ * authority's hidden world state.
+ */
+export type ConversationSandboxCatalogView = {
+  gameId: string
+  protocol: string
+  actionProfile: string
+  observationProfile: string
+  decisionProfile: string
+  scenarios: Array<{ scenarioId: string; label: string; description: string }>
+}
+
+export type ConversationMessageView = {
+  messageId: string
+  role: "user" | "agent" | "system"
+  text: string
+}
+
+export type ConversationBindingView = {
+  bindingId: string
+  label: string
+  status: "candidate" | "bound" | "rejected" | "stale"
+  detail?: string
+}
+
+export type ConversationClarificationView = {
+  clarificationId: string
+  prompt: string
+  options: Array<{ bindingId: string; label: string; detail?: string }>
+}
+
+export type ConversationConstraintView = {
+  constraintId: string
+  label: string
+  kind: "hard" | "soft" | "safety"
+  state: "active" | "satisfied" | "superseded"
+}
+
+export type ConversationPlanStepView = {
+  stepId: string
+  label: string
+  state: "proposed" | "active" | "completed" | "suspended" | "aborted"
+}
+
+export type ConversationReceiptView = {
+  receiptId: string
+  label: string
+  state: "accepted" | "completed" | "suspended" | "rejected" | "neutral_noop"
+}
+
+export type ConversationSessionView = {
+  sessionId: string
+  scenarioId: string
+  status:
+    | "awaiting_message"
+    | "clarification_required"
+    | "planning"
+    | "executing"
+    | "completed"
+    | "failed"
+  messages: ConversationMessageView[]
+  grounding: {
+    intentRevision: number
+    state: "unbound" | "ambiguous" | "bound" | "stale"
+    taskSummary: string | null
+    bindings: ConversationBindingView[]
+    clarification: ConversationClarificationView | null
+  }
+  constraints: ConversationConstraintView[]
+  plan: { planId: string; status: string; steps: ConversationPlanStepView[] } | null
+  receipts: ConversationReceiptView[]
+  replay: {
+    state: "not_started" | "saving" | "ready" | "unavailable"
+    runId: string | null
+    verified: boolean
+    bundleUrl: string | null
+  }
+}
+
 
 async function checked<T>(response: Response): Promise<T> {
   if (!response.ok)
@@ -605,6 +686,97 @@ export async function createPrimitiveSandboxRun(
         cache: "no-store",
         body: JSON.stringify({ scenarioId }),
       })
+    )
+  )
+}
+
+export async function getConversationSandbox(): Promise<ConversationSandboxCatalogView> {
+  return parseConversationSandboxCatalog(
+    await checked<unknown>(
+      await fetch("/api/worldeval/conversation-sandbox", { cache: "no-store" })
+    )
+  )
+}
+
+export async function createConversationSession(
+  scenarioId: string
+): Promise<ConversationSessionView> {
+  const validScenarioId = sandboxIdentifier(scenarioId)
+  if (!validScenarioId) throw new Error("Conversational sandbox scenario is invalid")
+  return parseConversationSession(
+    await checked<unknown>(
+      await fetch("/api/worldeval/conversation-sandbox/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ scenarioId: validScenarioId }),
+      })
+    )
+  )
+}
+
+export async function getConversationSession(
+  sessionId: string
+): Promise<ConversationSessionView> {
+  const validSessionId = sandboxIdentifier(sessionId)
+  if (!validSessionId) throw new Error("Conversational sandbox session is invalid")
+  return parseConversationSession(
+    await checked<unknown>(
+      await fetch(
+        `/api/worldeval/conversation-sandbox/sessions/${encodeURIComponent(validSessionId)}`,
+        { cache: "no-store" }
+      )
+    )
+  )
+}
+
+export async function sendConversationMessage(
+  sessionId: string,
+  text: string
+): Promise<ConversationSessionView> {
+  const validSessionId = sandboxIdentifier(sessionId)
+  const validText = conversationText(text, 2000)
+  if (!validSessionId || !validText)
+    throw new Error("Conversational sandbox message is invalid")
+  return parseConversationSession(
+    await checked<unknown>(
+      await fetch(
+        `/api/worldeval/conversation-sandbox/sessions/${encodeURIComponent(validSessionId)}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ text: validText }),
+        }
+      )
+    )
+  )
+}
+
+export async function acknowledgeConversationBinding(
+  sessionId: string,
+  clarificationId: string,
+  bindingId: string
+): Promise<ConversationSessionView> {
+  const validSessionId = sandboxIdentifier(sessionId)
+  const validClarificationId = sandboxIdentifier(clarificationId)
+  const validBindingId = sandboxIdentifier(bindingId)
+  if (!validSessionId || !validClarificationId || !validBindingId)
+    throw new Error("Conversational sandbox acknowledgement is invalid")
+  return parseConversationSession(
+    await checked<unknown>(
+      await fetch(
+        `/api/worldeval/conversation-sandbox/sessions/${encodeURIComponent(validSessionId)}/acknowledge`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            clarificationId: validClarificationId,
+            bindingId: validBindingId,
+          }),
+        }
+      )
     )
   )
 }
@@ -823,6 +995,235 @@ function sandboxReplayUrl(value: unknown): string | null {
   return /^\/api\/worldeval\/replays\/[A-Za-z0-9._~%/-]+$/.test(value)
     ? value
     : null
+}
+
+function parseConversationSandboxCatalog(
+  raw: unknown
+): ConversationSandboxCatalogView {
+  rejectConversationPrivateFields(raw, "Conversational sandbox catalog", 0)
+  const value = objectValue(raw, "Conversational sandbox catalog")
+  const gameId = sandboxIdentifier(value.gameId)
+  const protocol = sandboxDisplayText(value.protocol, 160)
+  const actionProfile = sandboxIdentifier(value.actionProfile)
+  const observationProfile = sandboxIdentifier(value.observationProfile)
+  const decisionProfile = sandboxIdentifier(value.decisionProfile)
+  if (
+    !gameId ||
+    !protocol ||
+    !actionProfile ||
+    !observationProfile ||
+    !decisionProfile ||
+    !Array.isArray(value.scenarios) ||
+    !value.scenarios.length
+  )
+    throw new Error("Conversational sandbox catalog is invalid")
+  const scenarios = value.scenarios.map((rawScenario) => {
+    const scenario = objectValue(rawScenario, "Conversational sandbox scenario")
+    const scenarioId = sandboxIdentifier(scenario.scenarioId)
+    const label = conversationText(scenario.label, 120)
+    const description = conversationText(scenario.description, 800)
+    if (!scenarioId || !label || !description)
+      throw new Error("Conversational sandbox scenario is invalid")
+    return { scenarioId, label, description }
+  })
+  if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== scenarios.length)
+    throw new Error("Conversational sandbox catalog contains duplicate scenarios")
+  return { gameId, protocol, actionProfile, observationProfile, decisionProfile, scenarios }
+}
+
+function parseConversationSession(raw: unknown): ConversationSessionView {
+  rejectConversationPrivateFields(raw, "Conversational sandbox session", 0)
+  const value = objectValue(raw, "Conversational sandbox session")
+  const sessionId = sandboxIdentifier(value.sessionId)
+  const scenarioId = sandboxIdentifier(value.scenarioId)
+  const status = conversationStatus(value.status)
+  const grounding = objectValue(value.grounding, "Conversational sandbox grounding")
+  const replay = objectValue(value.replay, "Conversational sandbox replay")
+  if (
+    !sessionId ||
+    !scenarioId ||
+    !status ||
+    !Array.isArray(value.messages) ||
+    !Array.isArray(value.constraints) ||
+    !Array.isArray(value.receipts)
+  )
+    throw new Error("Conversational sandbox session is invalid")
+
+  const intentRevision = publicNonNegativeInteger(grounding.intentRevision)
+  const groundingState = conversationGroundingState(grounding.state)
+  const taskSummary = grounding.taskSummary === null
+    ? null
+    : conversationText(grounding.taskSummary, 1600)
+  if (
+    intentRevision === null ||
+    !groundingState ||
+    (grounding.taskSummary !== null && !taskSummary) ||
+    !Array.isArray(grounding.bindings)
+  )
+    throw new Error("Conversational sandbox grounding is invalid")
+
+  const messages = value.messages.map(parseConversationMessage)
+  const bindings = grounding.bindings.map(parseConversationBinding)
+  const clarification = grounding.clarification === null
+    ? null
+    : parseConversationClarification(grounding.clarification)
+  if (
+    (groundingState === "ambiguous") !== (clarification !== null) ||
+    (clarification !== null && !clarification.options.length)
+  )
+    throw new Error("Conversational sandbox clarification is invalid")
+
+  const constraints = value.constraints.map(parseConversationConstraint)
+  const plan = value.plan === null ? null : parseConversationPlan(value.plan)
+  const receipts = value.receipts.map(parseConversationReceipt)
+  const replayState = conversationReplayState(replay.state)
+  const runId = replay.runId === null ? null : sandboxIdentifier(replay.runId)
+  const bundleUrl = replay.bundleUrl === null ? null : sandboxReplayUrl(replay.bundleUrl)
+  if (
+    !replayState ||
+    (replay.runId !== null && !runId) ||
+    (replay.bundleUrl !== null && !bundleUrl) ||
+    typeof replay.verified !== "boolean" ||
+    (replayState === "ready" && (!replay.verified || !runId || !bundleUrl)) ||
+    (replay.verified && replayState !== "ready")
+  )
+    throw new Error("Conversational sandbox replay is invalid")
+
+  return {
+    sessionId,
+    scenarioId,
+    status,
+    messages,
+    grounding: { intentRevision, state: groundingState, taskSummary, bindings, clarification },
+    constraints,
+    plan,
+    receipts,
+    replay: { state: replayState, runId, verified: replay.verified, bundleUrl },
+  }
+}
+
+function parseConversationMessage(raw: unknown): ConversationMessageView {
+  const value = objectValue(raw, "Conversational sandbox message")
+  const messageId = sandboxIdentifier(value.messageId)
+  const role = value.role === "user" || value.role === "agent" || value.role === "system"
+    ? value.role
+    : null
+  const text = conversationText(value.text, 2000)
+  if (!messageId || !role || !text) throw new Error("Conversational sandbox message is invalid")
+  return { messageId, role, text }
+}
+
+function parseConversationBinding(raw: unknown): ConversationBindingView {
+  const value = objectValue(raw, "Conversational sandbox binding")
+  const bindingId = sandboxIdentifier(value.bindingId)
+  const label = conversationText(value.label, 240)
+  const status = value.status === "candidate" || value.status === "bound" || value.status === "rejected" || value.status === "stale"
+    ? value.status
+    : null
+  const detail = value.detail === undefined ? undefined : conversationText(value.detail, 500)
+  if (!bindingId || !label || !status || (value.detail !== undefined && !detail))
+    throw new Error("Conversational sandbox binding is invalid")
+  return { bindingId, label, status, ...(detail ? { detail } : {}) }
+}
+
+function parseConversationClarification(raw: unknown): ConversationClarificationView {
+  const value = objectValue(raw, "Conversational sandbox clarification")
+  const clarificationId = sandboxIdentifier(value.clarificationId)
+  const prompt = conversationText(value.prompt, 800)
+  if (!clarificationId || !prompt || !Array.isArray(value.options) || value.options.length > 12)
+    throw new Error("Conversational sandbox clarification is invalid")
+  const options = value.options.map((rawOption) => {
+    const option = objectValue(rawOption, "Conversational sandbox clarification option")
+    const bindingId = sandboxIdentifier(option.bindingId)
+    const label = conversationText(option.label, 240)
+    const detail = option.detail === undefined ? undefined : conversationText(option.detail, 500)
+    if (!bindingId || !label || (option.detail !== undefined && !detail))
+      throw new Error("Conversational sandbox clarification option is invalid")
+    return { bindingId, label, ...(detail ? { detail } : {}) }
+  })
+  if (new Set(options.map((option) => option.bindingId)).size !== options.length)
+    throw new Error("Conversational sandbox clarification has duplicate options")
+  return { clarificationId, prompt, options }
+}
+
+function parseConversationConstraint(raw: unknown): ConversationConstraintView {
+  const value = objectValue(raw, "Conversational sandbox constraint")
+  const constraintId = sandboxIdentifier(value.constraintId)
+  const label = conversationText(value.label, 500)
+  const kind = value.kind === "hard" || value.kind === "soft" || value.kind === "safety" ? value.kind : null
+  const state = value.state === "active" || value.state === "satisfied" || value.state === "superseded" ? value.state : null
+  if (!constraintId || !label || !kind || !state)
+    throw new Error("Conversational sandbox constraint is invalid")
+  return { constraintId, label, kind, state }
+}
+
+function parseConversationPlan(raw: unknown): NonNullable<ConversationSessionView["plan"]> {
+  const value = objectValue(raw, "Conversational sandbox plan")
+  const planId = sandboxIdentifier(value.planId)
+  const status = conversationText(value.status, 80)
+  if (!planId || !status || !Array.isArray(value.steps) || value.steps.length > 50)
+    throw new Error("Conversational sandbox plan is invalid")
+  const steps = value.steps.map((rawStep) => {
+    const step = objectValue(rawStep, "Conversational sandbox plan step")
+    const stepId = sandboxIdentifier(step.stepId)
+    const label = conversationText(step.label, 500)
+    const state: ConversationPlanStepView["state"] | null = step.state === "proposed" || step.state === "active" || step.state === "completed" || step.state === "suspended" || step.state === "aborted"
+      ? step.state
+      : null
+    if (!stepId || !label || !state) throw new Error("Conversational sandbox plan step is invalid")
+    return { stepId, label, state }
+  })
+  return { planId, status, steps }
+}
+
+function parseConversationReceipt(raw: unknown): ConversationReceiptView {
+  const value = objectValue(raw, "Conversational sandbox receipt")
+  const receiptId = sandboxIdentifier(value.receiptId)
+  const label = conversationText(value.label, 500)
+  const state = value.state === "accepted" || value.state === "completed" || value.state === "suspended" || value.state === "rejected" || value.state === "neutral_noop"
+    ? value.state
+    : null
+  if (!receiptId || !label || !state) throw new Error("Conversational sandbox receipt is invalid")
+  return { receiptId, label, state }
+}
+
+function conversationStatus(value: unknown): ConversationSessionView["status"] | null {
+  return value === "awaiting_message" || value === "clarification_required" || value === "planning" || value === "executing" || value === "completed" || value === "failed"
+    ? value
+    : null
+}
+
+function conversationGroundingState(value: unknown): ConversationSessionView["grounding"]["state"] | null {
+  return value === "unbound" || value === "ambiguous" || value === "bound" || value === "stale" ? value : null
+}
+
+function conversationReplayState(value: unknown): ConversationSessionView["replay"]["state"] | null {
+  return value === "not_started" || value === "saving" || value === "ready" || value === "unavailable" ? value : null
+}
+
+function conversationText(value: unknown, maxLength: number): string | null {
+  const text = sandboxDisplayText(value, maxLength)
+  if (!text || sandboxPrivateKey(text)) return null
+  return text.trim() || null
+}
+
+function rejectConversationPrivateFields(raw: unknown, name: string, depth: number): void {
+  if (depth > MAX_PUBLIC_JSON_DEPTH) throw new Error(`${name} is too deeply nested`)
+  if (Array.isArray(raw)) {
+    for (const value of raw) rejectConversationPrivateFields(value, name, depth + 1)
+    return
+  }
+  if (!raw || typeof raw !== "object") return
+  for (const [key, value] of Object.entries(raw)) {
+    if (conversationPrivateKey(key)) throw new Error(`${name} contains a protected field`)
+    rejectConversationPrivateFields(value, name, depth + 1)
+  }
+}
+
+function conversationPrivateKey(value: string): boolean {
+  // "prompt" is allowed only as the user-visible clarification question. Raw
+  // prompts and provider material stay outside this public projection.
+  return /api_?key|authorization|bearer|chain_?of_?thought|credential|private|provider_?output|raw_?output|secret|spectator|token/i.test(value)
 }
 
 

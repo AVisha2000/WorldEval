@@ -1,0 +1,1 @@
+{"schema_version":"chat-command.v1","protocol":"worldeval-conversation/0.1.0","conversation_id":"warehouse-chat-1","message_id":"message-1","sequence":1,"sender":"human","text":"Pick up that box.","source":{"observation_seq":4,"tick":12,"state_hash":"sha256:1111111111111111111111111111111111111111111111111111111111111111"},"visibility":"public"}

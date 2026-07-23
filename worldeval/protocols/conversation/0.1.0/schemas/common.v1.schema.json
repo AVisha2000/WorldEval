@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/conversation/0.1.0/common.v1.schema.json",
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"},
+    "hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "protocol": {"const": "worldeval-conversation/0.1.0"},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_seq", "tick", "state_hash"],
+      "properties": {
+        "observation_seq": {"type": "integer", "minimum": 0},
+        "tick": {"type": "integer", "minimum": 0},
+        "state_hash": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "visibleEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_seq", "tick", "state_hash", "visible_entity_id", "generation"],
+      "properties": {
+        "observation_seq": {"type": "integer", "minimum": 0},
+        "tick": {"type": "integer", "minimum": 0},
+        "state_hash": {"$ref": "#/$defs/hash"},
+        "visible_entity_id": {"$ref": "#/$defs/id"},
+        "generation": {"type": "integer", "minimum": 1}
+      }
+    },
+    "entity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "generation", "type_id"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/id"},
+        "generation": {"type": "integer", "minimum": 1},
+        "type_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "constraint": {
+      "type": "object", "additionalProperties": false,
+      "required": ["constraint_id", "level", "kind", "binding_ids", "parameters"],
+      "properties": {
+        "constraint_id": {"$ref": "#/$defs/id"},
+        "level": {"enum": ["hard", "soft"]},
+        "kind": {"$ref": "#/$defs/id"},
+        "binding_ids": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "parameters": {
+          "type": "object", "maxProperties": 16,
+          "additionalProperties": {"type": ["string", "integer", "boolean", "null"], "maxLength": 512}
+        }
+      }
+    },
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_profile", "observation_profile", "decision_profile", "permitted_action_ids", "mode", "gameplay_authority"],
+      "properties": {
+        "action_profile": {"$ref": "#/$defs/id"},
+        "observation_profile": {"$ref": "#/$defs/id"},
+        "decision_profile": {"$ref": "#/$defs/id"},
+        "permitted_action_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "mode": {"const": "agent_visible_action_plan_only"},
+        "gameplay_authority": {"const": "environment_authority"}
+      }
+    }
+  }
+}

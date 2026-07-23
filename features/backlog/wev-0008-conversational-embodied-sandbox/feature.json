@@ -1,0 +1,102 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": true,
+      "description": "A chat instruction is grounded to visible stable entity IDs or explicitly clarified before any effectful action is leased.",
+      "id": "WEV-0008-AC-01",
+      "proof_types": [
+        "test",
+        "artifact"
+      ],
+      "replay_required": true
+    },
+    {
+      "demo_required": true,
+      "description": "The agent plans and executes pickup/place through Godot, adapts to a material interruption, and rejects stale or revoked intent.",
+      "id": "WEV-0008-AC-02",
+      "proof_types": [
+        "test",
+        "artifact"
+      ],
+      "replay_required": true
+    },
+    {
+      "demo_required": true,
+      "description": "The Controller Lab exposes chat, binding status, active constraints, plan/receipt timeline, and replay readiness without exposing protected state.",
+      "id": "WEV-0008-AC-03",
+      "proof_types": [
+        "test",
+        "artifact"
+      ],
+      "replay_required": true
+    },
+    {
+      "demo_required": true,
+      "description": "A deterministic conversational demo seals and independently verifies an offline replay with zero provider calls.",
+      "id": "WEV-0008-AC-04",
+      "proof_types": [
+        "test",
+        "artifact"
+      ],
+      "replay_required": true
+    }
+  ],
+  "affected_paths": [
+    "worldeval/protocols",
+    "worldeval/src/worldeval/contracts",
+    "worldeval/src/worldeval/runtime",
+    "worldeval/tests",
+    "worlds/worldarena/games/conversational-warehouse",
+    "worlds/worldarena/godot/scripts/conversational_sandbox",
+    "worlds/worldarena/godot/tests/conversational_sandbox",
+    "worlds/worldarena/backend/worldarena/conversational_sandbox",
+    "worlds/worldarena/backend/worldarena/replay_verifiers.py",
+    "worlds/worldarena/backend/genesis_arena/main.py",
+    "worlds/worldarena/demos/conversational-warehouse",
+    "worlds/worldarena/scripts",
+    "worlds/worldarena/tests",
+    "apps/worldeval-web",
+    ".github/workflows/ci.yml"
+  ],
+  "dependencies": [],
+  "exclusive_shared_surfaces": [
+    "conversational-task-contract",
+    "controller-lab-sandbox-ui"
+  ],
+  "id": "WEV-0008",
+  "kind": "capability",
+  "priority": "p1",
+  "product": "worldarena",
+  "related_features": [
+    "WEV-0001",
+    "WEV-0003",
+    "WEV-0004",
+    "WEV-0005",
+    "WEV-0006"
+  ],
+  "required_approvals": [
+    "behavioral",
+    "visual"
+  ],
+  "requirements": {
+    "compatibility": [],
+    "migration": [],
+    "privacy": [],
+    "rollback": []
+  },
+  "risk": "high",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": [
+      "Chat intake, grounded referent binding, intent revisions, constrained planning, and player-visible status.",
+      "New warehouse-style WorldArena environment, Controller Lab surface, deterministic demo, and offline-verifiable replay."
+    ],
+    "out": [
+      "Arbitrary code generation, hidden-state access, opaque execute-skill commands, or changes to released WorldArena behavior."
+    ]
+  },
+  "slug": "conversational-embodied-sandbox",
+  "summary": "Compile human chat into grounded, constrained, replayable WorldArena task execution without granting chat or the game direct strategic authority.",
+  "supersedes": [],
+  "title": "Conversational Embodied Sandbox"
+}

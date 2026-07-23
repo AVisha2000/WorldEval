@@ -19,6 +19,8 @@ PRIMITIVE_SANDBOX_NATIVE_SCHEMA = "replay-bundle.v1"
 PRIMITIVE_SANDBOX_NATIVE_VERIFIER = "primitive-sandbox-godot-reexecution-v1"
 WAYPOINT_MAZE_NATIVE_SCHEMA = "replay-bundle.v1"
 WAYPOINT_MAZE_NATIVE_VERIFIER = "waypoint-maze-godot-reexecution-v1"
+CONVERSATIONAL_WAREHOUSE_NATIVE_SCHEMA = "conversational-warehouse-replay.v1"
+CONVERSATIONAL_WAREHOUSE_NATIVE_VERIFIER = "conversational-warehouse-godot-reexecution-v1"
 
 
 def default_godot_executable() -> Path:
@@ -41,6 +43,7 @@ def default_native_verifiers(
     godot_project_path: Path | None = None,
     sandbox_root: Path | None = None,
     waypoint_maze_root: Path | None = None,
+    conversational_warehouse_root: Path | None = None,
     timeout_seconds: float = 30.0,
     require_network_isolation: bool = False,
 ) -> NativeVerifierRegistry:
@@ -48,6 +51,9 @@ def default_native_verifiers(
 
     # Import lazily so repository workflow commands can construct their
     # environment-neutral workspace before loading WorldArena's game adapter.
+    from .conversational_sandbox.godot import (
+        native_replay_verifier as conversational_warehouse_replay_verifier,
+    )
     from .primitive_sandbox.godot import (
         native_replay_verifier as primitive_sandbox_replay_verifier,
     )
@@ -55,12 +61,8 @@ def default_native_verifiers(
         native_replay_verifier as waypoint_maze_replay_verifier,
     )
 
-    selected_executable = Path(
-        godot_executable or default_godot_executable()
-    ).resolve()
-    selected_project = Path(
-        godot_project_path or WORLDARENA_GODOT_ROOT
-    ).resolve()
+    selected_executable = Path(godot_executable or default_godot_executable()).resolve()
+    selected_project = Path(godot_project_path or WORLDARENA_GODOT_ROOT).resolve()
     primitive_callback = functools.partial(
         primitive_sandbox_replay_verifier,
         executable=selected_executable,
@@ -73,10 +75,18 @@ def default_native_verifiers(
         waypoint_maze_replay_verifier,
         executable=selected_executable,
         project_path=selected_project,
+        game_root=(None if waypoint_maze_root is None else Path(waypoint_maze_root).resolve()),
+        timeout_seconds=timeout_seconds,
+        require_network_isolation=require_network_isolation,
+    )
+    conversation_callback = functools.partial(
+        conversational_warehouse_replay_verifier,
+        executable=selected_executable,
+        project_path=selected_project,
         game_root=(
             None
-            if waypoint_maze_root is None
-            else Path(waypoint_maze_root).resolve()
+            if conversational_warehouse_root is None
+            else Path(conversational_warehouse_root).resolve()
         ),
         timeout_seconds=timeout_seconds,
         require_network_isolation=require_network_isolation,
@@ -91,6 +101,10 @@ def default_native_verifiers(
                 WAYPOINT_MAZE_NATIVE_VERIFIER,
                 WAYPOINT_MAZE_NATIVE_SCHEMA,
             ): waypoint_callback,
+            (
+                CONVERSATIONAL_WAREHOUSE_NATIVE_VERIFIER,
+                CONVERSATIONAL_WAREHOUSE_NATIVE_SCHEMA,
+            ): conversation_callback,
         }
     )
 
@@ -100,6 +114,8 @@ __all__ = [
     "PRIMITIVE_SANDBOX_NATIVE_VERIFIER",
     "WAYPOINT_MAZE_NATIVE_SCHEMA",
     "WAYPOINT_MAZE_NATIVE_VERIFIER",
+    "CONVERSATIONAL_WAREHOUSE_NATIVE_SCHEMA",
+    "CONVERSATIONAL_WAREHOUSE_NATIVE_VERIFIER",
     "default_godot_executable",
     "default_native_verifiers",
 ]

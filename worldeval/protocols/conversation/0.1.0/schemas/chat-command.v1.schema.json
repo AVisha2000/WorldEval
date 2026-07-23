@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/conversation/0.1.0/chat-command.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "conversation_id", "message_id", "sequence", "sender", "text", "source", "visibility"],
+  "properties": {
+    "schema_version": {"const": "chat-command.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "conversation_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "message_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "sequence": {"type": "integer", "minimum": 0}, "sender": {"const": "human"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "source": {"$ref": "common.v1.schema.json#/$defs/source"}, "visibility": {"const": "public"}
+  }
+}

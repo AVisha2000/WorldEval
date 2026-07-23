@@ -1,0 +1,26 @@
+{
+  "artifacts": [
+    {"path":"README.md","sha256":"a83fe9b34b38a1ea0d9c1e0671eb5b28488b50d796e62907a0bf2324db73ffd3","size_bytes":1684},
+    {"path":"VERSION","sha256":"43bebd2945813f9f6e4f0d6cc92b40276c0439f66d27b38bb556030b15722ce9","size_bytes":29},
+    {"path":"fixtures/README.md","sha256":"45c700c2a49abd3a77ac8d72cf742f80a7da04f3d6424a2fec93496bb88b1f88","size_bytes":241},
+    {"path":"fixtures/valid.chat-command.v1.json","sha256":"52d76c5a46f61635e0d049c99d52fcfbbdf888b9bb122161dc6823e0d2b05497","size_bytes":348},
+    {"path":"fixtures/valid.grounded-task.v1.json","sha256":"bbec3d5346f4f1f42b6011ff88f028683d4472a648ba7d5ae1313348a72b68d8","size_bytes":894},
+    {"path":"fixtures/valid.grounding-hypotheses.v1.json","sha256":"091a657e100b0aca96bb5ea176556e03ab17aec471b92a3bb3652f18d494ba0d","size_bytes":710},
+    {"path":"fixtures/valid.referent-binding.v1.json","sha256":"1743be979d37ee9787328dbca803aabac7d8013d37c00780db65e44122c02341","size_bytes":610},
+    {"path":"fixtures/valid.task-revision.v1.json","sha256":"32589113db320c53a44eb7f61210d88cac00c91c2bb6eff30deddb5616ae5398","size_bytes":502},
+    {"path":"fixtures/valid.task-revocation.v1.json","sha256":"c30505d1621345e7da977237d6a629026444ee3554ffdef125dcd8c5a19ef517","size_bytes":356},
+    {"path":"fixtures/valid.task-status.v1.json","sha256":"423a12551240262032f1f6d550554cea69e293e751f2d63569f8b4af7aa70acd","size_bytes":391},
+    {"path":"schemas/chat-command.v1.schema.json","sha256":"f649c718aeabe8d6e1831302107e65c392f91adb6ba0f354e8fdca1d9a94a713","size_bytes":841},
+    {"path":"schemas/common.v1.schema.json","sha256":"a7c7eee684c16d0206af5699f385f46d27c4956053ed59bd5d1be4a2a49f35d1","size_bytes":2778},
+    {"path":"schemas/grounded-task.v1.schema.json","sha256":"b572695dd6fcd8934af842749835cdf177788c48fa518ee5f3212286f27f5dfa","size_bytes":1318},
+    {"path":"schemas/grounding-hypotheses.v1.schema.json","sha256":"05f0cba670926d3c30feb4eadddd30acd0eba2eb59620000f8f8b67c222d6c5e","size_bytes":1389},
+    {"path":"schemas/referent-binding.v1.schema.json","sha256":"9b4602b5209f2457d004d1e320f779143628811a175712e7f2091f1f1c5ba2c5","size_bytes":1297},
+    {"path":"schemas/task-revision.v1.schema.json","sha256":"66944b07a39b3c8b153c44209ee3dd72eeed001cbda9d4089c80e01535ee86d0","size_bytes":999},
+    {"path":"schemas/task-revocation.v1.schema.json","sha256":"36836ad159f951c0dbb9c8e1e76dec7bab5d1cb1d1122861477f60e685e7148a","size_bytes":980},
+    {"path":"schemas/task-status.v1.schema.json","sha256":"f4221bfd4a1978976ca506603a73267e5a01eeebe3fa437aa0fb87f8da4e1823","size_bytes":1034}
+  ],
+  "canonical_json":"rfc8785-integer-nfc-subset-v1",
+  "hash_algorithm":"sha256",
+  "protocol_version":"worldeval-conversation/0.1.0",
+  "package_sha256":"558b4aa2b982ed31db85b673e6658fe414b33a3f7f5f0bf927adcfd0a5fbc595"
+}

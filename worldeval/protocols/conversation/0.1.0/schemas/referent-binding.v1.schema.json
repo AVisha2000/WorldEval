@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/conversation/0.1.0/referent-binding.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "binding_id", "task_id", "conversation_id", "command_message_id", "hypothesis_set_id", "candidate_id", "entity", "visible_evidence", "bound_by", "expires_at_observation_seq", "status"],
+  "properties": {
+    "schema_version": {"const": "referent-binding.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "binding_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "task_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "conversation_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "command_message_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "hypothesis_set_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "candidate_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "entity": {"$ref": "common.v1.schema.json#/$defs/entity"}, "visible_evidence": {"$ref": "common.v1.schema.json#/$defs/visibleEvidence"},
+    "bound_by": {"enum": ["unique_visible_candidate", "human_confirmation"]}, "expires_at_observation_seq": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["active", "revoked", "expired"]}
+  }
+}

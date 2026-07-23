@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://worldeval.local/conversation/0.1.0/task-revision.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "revision_id", "task_id", "from_revision", "to_revision", "cause", "source", "supersedes_task_hash", "new_task_hash"],
+  "properties": {
+    "schema_version": {"const": "task-revision.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"}, "revision_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "task_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "from_revision": {"type": "integer", "minimum": 0}, "to_revision": {"type": "integer", "minimum": 1}, "cause": {"enum": ["human_correction", "grounding_update", "world_interrupt"]},
+    "source": {"$ref": "common.v1.schema.json#/$defs/source"}, "supersedes_task_hash": {"$ref": "common.v1.schema.json#/$defs/hash"}, "new_task_hash": {"$ref": "common.v1.schema.json#/$defs/hash"}
+  }
+}

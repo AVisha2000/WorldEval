@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://worldeval.local/conversation/0.1.0/task-revocation.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "revocation_id", "task_id", "revision", "source", "reason", "revoked_plan_ids", "disposition"],
+  "properties": {
+    "schema_version": {"const": "task-revocation.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"}, "revocation_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "task_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "revision": {"type": "integer", "minimum": 0}, "source": {"$ref": "common.v1.schema.json#/$defs/source"}, "reason": {"enum": ["human_correction", "binding_stale", "world_interrupt", "task_cancelled"]},
+    "revoked_plan_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "common.v1.schema.json#/$defs/id"}}, "disposition": {"const": "neutral_noop"}
+  }
+}

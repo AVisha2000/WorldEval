@@ -26,6 +26,7 @@ import {
 } from "@/api"
 import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { CrossroadsWorkspace } from "@/components/crossroads-workspace"
+import { ConversationSandboxWorkspace } from "@/components/conversation-sandbox-workspace"
 import { EpisodeWorkspace, ReplaySpeedControls } from "@/components/episode-workspace"
 import { PrimitiveSandboxWorkspace } from "@/components/primitive-sandbox-workspace"
 import { SetupPanel } from "@/components/setup-panel"
@@ -272,7 +273,7 @@ export function App() {
   const [setup, setSetup] = useState(INITIAL_SETUP)
   const submittedSetup = useRef<EpisodeSetup | null>(null)
   const [episodeId, setEpisodeId] = useState<string | null>(null)
-  const [showcase, setShowcase] = useState<"solo" | "rts" | "maze" | "crossroads" | "sandbox" | null>(null)
+  const [showcase, setShowcase] = useState<"solo" | "rts" | "maze" | "crossroads" | "sandbox" | "conversation" | null>(null)
   const [selected, setSelected] = useState(0)
   const [view, setView] = useState("run")
   const create = useMutation({
@@ -432,6 +433,11 @@ export function App() {
             setEpisodeId(null)
             setView("run")
           }}
+          onConversationQuickStart={() => {
+            setShowcase("conversation")
+            setEpisodeId(null)
+            setView("run")
+          }}
         />
         {showcase === "solo" ? (
           <SoloShowcaseWorkspace
@@ -465,6 +471,8 @@ export function App() {
           />
         ) : showcase === "sandbox" ? (
           <PrimitiveSandboxWorkspace view={view} />
+        ) : showcase === "conversation" ? (
+          <ConversationSandboxWorkspace />
         ) : (
           <EpisodeWorkspace
             key={episode?.episodeId ?? "empty"}

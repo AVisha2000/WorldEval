@@ -1,0 +1,59 @@
+{
+  "schema_version": "conversational-warehouse-scenario.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "environment_id": "worldarena-conversational-warehouse-v0",
+  "scenario_id": "warehouse-blue-box-to-bay-b-v0",
+  "coordinate_frame": "warehouse-grid-v1",
+  "tick_budget": 100,
+  "agent": {
+    "object_id": "warehouse-agent-1",
+    "generation": 1,
+    "position": {"x": 1, "y": 5}
+  },
+  "objects": [
+    {
+      "object_id": "box-blue-large-1",
+      "generation": 1,
+      "type_id": "box",
+      "position": {"x": 4, "y": 3},
+      "traits": {"color": "blue", "size": "large", "portable": true},
+      "state": {"visible": true, "blocks_movement": false, "carried": false}
+    },
+    {
+      "object_id": "box-blue-small-1",
+      "generation": 1,
+      "type_id": "box",
+      "position": {"x": 4, "y": 6},
+      "traits": {"color": "blue", "size": "small", "portable": true},
+      "state": {"visible": true, "blocks_movement": false, "carried": false}
+    },
+    {
+      "object_id": "box-red-1",
+      "generation": 1,
+      "type_id": "box",
+      "position": {"x": 8, "y": 3},
+      "traits": {"color": "red", "size": "large", "portable": true},
+      "state": {"visible": true, "blocks_movement": false, "carried": false}
+    },
+    {
+      "object_id": "loading-bay-b",
+      "generation": 1,
+      "type_id": "loading_bay",
+      "position": {"x": 13, "y": 5},
+      "traits": {"label": "B", "portable": false},
+      "state": {"visible": true, "blocks_movement": false}
+    }
+  ],
+  "barrier": {
+    "object_id": "warehouse-barrier-1",
+    "generation": 1,
+    "type_id": "barrier",
+    "position": {"x": 7, "y": 3},
+    "traits": {"portable": false},
+    "state": {"visible": true, "blocks_movement": true}
+  },
+  "success": {
+    "box_id": "box-blue-large-1",
+    "bay_id": "loading-bay-b"
+  }
+}

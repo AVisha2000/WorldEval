@@ -1,0 +1,1 @@
+{"schema_version":"task-revocation.v1","protocol":"worldeval-conversation/0.1.0","revocation_id":"revoke-1","task_id":"task-1","revision":0,"source":{"observation_seq":5,"tick":15,"state_hash":"sha256:2222222222222222222222222222222222222222222222222222222222222222"},"reason":"human_correction","revoked_plan_ids":["plan-1"],"disposition":"neutral_noop"}

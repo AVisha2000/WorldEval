@@ -39,6 +39,7 @@ type Props = {
   onMazeQuickStart: () => void
   onCrossroadsQuickStart: () => void
   onSandboxQuickStart?: () => void
+  onConversationQuickStart?: () => void
 }
 const tasks = [
   ["orientation-v0", "Stage A Orientation"],
@@ -80,7 +81,7 @@ const crossroadsEntrants = [
   { name: "Terra", glyph: "□", tone: "terra" },
 ] as const
 
-type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onSoloQuickStart" | "onMazeQuickStart" | "onCrossroadsQuickStart" | "onSandboxQuickStart"> & {
+type DemoLibraryProps = Pick<Props, "pending" | "onQuickStart" | "onTeamQuickStart" | "onRtsQuickStart" | "onSoloQuickStart" | "onMazeQuickStart" | "onCrossroadsQuickStart" | "onSandboxQuickStart" | "onConversationQuickStart"> & {
   mode: EpisodeSetup["mode"]
   onSelectMode: (mode: EpisodeSetup["mode"]) => void
 }
@@ -89,6 +90,7 @@ function DemoLibrary({
   mode,
   pending,
   onCrossroadsQuickStart,
+  onConversationQuickStart,
   onMazeQuickStart,
   onQuickStart,
   onRtsQuickStart,
@@ -113,6 +115,15 @@ function DemoLibrary({
         <p>Run an agent through nominal and interrupted tree objectives with explicit leases, receipts, and replay verification.</p>
         <Button type="button" size="lg" disabled={pending} onClick={onSandboxQuickStart} className="saved-demo-action saved-demo-action--sandbox">
           <PlayIcon data-icon="inline-start" />Open Primitive Sandbox
+        </Button>
+      </article>
+
+      <article className="saved-demo saved-demo--conversation">
+        <div className="saved-demo-path"><FolderOpenIcon /><code>/games/conversational-warehouse/</code><span>Chat-controlled agent</span></div>
+        <h3>Conversational Warehouse</h3>
+        <p>Tell an embodied agent what to do in plain language. It asks before guessing which box you mean, then exposes its grounded plan and replay.</p>
+        <Button type="button" size="lg" disabled={pending} onClick={onConversationQuickStart} className="saved-demo-action saved-demo-action--conversation">
+          <PlayIcon data-icon="inline-start" />Open Conversational Warehouse
         </Button>
       </article>
 
@@ -190,7 +201,7 @@ function DemoLibrary({
   )
 }
 
-export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onSoloQuickStart, onMazeQuickStart, onCrossroadsQuickStart, onSandboxQuickStart }: Props) {
+export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, onTeamQuickStart, onRtsQuickStart, onSoloQuickStart, onMazeQuickStart, onCrossroadsQuickStart, onSandboxQuickStart, onConversationQuickStart }: Props) {
   const isScriptedDemo = setup.controllerMode === "scripted_demo"
   const selectScriptedDemo = () => onChange({
     ...setup,
@@ -267,6 +278,7 @@ export function SetupPanel({ setup, pending, onChange, onSubmit, onQuickStart, o
         mode={setup.mode}
         pending={pending}
         onCrossroadsQuickStart={onCrossroadsQuickStart}
+        onConversationQuickStart={onConversationQuickStart}
         onMazeQuickStart={onMazeQuickStart}
         onQuickStart={onQuickStart}
         onRtsQuickStart={onRtsQuickStart}

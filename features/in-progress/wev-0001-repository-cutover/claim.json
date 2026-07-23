@@ -23,7 +23,15 @@
     "AGENTS.md"
   ],
   "base_revision": "244acf44f587899070d1a9dc793ee63cfd6f9caa",
-  "blockers": [],
+  "blockers": [
+    {
+      "created_at": "2026-07-23T10:39:26Z",
+      "id": "BLOCK-001",
+      "next_action": "Amend the integration scope and build the replay-first conversational warehouse vertical slice with separate WEV-0008 lifecycle record.",
+      "reason": "User-directed expansion: integrate the conversational sandbox candidate on the existing cutover branch before review.",
+      "resolved_at": null
+    }
+  ],
   "branch": "codex/wev-0001-repository-cutover",
   "claimed_at": "2026-07-23T01:22:49Z",
   "collaborators": [
@@ -38,13 +46,12 @@
     "workspace-path-resolution",
     "feature-lifecycle"
   ],
-  "expires_at": "2026-07-24T01:22:49Z",
+  "expires_at": "2026-07-24T10:39:26Z",
   "feature_id": "WEV-0001",
   "owner": "codex-agent-team",
-  "ready_at": "2026-07-23T05:09:25Z",
   "reclaim_history": [],
-  "renewed_at": "2026-07-23T01:22:49Z",
+  "renewed_at": "2026-07-23T10:39:26Z",
   "schema_version": "worldeval/feature-claim/1.0.0",
   "task_id": "root-plan-implementation",
-  "work_state": "ready"
+  "work_state": "blocked"
 }

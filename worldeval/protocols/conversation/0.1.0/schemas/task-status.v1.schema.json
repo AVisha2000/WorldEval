@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://worldeval.local/conversation/0.1.0/task-status.v1.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "protocol", "status_id", "task_id", "revision", "source", "state", "active_plan_id", "summary", "visibility"],
+  "properties": {
+    "schema_version": {"const": "task-status.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"}, "status_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "task_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "revision": {"type": "integer", "minimum": 0}, "source": {"$ref": "common.v1.schema.json#/$defs/source"},
+    "state": {"enum": ["clarification_required", "ready", "planning", "executing", "interrupted", "completed", "failed", "cancelled"]}, "active_plan_id": {"oneOf": [{"$ref": "common.v1.schema.json#/$defs/id"}, {"type": "null"}]},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 1000}, "visibility": {"const": "public"}
+  }
+}
