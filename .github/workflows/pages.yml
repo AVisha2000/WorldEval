@@ -1,4 +1,4 @@
-name: Deploy dashboard to GitHub Pages
+name: Deploy WorldEval web app to GitHub Pages
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: dashboard
+        working-directory: apps/worldeval-web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: dashboard/pnpm-lock.yaml
+          cache-dependency-path: apps/worldeval-web/pnpm-lock.yaml
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Install dependencies
@@ -52,7 +52,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dashboard/dist
+          path: apps/worldeval-web/dist
 
   deploy:
     environment:

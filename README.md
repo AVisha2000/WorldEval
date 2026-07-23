@@ -17,8 +17,11 @@ worlds**. Its first environment, **WorldArena**, is a 3D agent arena where indep
 configured models receive partial observations, submit high-level plans, and experience the
 economic, physical, and social consequences inside an authoritative Godot simulation.
 
-The LLM is the strategist; it never controls coordinates, physics, damage, resources, or scoring.
-Godot resolves the world, while FastAPI validates plans, enforces budgets, and records evidence.
+The LLM is the strategist; it never controls physics, damage, resources, or scoring. Existing
+leaderboard profiles also hide exact authority coordinates. The additive Primitive Sandbox profile
+exposes an explicit integer grid so reusable semantic actions and interruption behavior can be
+tested without changing those leaderboards. Godot resolves the world, while FastAPI validates
+plans, enforces budgets, and records evidence.
 The **Controller Lab** provides the browser interface for running and inspecting solo, two-agent,
 and three-agent scenarios.
 
@@ -73,6 +76,31 @@ the objective is to drive a car there. WorldArena records these prerequisite cha
 evaluated as physical-world understanding rather than accepted as plausible language alone. This
 is an illustrative test design, not a claim about the failure of any particular model.
 
+## Repository architecture
+
+The workspace is organized around a reusable framework and independently versioned worlds:
+
+```text
+worldeval/                 reusable contracts, runtime, evaluation, replay, workflow
+worlds/worldarena/         WorldArena backend, Godot authority, games, demos, legacy capsule
+apps/worldeval-web/        Controller Lab and marketing site
+features/                  claim-first backlog, in-progress, and implemented work
+docs/                      current product docs and archived plans
+tools/                     repository-wide validation
+ops/                       hosting and deployment configuration
+media/remotion/            derived showcase media project
+runs/ and exports/         ignored local artifacts
+```
+
+`worldeval.workspace.json` is the authoritative path map. See
+[`docs/worldeval/README.md`](docs/worldeval/README.md) and
+[`docs/worldarena/README.md`](docs/worldarena/README.md) for the framework/environment boundary.
+
+Coding agents must claim a feature before editing its declared scope. Lifecycle state is the
+feature directory itself: `backlog → in-progress → implemented`. Run `worldeval feature --help`
+for the environment-neutral workflow and read the root [`AGENTS.md`](AGENTS.md) before claiming
+work. A demo cannot be completed until its replay bundle is sealed, verified offline, and saved.
+
 ## Quick start
 
 ### Requirements
@@ -98,19 +126,20 @@ To install and start the backend manually:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
-genesis-arena
+worldarena
 ```
 
 Open <http://127.0.0.1:8000/>. The managed episode and series service starts the appropriate
 versioned Godot authority.
 
-The installed Python commands temporarily retain their legacy `genesis-*` names for compatibility.
+The installed Python commands retain `genesis-arena`, `genesis-evaluate`, and
+`genesis-season-schedule` as compatibility shims.
 See [`docs/NAMING.md`](docs/NAMING.md) for the naming conventions.
 
 To inspect the Godot project separately:
 
 ```bash
-/Applications/Godot.app/Contents/MacOS/Godot --path godot
+/Applications/Godot.app/Contents/MacOS/Godot --path worlds/worldarena/godot
 ```
 
 The browser preview is presentation-only. A newest-frame-only participant JPEG stream is kept
@@ -134,7 +163,7 @@ Agents use the same structured task path intended for LLM controllers. In-world 
 “Harvest Tree” and “Hold the bridge” are short milestone summaries, not hidden chain-of-thought,
 prompts, raw model output, or hidden state.
 
-[Watch the 150-second native gameplay capture](godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
+[Watch the 150-second native gameplay capture](worlds/worldarena/godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4)
 
 ![Both factions spread across persistent wood and ore fields](docs/screenshots/worldarena-rts-economy.jpg)
 
@@ -159,7 +188,7 @@ To start the Controller Lab without the launcher:
 .venv/bin/uvicorn genesis_arena.main:app --host 127.0.0.1 --port 8000
 
 # Terminal 2
-cd dashboard
+cd apps/worldeval-web
 pnpm dev
 ```
 
@@ -274,7 +303,7 @@ deterministic verification remain usable.
 The existing MVP renderer can also render verified embodiment replay inputs directly:
 
 ```bash
-.venv/bin/python scripts/render_embodiment_mvp_demo.py --help
+.venv/bin/python worlds/worldarena/scripts/render_embodiment_mvp_demo.py --help
 ```
 
 Local run bundles and exported video remain ignored by Git. Uploads and Pages video IDs require
@@ -319,10 +348,10 @@ Run the Python contract, concurrency, privacy, scoring, and scheduling tests:
 Run the focused embodiment and frozen Duel suites, then validate both dashboard builds:
 
 ```bash
-.venv/bin/pytest -q tests/embodiment
-.venv/bin/pytest -q tests/duel
+.venv/bin/pytest -q worlds/worldarena/tests/embodiment
+.venv/bin/pytest -q worlds/worldarena/tests/duel
 
-cd dashboard
+cd apps/worldeval-web
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm test
@@ -337,11 +366,11 @@ Run the deterministic simulation and Controller Lab regression loop:
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot \
-  --headless --path godot \
+  --headless --path worlds/worldarena/godot \
   --script res://scripts/arena/simulation/arena_headless_runner.gd
 
 /Applications/Godot.app/Contents/MacOS/Godot \
-  --headless --path godot \
+  --headless --path worlds/worldarena/godot \
   --quit-after 8000 -- \
   --arena-offline-demo --arena-test-rounds=4 --arena-quit-after-test
 ```
@@ -386,18 +415,18 @@ interactive download steps; import contracts are included, but no gated asset wa
 
 | Path | Purpose |
 |---|---|
-| [`backend/genesis_arena/embodiment/`](backend/genesis_arena/embodiment/) | Demo/live provider boundary, managed runtimes, safe evaluation, and replay archives |
-| [`godot/scripts/embodiment/`](godot/scripts/embodiment/) | Solo, duo, and trio authority plus participant presentation and versioned replay |
-| [`game/embodiment_protocol_packages/`](game/embodiment_protocol_packages/) | Immutable additive `llm-controller` protocol packages and registry |
-| [`dashboard/`](dashboard/) | Local Controller Lab and `/WorldEval/` GitHub Pages site |
-| [`backend/genesis_arena/arena/`](backend/genesis_arena/arena/) | Protocol, runtime, artifacts, evaluator, and season scheduler |
-| [`godot/scripts/arena/`](godot/scripts/arena/) | Authoritative simulation, controller, and presentation |
-| [`godot/data/arena/`](godot/data/arena/) | Versioned map and benchmark contract |
-| [`game/arena_actions.json`](game/arena_actions.json) | Typed action and cognition contract |
-| [`tests/`](tests/) | Unit, adversarial, privacy, concurrency, protocol, and scoring tests |
+| [`worlds/worldarena/backend/genesis_arena/embodiment/`](worlds/worldarena/backend/genesis_arena/embodiment/) | Demo/live provider boundary, managed runtimes, safe evaluation, and replay archives |
+| [`worlds/worldarena/godot/scripts/embodiment/`](worlds/worldarena/godot/scripts/embodiment/) | Solo, duo, and trio authority plus participant presentation and versioned replay |
+| [`worlds/worldarena/game/embodiment_protocol_packages/`](worlds/worldarena/game/embodiment_protocol_packages/) | Immutable additive `llm-controller` protocol packages and registry |
+| [`apps/worldeval-web/`](apps/worldeval-web/) | Local Controller Lab and `/WorldEval/` GitHub Pages site |
+| [`worlds/worldarena/backend/genesis_arena/arena/`](worlds/worldarena/backend/genesis_arena/arena/) | Protocol, runtime, artifacts, evaluator, and season scheduler |
+| [`worlds/worldarena/godot/scripts/arena/`](worlds/worldarena/godot/scripts/arena/) | Authoritative simulation, controller, and presentation |
+| [`worlds/worldarena/godot/data/arena/`](worlds/worldarena/godot/data/arena/) | Versioned map and benchmark contract |
+| [`worlds/worldarena/game/arena_actions.json`](worlds/worldarena/game/arena_actions.json) | Typed action and cognition contract |
+| [`worlds/worldarena/tests/`](worlds/worldarena/tests/) | Unit, adversarial, privacy, concurrency, protocol, and scoring tests |
 | [`docs/architecture.md`](docs/architecture.md) | Authority boundaries and round protocol |
 | [`docs/NAMING.md`](docs/NAMING.md) | WorldEval and WorldArena naming conventions |
-| [`feature.md`](feature.md) | Full product, rules, evaluation, and implementation specification |
+| [`docs/archive/competitive-arena-v1-feature-plan.md`](docs/archive/competitive-arena-v1-feature-plan.md) | Historical competitive-arena product and implementation specification |
 
 WorldEval uses WorldArena as a controlled test of foundational agent behaviour. Strong performance
 does not show that a model is safe to control a real robot or operate without human oversight.

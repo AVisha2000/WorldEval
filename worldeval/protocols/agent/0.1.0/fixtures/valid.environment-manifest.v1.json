@@ -1,0 +1,26 @@
+{
+  "schema_version": "environment-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "environment_id": "fixture-environment",
+  "game_id": "fixture-game",
+  "name": "Fixture environment",
+  "briefing": {"premise": "A conformance fixture.", "agent_role": "Control worker-1.", "success_model": "Complete the objective.", "rules": ["Respond explicitly."]},
+  "authority": {"engine": "godot", "simulation_hz": 10, "numeric_model": "integer-grid"},
+  "profiles": {"action": "fixture-actions-v1", "observation": "fixture-visible-v1", "decision": "dynamic-step-locked-v1"},
+  "coordinate_frames": [{"frame_id": "world_grid", "dimensions": 2, "width": 1, "height": 1, "origin": "bottom_left", "x_axis": "east", "y_axis": "north", "units": "cells"}],
+  "controllable_asset_types": ["worker"],
+  "object_catalog": "valid.object-catalog.v1.json",
+  "action_catalog": "valid.action-catalog.v1.json",
+  "decision_profile": "valid.decision-profile.v1.json",
+  "contracts": {
+    "environment_init": "schemas/environment-init.v1.schema.json", "objective": "schemas/objective.v1.schema.json",
+    "object_catalog": "schemas/object-catalog.v1.schema.json", "action_catalog": "schemas/action-catalog.v1.schema.json",
+    "observation": "schemas/observation.v1.schema.json", "action_plan": "schemas/action-plan.v1.schema.json",
+    "decision_response": "schemas/decision-response.v1.schema.json", "action_receipt": "schemas/action-receipt.v1.schema.json",
+    "decision_profile": "schemas/decision-profile.v1.schema.json", "skill_manifest": "schemas/skill-manifest.v1.schema.json",
+    "replay_bundle": "schemas/replay-bundle.v1.schema.json"
+  },
+  "example_traces": [],
+  "semantic_world_commands_exposed": true,
+  "exact_world_coordinates_exposed": true
+}

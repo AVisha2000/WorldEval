@@ -1,0 +1,64 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "Portable skills describe affordance requirements, suggested primitive steps, decision points, compatible profiles, and success predicates without exposing opaque world commands.",
+      "id": "WEV-0006-AC-01",
+      "proof_types": ["test", "document"],
+      "replay_required": false
+    },
+    {
+      "demo_required": true,
+      "description": "A second game adopts the released WorldEval contracts and skill templates without changing the core protocol and saves an independently verified deterministic replay.",
+      "id": "WEV-0006-AC-02",
+      "proof_types": ["demo", "replay", "test"],
+      "replay_required": true
+    },
+    {
+      "demo_required": false,
+      "description": "Cross-game evaluation reports authority-derived skill expansion, action validity, adaptation, efficiency, and replay verification metrics without an LLM judge.",
+      "id": "WEV-0006-AC-03",
+      "proof_types": ["test", "metric"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": [
+    "worldeval/src/worldeval/evaluation",
+    "worldeval/tests/test_portable_skill_evaluation.py",
+    "worldeval/protocols/agent",
+    "worlds/worldarena/games/shared",
+    "worlds/worldarena/games/waypoint-maze",
+    "worlds/worldarena/backend/worldarena/waypoint_maze",
+    "worlds/worldarena/backend/worldarena/replay_verifiers.py",
+    "worlds/worldarena/godot/scripts/agent_waypoint_maze",
+    "worlds/worldarena/godot/tests/agent_waypoint_maze",
+    "worlds/worldarena/demos/waypoint-maze-beacon-route",
+    "worlds/worldarena/scripts/build_waypoint_maze_demo.py",
+    "worlds/worldarena/tests/test_waypoint_maze.py",
+    ".github/workflows/ci.yml"
+  ],
+  "dependencies": ["WEV-0005"],
+  "exclusive_shared_surfaces": ["portable-agent-skills", "cross-game-agent-evaluation"],
+  "id": "WEV-0006",
+  "kind": "behavioral",
+  "priority": "p1",
+  "product": "worldeval",
+  "related_features": ["WEV-0003", "WEV-0004"],
+  "required_approvals": ["behavioral"],
+  "requirements": {
+    "compatibility": ["Skill additions remain compatible with worldeval-agent/0.1.0 or ship under an additive protocol version."],
+    "migration": ["Adopt skills one game at a time with conformance fixtures and replay evidence."],
+    "privacy": ["Skills and evaluation use declared affordances and player-visible evidence only."],
+    "rollback": ["Games continue accepting primitive plans when optional skill templates are absent."]
+  },
+  "risk": "medium",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": ["Agent-side plan templates", "Cross-game conformance", "A second deterministic game adoption", "Authority-derived evaluation metrics"],
+    "out": ["Game-side execute_skill shortcuts", "Hidden strategic policies", "LLM-judge scoring"]
+  },
+  "slug": "reusable-agent-skills",
+  "summary": "Prove that agent-side skills and evaluation primitives transfer across games without moving strategy into the game authority.",
+  "supersedes": [],
+  "title": "Reusable agent skills, evaluation, and additional games"
+}

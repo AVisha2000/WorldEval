@@ -1,0 +1,50 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "worldeval-agent/0.1.0 provides immutable schemas, fixtures, validators, version metadata, and a protocol lock for all required onboarding and action contracts.",
+      "id": "WEV-0003-AC-01",
+      "proof_types": ["test", "artifact"],
+      "replay_required": false
+    },
+    {
+      "demo_required": false,
+      "description": "Environment initialization is materialized from an authored manifest, episode objective, and capability profile, then hash-acknowledged before scored actions.",
+      "id": "WEV-0003-AC-02",
+      "proof_types": ["test"],
+      "replay_required": false
+    },
+    {
+      "demo_required": false,
+      "description": "Objects have stable episode identities and explicit coordinate frames, and action primitives declare preconditions, cancellation, receipts, and forbidden game authority.",
+      "id": "WEV-0003-AC-03",
+      "proof_types": ["test", "document"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": ["worldeval/protocols/agent", "worldeval/src/worldeval/contracts", "worldeval/tests"],
+  "dependencies": ["WEV-0001"],
+  "exclusive_shared_surfaces": ["worldeval-agent-protocol", "environment-onboarding-contract"],
+  "id": "WEV-0003",
+  "kind": "protocol",
+  "priority": "p0",
+  "product": "worldeval",
+  "related_features": ["WEV-0004", "WEV-0005", "WEV-0006"],
+  "required_approvals": [],
+  "requirements": {
+    "compatibility": ["Add the protocol without changing released llm-controller, Duel, or embodiment contracts."],
+    "migration": ["New environments opt in explicitly through declared profiles."],
+    "privacy": ["Initialization and observations contain only participant-visible capabilities and state."],
+    "rollback": ["Consumers can remain on existing protocols while this additive package is removed or revised."]
+  },
+  "risk": "high",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": ["Environment manifest and initialization", "Episode objectives", "Object, action, observation, decision, receipt, skill, and replay contracts", "Generated non-authoritative onboarding Markdown"],
+    "out": ["Changing legacy controller semantics", "Opaque execute-skill game commands", "Automatic target rebinding"]
+  },
+  "slug": "agent-onboarding-contracts",
+  "summary": "Create the versioned, environment-neutral contract that tells an agent what world it controls and which primitive actions it may request.",
+  "supersedes": [],
+  "title": "Game onboarding, object, action, and objective contracts"
+}

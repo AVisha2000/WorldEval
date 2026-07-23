@@ -1,0 +1,47 @@
+{
+  "schema_version": "object-catalog.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "catalog_id": "primitive-sandbox-objects-v1",
+  "object_types": [
+    {
+      "type_id": "worker",
+      "traits": ["controllable", "mobile", "inventory_holder"],
+      "affordances": ["movable", "can_equip", "can_use_tool"],
+      "visible_state_fields": ["position", "inventory", "equipped", "health"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "base",
+      "traits": ["structure", "safe_zone"],
+      "affordances": ["approachable", "safe_return_target"],
+      "visible_state_fields": ["position"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "tree",
+      "traits": ["resource", "destructible"],
+      "affordances": ["approachable", "choppable"],
+      "visible_state_fields": ["position", "health"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "barrier",
+      "traits": ["obstacle"],
+      "affordances": ["blocks_movement"],
+      "visible_state_fields": ["position", "blocks_movement"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "enemy",
+      "traits": ["hostile", "mobile"],
+      "affordances": ["visible_hostile"],
+      "visible_state_fields": ["position", "health", "hostile"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    }
+  ]
+}

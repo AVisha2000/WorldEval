@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/observation.v1.schema.json",
+  "title": "WorldEval agent observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "environment_id", "session_id", "observation_seq", "tick", "state_hash", "coordinate_frame", "controlled_assets", "visible_objects", "events", "active_plan", "decision_required", "terminal"],
+  "properties": {
+    "schema_version": {"const": "observation.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "environment_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "session_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "observation_seq": {"type": "integer", "minimum": 0}, "tick": {"type": "integer", "minimum": 0}, "state_hash": {"$ref": "common.v1.schema.json#/$defs/hash"},
+    "coordinate_frame": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "controlled_assets": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/controlledAsset"}},
+    "visible_objects": {"type": "array", "maxItems": 4096, "items": {"$ref": "common.v1.schema.json#/$defs/objectInstance"}},
+    "events": {"type": "array", "maxItems": 256, "items": {"$ref": "common.v1.schema.json#/$defs/event"}},
+    "active_plan": {"oneOf": [{"$ref": "common.v1.schema.json#/$defs/activePlan"}, {"type": "null"}]},
+    "decision_required": {"$ref": "common.v1.schema.json#/$defs/decisionRequired"}, "terminal": {"type": "boolean"}
+  }
+}

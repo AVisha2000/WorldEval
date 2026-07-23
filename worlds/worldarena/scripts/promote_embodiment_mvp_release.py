@@ -13,12 +13,14 @@ from genesis_arena.embodiment.protocol import canonical_json_bytes
 
 try:
     from scripts.run_embodiment_mvp_certification import (
+        READINESS_REPORT_FORMAT,
         RELEASE_CAPABILITIES,
         RELEASE_ENVIRONMENT_ID,
         RELEASE_FORMAT,
         RELEASE_MANIFEST,
         RELEASE_PROTOCOL_VERSION,
         ROOT,
+        SOURCE_FINGERPRINT_V2,
         Y_BOT_MANIFEST,
         _certification_source_fingerprint,
         validate_browser_qa_report,
@@ -31,12 +33,14 @@ try:
     )
 except ModuleNotFoundError:  # Direct `python scripts/...` execution.
     from run_embodiment_mvp_certification import (  # type: ignore[no-redef]
+        READINESS_REPORT_FORMAT,
         RELEASE_CAPABILITIES,
         RELEASE_ENVIRONMENT_ID,
         RELEASE_FORMAT,
         RELEASE_MANIFEST,
         RELEASE_PROTOCOL_VERSION,
         ROOT,
+        SOURCE_FINGERPRINT_V2,
         Y_BOT_MANIFEST,
         _certification_source_fingerprint,
         validate_browser_qa_report,
@@ -69,12 +73,13 @@ def pilot_gates(arguments: argparse.Namespace) -> dict[str, dict[str, object]]:
 
 def readiness_report(gates: dict[str, dict[str, object]]) -> dict[str, object]:
     return {
-        "format": "llm-controller/embodiment-pilot-readiness/1.1.0",
+        "format": READINESS_REPORT_FORMAT,
         "gates": gates,
         "ready_for_promotion": bool(gates)
         and all(gate.get("passed") is True for gate in gates.values()),
         "runtime_capabilities": validate_release_capabilities(RELEASE_MANIFEST),
         "source_fingerprint": _certification_source_fingerprint(),
+        "source_fingerprint_version": SOURCE_FINGERPRINT_V2,
     }
 
 

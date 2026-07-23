@@ -1,0 +1,24 @@
+{
+  "schema_version": "skill-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "skill_id": "navigation.follow-visible-waypoints-v1",
+  "description": "Agent-side planning template for expanding an objective-declared sequence of visible approachable targets into explicit direct-only move_to steps.",
+  "required_target_affordances": ["approachable"],
+  "required_tool_affordances": [],
+  "suggested_actions": ["move_to"],
+  "preconditions": [
+    {
+      "kind": "ordered_waypoints_visible",
+      "subject": null,
+      "parameters": {}
+    }
+  ],
+  "decision_points": ["waypoint_reached", "movement_blocked", "target_disappeared", "lease_expired"],
+  "success_predicate": {
+    "kind": "route_complete",
+    "subject": null,
+    "parameters": {}
+  },
+  "compatible_action_profiles": ["semantic-grid-actions-v1"],
+  "execution": "agent_expands_to_visible_actions"
+}

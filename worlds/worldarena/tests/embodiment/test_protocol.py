@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment import (
@@ -16,8 +15,9 @@ from genesis_arena.embodiment import (
     canonical_json_bytes,
     canonical_sha256,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 @pytest.fixture(scope="module")

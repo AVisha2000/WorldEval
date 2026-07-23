@@ -1,0 +1,25 @@
+{
+  "schema_version": "action-plan.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "plan_id": "example-explicit-detour",
+  "source": {"observation_seq": 5, "tick": 10, "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+  "lease_ticks": 3,
+  "execution_policy": "confirm_each_boundary",
+  "steps": [
+    {
+      "step_id": "waypoint-south",
+      "action": {"action": "move_to", "arguments": {"target": {"position": {"x": 11, "y": 11}}, "navigation": "direct_only"}},
+      "preconditions": [],
+      "expected_completion": {"kind": "agent_at_coordinate", "subject": "worker-1", "parameters": {"x": 11, "y": 11}},
+      "interrupt_on": ["movement_blocked", "hostile_near_target"]
+    },
+    {
+      "step_id": "waypoint-past-barrier",
+      "action": {"action": "move_to", "arguments": {"target": {"position": {"x": 14, "y": 11}}, "navigation": "direct_only"}},
+      "preconditions": [],
+      "expected_completion": {"kind": "agent_at_coordinate", "subject": "worker-1", "parameters": {"x": 14, "y": 11}},
+      "interrupt_on": ["movement_blocked", "hostile_near_target"]
+    }
+  ],
+  "abort_behavior": "cancel_current_action"
+}

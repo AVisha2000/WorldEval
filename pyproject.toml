@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "genesis-arena"
-version = "0.2.0"
-description = "WorldEval orchestration backend for the deterministic WorldArena agent platform."
+name = "worldeval"
+version = "0.3.0"
+description = "Reusable evaluation contracts with the deterministic WorldArena environment."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -27,16 +27,27 @@ dev = [
 ]
 
 [project.scripts]
+worldeval = "worldeval.cli:main"
+worldeval-feature = "worldeval.features.cli:main"
+worldarena = "worldarena.main:run"
 genesis-arena = "genesis_arena.main:run"
 genesis-evaluate = "genesis_arena.evaluation:main"
 genesis-season-schedule = "genesis_arena.season_cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["backend/genesis_arena"]
+packages = [
+  "worldeval/src/worldeval",
+  "worlds/worldarena/backend/worldarena",
+  "worlds/worldarena/backend/genesis_arena",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"worldeval/protocols" = "worldeval/protocols"
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["tests"]
+testpaths = ["worldeval/tests", "worlds/worldarena/tests"]
+pythonpath = ["worldeval/src", "worlds/worldarena/backend"]
 asyncio_mode = "auto"
 markers = [
   "live_provider: opt-in external provider smoke test requiring explicit key and model env vars",

@@ -8,7 +8,9 @@ from collections import Counter, deque
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+from worldarena.paths import WORLDARENA_ROOT
+
+REPOSITORY_ROOT = WORLDARENA_ROOT
 MAP_PATH = REPOSITORY_ROOT / "game" / "duel_protocol" / "maps" / "crossroads-duel-v1.json"
 GENERATOR_PATH = REPOSITORY_ROOT / "scripts" / "build_duel_map.py"
 WIDTH = 384

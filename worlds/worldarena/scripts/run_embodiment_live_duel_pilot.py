@@ -34,8 +34,9 @@ from genesis_arena.embodiment.protocol import (
     strict_json_loads,
 )
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 REPORT_FORMAT = "llm-controller/live-paired-duel/1.0.0"
 PROVIDERS = ("openai", "anthropic", "gemini")

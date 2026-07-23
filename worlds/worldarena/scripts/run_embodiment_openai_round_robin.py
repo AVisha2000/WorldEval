@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Awaitable, Callable, Mapping, Sequence
 
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
+from worldarena.paths import WORLDARENA_ROOT
 
 try:
     from scripts.run_embodiment_mvp_certification import validate_live_duel_report
@@ -24,7 +25,7 @@ except ModuleNotFoundError:  # Direct `python scripts/...` execution.
         validate_live_duel_report,
     )
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 REPORT_FORMAT = "llm-controller/openai-round-robin/1.0.0"
 MANIFEST_FORMAT = "llm-controller/openai-round-robin-manifest/1.0.0"
 DUEL_REPORT_FORMAT = "llm-controller/live-paired-duel/1.0.0"

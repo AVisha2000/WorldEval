@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/feature-completion/1.0.0",
+  "title": "WorldEval feature completion receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature_id",
+    "completed_at",
+    "completed_by",
+    "implementation_revision",
+    "base_revision",
+    "evidence_manifest_sha256",
+    "acceptance_criteria",
+    "verified_replay_count",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval/feature-completion/1.0.0"},
+    "feature_id": {"type": "string", "pattern": "^WEV-[0-9]{4,}$"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "completed_by": {"type": "string", "minLength": 1},
+    "implementation_revision": {"type": "string", "minLength": 1},
+    "base_revision": {"type": "string", "minLength": 1},
+    "evidence_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+    "verified_replay_count": {"type": "integer", "minimum": 0},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["privacy", "secrets", "migration", "compatibility"],
+      "properties": {
+        "privacy": {"const": true},
+        "secrets": {"const": true},
+        "migration": {"const": true},
+        "compatibility": {"const": true}
+      }
+    }
+  }
+}

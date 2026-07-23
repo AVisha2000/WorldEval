@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/common.v1.schema.json",
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"},
+    "hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "protocol": {"const": "worldeval-agent/0.1.0"},
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}}
+    },
+    "coordinateFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_id", "dimensions", "width", "height", "origin", "x_axis", "y_axis", "units"],
+      "properties": {
+        "frame_id": {"$ref": "#/$defs/id"},
+        "dimensions": {"const": 2},
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "origin": {"enum": ["bottom_left", "top_left"]},
+        "x_axis": {"enum": ["east", "right"]},
+        "y_axis": {"enum": ["north", "down"]},
+        "units": {"const": "cells"}
+      }
+    },
+    "briefing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["premise", "agent_role", "success_model", "rules"],
+      "properties": {
+        "premise": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "agent_role": {"type": "string", "minLength": 1, "maxLength": 500},
+        "success_model": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "rules": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "simulation_hz", "numeric_model"],
+      "properties": {
+        "engine": {"const": "godot"},
+        "simulation_hz": {"const": 10},
+        "numeric_model": {"const": "integer-grid"}
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "observation", "decision"],
+      "properties": {
+        "action": {"$ref": "#/$defs/id"},
+        "observation": {"$ref": "#/$defs/id"},
+        "decision": {"$ref": "#/$defs/id"}
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment_init", "objective", "object_catalog", "action_catalog", "observation", "action_plan", "decision_response", "action_receipt", "decision_profile", "skill_manifest", "replay_bundle"],
+      "properties": {
+        "environment_init": {"type": "string"}, "objective": {"type": "string"},
+        "object_catalog": {"type": "string"}, "action_catalog": {"type": "string"},
+        "observation": {"type": "string"}, "action_plan": {"type": "string"},
+        "decision_response": {"type": "string"}, "action_receipt": {"type": "string"},
+        "decision_profile": {"type": "string"}, "skill_manifest": {"type": "string"},
+        "replay_bundle": {"type": "string"}
+      }
+    },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "subject", "parameters"],
+      "properties": {
+        "kind": {"$ref": "#/$defs/id"},
+        "subject": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "parameters": {"type": "object"}
+      }
+    },
+    "objectiveTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "object_id", "object_type", "position"],
+      "properties": {
+        "role": {"$ref": "#/$defs/id"},
+        "object_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "object_type": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "position": {"oneOf": [{"$ref": "#/$defs/position"}, {"type": "null"}]}
+      },
+      "anyOf": [
+        {"properties": {"object_id": {"type": "string"}}},
+        {"properties": {"object_type": {"type": "string"}}},
+        {"properties": {"position": {"type": "object"}}}
+      ]
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "protocol", "objective_id", "instruction", "coordinate_frame", "targets", "success_predicates", "failure_predicates", "safety_constraints", "priorities", "tick_budget", "permitted_fallback"],
+      "properties": {
+        "schema_version": {"const": "objective.v1"}, "protocol": {"$ref": "#/$defs/protocol"},
+        "objective_id": {"$ref": "#/$defs/id"}, "instruction": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "coordinate_frame": {"$ref": "#/$defs/id"},
+        "targets": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/objectiveTarget"}},
+        "success_predicates": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/predicate"}},
+        "failure_predicates": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/predicate"}},
+        "safety_constraints": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/predicate"}},
+        "priorities": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": "string", "minLength": 1}},
+        "tick_budget": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "permitted_fallback": {"enum": ["fail", "wait", "return_to_base"]}
+      }
+    },
+    "objectType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type_id", "traits", "affordances", "visible_state_fields", "lifecycle_events", "stable_identity"],
+      "properties": {
+        "type_id": {"$ref": "#/$defs/id"},
+        "traits": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "affordances": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "visible_state_fields": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "lifecycle_events": {"type": "array", "items": {"enum": ["spawned", "updated", "despawned"]}, "uniqueItems": true},
+        "stable_identity": {"const": true}
+      }
+    },
+    "objectCatalog": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "protocol", "catalog_id", "object_types"],
+      "properties": {
+        "schema_version": {"const": "object-catalog.v1"}, "protocol": {"$ref": "#/$defs/protocol"},
+        "catalog_id": {"$ref": "#/$defs/id"},
+        "object_types": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/objectType"}}
+      }
+    },
+    "actionAuthority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["game_may", "game_must_not", "navigation", "target_selection"],
+      "properties": {
+        "game_may": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "game_must_not": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "navigation": {"enum": ["none", "direct_only", "pathfinding_allowed"]},
+        "target_selection": {"enum": ["agent_only", "declared_target_only"]}
+      }
+    },
+    "actionDefinition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["action_id", "argument_schema", "preconditions", "refusal_conditions", "duration", "cancellation_boundary", "authority", "receipt_codes"],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/id"}, "argument_schema": {"type": "object"},
+        "preconditions": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/id"}},
+        "refusal_conditions": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/id"}},
+        "duration": {
+          "type": "object", "additionalProperties": false, "required": ["kind", "maximum_ticks"],
+          "properties": {"kind": {"enum": ["instant", "persistent"]}, "maximum_ticks": {"type": "integer", "minimum": 0, "maximum": 1000000}}
+        },
+        "cancellation_boundary": {"enum": ["immediate", "tick_boundary", "completion"]},
+        "authority": {"$ref": "#/$defs/actionAuthority"},
+        "receipt_codes": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "actionCatalog": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "protocol", "catalog_id", "action_profile", "actions"],
+      "properties": {
+        "schema_version": {"const": "action-catalog.v1"}, "protocol": {"$ref": "#/$defs/protocol"},
+        "catalog_id": {"$ref": "#/$defs/id"}, "action_profile": {"$ref": "#/$defs/id"},
+        "actions": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/actionDefinition"}}
+      }
+    },
+    "dynamicProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "protocol", "profile_id", "kind", "minimum_ticks", "maximum_ticks", "default_ticks", "simulation_pauses_during_inference", "observation_policy", "interrupt_events", "explicit_response_required", "missing_response_behavior"],
+      "properties": {
+        "schema_version": {"const": "decision-profile.v1"}, "protocol": {"$ref": "#/$defs/protocol"}, "profile_id": {"$ref": "#/$defs/id"},
+        "kind": {"const": "dynamic-step-locked"}, "minimum_ticks": {"const": 1}, "maximum_ticks": {"const": 5}, "default_ticks": {"const": 3},
+        "simulation_pauses_during_inference": {"const": true}, "observation_policy": {"const": "every_boundary"},
+        "interrupt_events": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "explicit_response_required": {"const": true}, "missing_response_behavior": {"const": "neutral_noop"}
+      }
+    },
+    "staticProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "protocol", "profile_id", "kind", "minimum_ticks", "maximum_ticks", "default_ticks", "simulation_pauses_during_inference", "observation_policy", "interrupt_events", "explicit_response_required", "missing_response_behavior"],
+      "properties": {
+        "schema_version": {"const": "decision-profile.v1"}, "protocol": {"$ref": "#/$defs/protocol"}, "profile_id": {"$ref": "#/$defs/id"},
+        "kind": {"const": "static-event-gated"}, "minimum_ticks": {"const": 1}, "maximum_ticks": {"const": 50}, "default_ticks": {"type": "integer", "minimum": 1, "maximum": 50},
+        "simulation_pauses_during_inference": {"const": true}, "observation_policy": {"const": "event_or_lease_expiry"},
+        "interrupt_events": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "explicit_response_required": {"const": true}, "missing_response_behavior": {"const": "neutral_noop"}
+      }
+    },
+    "objectInstance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "type_id", "generation", "position", "affordances", "state"],
+      "properties": {
+        "object_id": {"$ref": "#/$defs/id"}, "type_id": {"$ref": "#/$defs/id"},
+        "generation": {"type": "integer", "minimum": 1}, "position": {"$ref": "#/$defs/position"},
+        "affordances": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}}, "state": {"type": "object"}
+      }
+    },
+    "controlledAsset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "type_id", "generation", "position", "affordances", "state", "capabilities"],
+      "properties": {
+        "object_id": {"$ref": "#/$defs/id"}, "type_id": {"$ref": "#/$defs/id"},
+        "generation": {"type": "integer", "minimum": 1}, "position": {"$ref": "#/$defs/position"},
+        "affordances": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}}, "state": {"type": "object"},
+        "capabilities": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "capability": {
+      "type": "object", "additionalProperties": false, "required": ["capability_id", "available", "reason"],
+      "properties": {"capability_id": {"$ref": "#/$defs/id"}, "available": {"type": "boolean"}, "reason": {"type": ["string", "null"]}}
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_seq", "tick", "state_hash"],
+      "properties": {"observation_seq": {"type": "integer", "minimum": 0}, "tick": {"type": "integer", "minimum": 0}, "state_hash": {"$ref": "#/$defs/hash"}}
+    },
+    "actionCall": {
+      "type": "object", "additionalProperties": false, "required": ["action", "arguments"],
+      "properties": {"action": {"$ref": "#/$defs/id"}, "arguments": {"type": "object"}}
+    },
+    "planStep": {
+      "type": "object", "additionalProperties": false,
+      "required": ["step_id", "action", "preconditions", "expected_completion", "interrupt_on"],
+      "properties": {
+        "step_id": {"$ref": "#/$defs/id"}, "action": {"$ref": "#/$defs/actionCall"},
+        "preconditions": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/predicate"}},
+        "expected_completion": {"$ref": "#/$defs/predicate"},
+        "interrupt_on": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "activePlan": {
+      "type": "object", "additionalProperties": false, "required": ["plan_id", "step_id", "status"],
+      "properties": {"plan_id": {"$ref": "#/$defs/id"}, "step_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}, "status": {"enum": ["active", "awaiting_confirmation", "suspended", "revoked"]}}
+    },
+    "event": {
+      "type": "object", "additionalProperties": false, "required": ["event_id", "kind", "object_id", "data"],
+      "properties": {"event_id": {"$ref": "#/$defs/id"}, "kind": {"$ref": "#/$defs/id"}, "object_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}, "data": {"type": "object"}}
+    },
+    "decisionRequired": {
+      "type": "object", "additionalProperties": false, "required": ["reason", "allowed_responses", "interrupt_events"],
+      "properties": {
+        "reason": {"enum": ["initial", "lease_expired", "step_boundary", "interrupt", "terminal"]},
+        "allowed_responses": {"type": "array", "items": {"enum": ["plan.continue", "plan.replace", "plan.abort", "wait"]}, "uniqueItems": true},
+        "interrupt_events": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/id"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "worldeval/repository-cutover-baseline/1.0.0",
+  "base_revision": "244acf44f587899070d1a9dc793ee63cfd6f9caa",
+  "capture_method": "immutable_git_base_revision",
+  "aggregate": {
+    "algorithm": "sha256",
+    "input": "sorted tracked Git blob IDs and baseline paths for moved subsystem roots",
+    "value": "645ae44382ac7823ec13e3824bd9a92b2e89e3eab0366bf6ef3490717e9f3977"
+  },
+  "subsystem_tree_ids": {
+    "agents": "d4283dc427970393301b662eebc2978e5f4b4ad3",
+    "backend": "fe4165249f449b9c9927d70faf5bcde6a9281fc9",
+    "dashboard": "ed4c12a2530d6cbb5cfca9e0b2568df7e1fa5c86",
+    "deploy": "f9d332c7ce4f985c44db1a0e24cf6a710d070e50",
+    "game": "51760d4582c1b1abb0bc584049b480e14b5be482",
+    "godot": "1f818d48824c31bf661f5d7e5a7d262ced287910",
+    "memory": "e978f32c3bf0a854754575f66b043de80f7bfb6a",
+    "remotion": "739d850b16cbd6aa24473fb5756b53e5b5a74e30",
+    "scripts": "2d40543f93060db39daa08cdc771b9bdd9ee80df",
+    "tests": "3a30c8ca53222a4f1840660c8b49c06641fa4a7a"
+  },
+  "frozen_protocols": {
+    "duel_protocol": {
+      "baseline_path": "game/duel_protocol",
+      "tree_id": "8944e7c02e8d79ba103d9046d1b8f79d976e987c",
+      "logical_tree_sha256": "a8a8aed0055395e99468dc8c2d7407d19fe05da33b74bb955abed77588f2d3b8",
+      "protocol_lock_sha256": "e967315e74aaedc1d510b4c07decc88f4026667612228f9ada8252d132351c0b"
+    },
+    "embodiment_protocol": {
+      "baseline_path": "game/embodiment_protocol",
+      "tree_id": "4ee9930d9b1ccec34a51fd03bf19bb6f57d6a1f2",
+      "logical_tree_sha256": "3b32ed57d741d61a18bdc63694ca9a32178875d6197faddd61f2c010a3ecc758",
+      "protocol_lock_sha256": "5dc405218b670909c9a4dc856f875adf227aef889830fe78ea176c4aa7333f3a"
+    }
+  },
+  "notes": [
+    "The base revision is immutable, so this evidence can be regenerated after a mechanical move without relying on old working-tree paths.",
+    "Git tree IDs use Git's repository object algorithm; SHA-256 values are evidence seals over explicitly described inputs."
+  ]
+}

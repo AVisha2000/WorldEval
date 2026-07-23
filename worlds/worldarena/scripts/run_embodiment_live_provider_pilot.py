@@ -30,8 +30,10 @@ from genesis_arena.embodiment.protocol import (
     strict_json_loads,
 )
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
+from worldeval.workspace import find_workspace
 
-ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = find_workspace(__file__)
+ROOT = WORKSPACE.path("worldarena")
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 PROVIDERS = ("openai", "anthropic", "gemini")
 REPORT_FORMAT = "llm-controller/live-provider-managed-solo/1.0.0"
@@ -258,7 +260,11 @@ async def run_pilot(arguments: argparse.Namespace) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "exports/embodiment-pilot")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=WORKSPACE.path("exports") / "embodiment-pilot",
+    )
     parser.add_argument("--task-id", default="orientation-v0")
     parser.add_argument("--seed", type=int, default=20260720)
     parser.add_argument("--timeout", type=float, default=900.0)

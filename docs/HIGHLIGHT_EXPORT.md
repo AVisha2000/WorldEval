@@ -9,7 +9,7 @@ It uses Godot 4.5 to record the showcase and encodes the temporary AVI with `ffm
 Requirements:
 
 - Godot 4 at `/Applications/Godot.app`, or an executable `godot4` / `godot` on your `PATH`.
-- The local showcase manifest at `godot/showcases/demo_highlight/showcase.json`.
+- The local showcase manifest at `worlds/worldarena/godot/showcases/demo_highlight/showcase.json`.
 - A locally installed `ffmpeg`, or an internet connection once so the exporter can bootstrap its project-local `imageio-ffmpeg` encoder.
 
 If Godot is somewhere else, launch Terminal and run the exporter with an explicit path:

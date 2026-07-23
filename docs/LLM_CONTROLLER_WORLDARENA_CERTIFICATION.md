@@ -3,7 +3,7 @@
 The offline certification entry point is:
 
 ```bash
-.venv/bin/python scripts/run_embodiment_mvp_certification.py \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_mvp_certification.py \
   --report exports/embodiment-certification.json
 ```
 
@@ -20,7 +20,7 @@ command, working directory, and stable source fingerprint still match.
 The native replay demo path uses only Godot Movie Maker and FFmpeg:
 
 ```bash
-.venv/bin/python scripts/render_embodiment_mvp_demo.py \
+.venv/bin/python worlds/worldarena/scripts/render_embodiment_mvp_demo.py \
   --output exports/worldarena-embodiment-mvp.mp4
 ```
 
@@ -37,7 +37,7 @@ External gates remain explicit:
 
 - The immutable authority package continues to report its prototype capabilities until every
   external gate passes. Promotion writes a package-bound release overlay under
-  `game/embodiment_release/`; it never rewrites or re-locks the authority protocol package.
+  `worlds/worldarena/game/embodiment_release/`; it never rewrites or re-locks the authority protocol package.
 - OpenAI, Anthropic, and Gemini each require a successful managed hybrid-solo episode, with
   session-only credentials and verified replay evidence.
 - A separate live two-model gate requires one complete symmetric two-leg scored duel. Both
@@ -63,7 +63,7 @@ Remotion is outside this certification and must not be used for embodiment video
 Run the provider preflight without making a network request:
 
 ```bash
-.venv/bin/python scripts/run_embodiment_live_provider_pilot.py --preflight \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_live_provider_pilot.py --preflight \
   --openai-model "$WORLDARENA_OPENAI_MODEL" \
   --anthropic-model "$WORLDARENA_ANTHROPIC_MODEL" \
   --gemini-model "$WORLDARENA_GEMINI_MODEL"
@@ -80,7 +80,7 @@ non-certifying evidence without requesting Anthropic or Gemini credentials and w
 the final validator:
 
 ```bash
-.venv/bin/python scripts/run_embodiment_live_provider_pilot.py --preflight \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_live_provider_pilot.py --preflight \
   --provider openai --openai-model "$WORLDARENA_OPENAI_MODEL"
 ```
 
@@ -93,7 +93,7 @@ Run the paired-duel preflight separately. An OpenAI-versus-OpenAI pair may expli
 session key; provider keys and model IDs are read from the launching process environment only:
 
 ```bash
-.venv/bin/python scripts/run_embodiment_live_duel_pilot.py --preflight \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_live_duel_pilot.py --preflight \
   --provider-a openai --provider-b openai --reuse-entrant-a-key \
   --model-a "$WORLDARENA_DUEL_A_MODEL" --model-b "$WORLDARENA_DUEL_B_MODEL"
 ```
@@ -109,7 +109,7 @@ and Terra–Luna). Each matchup is still a symmetric two-leg series, so the tour
 legs. Preflight is network-free:
 
 ```bash
-.venv/bin/python scripts/run_embodiment_openai_round_robin.py --preflight \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_openai_round_robin.py --preflight \
   --sol-model "$WORLDARENA_OPENAI_SOL_MODEL" \
   --terra-model "$WORLDARENA_OPENAI_TERRA_MODEL" \
   --luna-model "$WORLDARENA_OPENAI_LUNA_MODEL"
@@ -122,22 +122,22 @@ publishes nothing unless all three independently verified pair directories pass 
 OpenAI reasoning effort remains fixed to `low` in every pair's fairness lock.
 
 Mixamo intake remains manual. Place the reviewed base and ten animation-only FBX files under
-`godot/assets/external/mixamo/`, build and integrate the final Y Bot Godot scene, then run:
+`worlds/worldarena/godot/assets/external/mixamo/`, build and integrate the final Y Bot Godot scene, then run:
 
 ```bash
-.venv/bin/python scripts/intake_mixamo_y_bot.py \
-  --base godot/assets/external/mixamo/y-bot.fbx \
-  --clip idle=godot/assets/external/mixamo/idle.fbx \
-  --clip walk=godot/assets/external/mixamo/walk.fbx \
-  --clip run=godot/assets/external/mixamo/run.fbx \
-  --clip attack=godot/assets/external/mixamo/attack.fbx \
-  --clip guard=godot/assets/external/mixamo/guard.fbx \
-  --clip gather=godot/assets/external/mixamo/gather.fbx \
-  --clip build=godot/assets/external/mixamo/build.fbx \
-  --clip hit=godot/assets/external/mixamo/hit.fbx \
-  --clip celebrate=godot/assets/external/mixamo/celebrate.fbx \
-  --clip defeat=godot/assets/external/mixamo/defeat.fbx \
-  --presentation-scene godot/scenes/embodiment/y_bot_operator.tscn \
+.venv/bin/python worlds/worldarena/scripts/intake_mixamo_y_bot.py \
+  --base worlds/worldarena/godot/assets/external/mixamo/y-bot.fbx \
+  --clip idle=worlds/worldarena/godot/assets/external/mixamo/idle.fbx \
+  --clip walk=worlds/worldarena/godot/assets/external/mixamo/walk.fbx \
+  --clip run=worlds/worldarena/godot/assets/external/mixamo/run.fbx \
+  --clip attack=worlds/worldarena/godot/assets/external/mixamo/attack.fbx \
+  --clip guard=worlds/worldarena/godot/assets/external/mixamo/guard.fbx \
+  --clip gather=worlds/worldarena/godot/assets/external/mixamo/gather.fbx \
+  --clip build=worlds/worldarena/godot/assets/external/mixamo/build.fbx \
+  --clip hit=worlds/worldarena/godot/assets/external/mixamo/hit.fbx \
+  --clip celebrate=worlds/worldarena/godot/assets/external/mixamo/celebrate.fbx \
+  --clip defeat=worlds/worldarena/godot/assets/external/mixamo/defeat.fbx \
+  --presentation-scene worlds/worldarena/godot/scenes/embodiment/y_bot_operator.tscn \
   --reviewer REVIEWER_ID --downloaded-at UTC_TIMESTAMP --reviewed-at UTC_TIMESTAMP \
   --source-url 'https://www.mixamo.com/REVIEWED_PAGE' \
   --license-terms 'REVIEWED ACCOUNT-SPECIFIC TERMS'
@@ -152,7 +152,7 @@ sizes. After reviewing the console, overlays, page identity, interaction, blank-
 leak checks, create the canonical report with explicit confirmations:
 
 ```bash
-.venv/bin/python scripts/build_embodiment_browser_qa_report.py \
+.venv/bin/python worlds/worldarena/scripts/build_embodiment_browser_qa_report.py \
   --desktop PATH_TO_DESKTOP_PNG --mobile PATH_TO_MOBILE_PNG \
   --confirm-hybrid-solo --confirm-symmetric-duel \
   --confirm-console-health --confirm-credential-leak-scan \
@@ -165,7 +165,7 @@ promotion command first without `--apply`. It verifies every supplied artifact a
 missing gates without changing the protocol. Add `--apply` only after review:
 
 ```bash
-.venv/bin/python scripts/promote_embodiment_mvp_release.py \
+.venv/bin/python worlds/worldarena/scripts/promote_embodiment_mvp_release.py \
   --offline-report exports/embodiment-certification.json \
   --browser-qa-report exports/embodiment-pilot/browser-qa-report.json \
   --live-provider-report exports/embodiment-pilot/live-provider-report.json \
@@ -182,7 +182,7 @@ refreshes that dashboard status file from the final source-matched report. The r
 validated gate codes, hashes, and capability status; it never includes credentials or model output.
 
 ```bash
-.venv/bin/python scripts/run_embodiment_mvp_certification.py --final-seal \
+.venv/bin/python worlds/worldarena/scripts/run_embodiment_mvp_certification.py --final-seal \
   --report exports/embodiment-certification.json \
   --readiness-report exports/embodiment-pilot/readiness.json \
   --browser-qa-report exports/embodiment-pilot/browser-qa-report.json \

@@ -8,8 +8,9 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 SCRIPT_PATH = ROOT / "scripts" / "validate_duel_dedicated_export.py"
 SPEC = importlib.util.spec_from_file_location("duel_dedicated_export", SCRIPT_PATH)

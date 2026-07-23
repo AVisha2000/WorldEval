@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "compatibility": {"checked_at": null, "evidence": "not yet checked", "passed": false},
+    "migration": {"checked_at": null, "evidence": "not yet checked", "passed": false},
+    "privacy": {"checked_at": null, "evidence": "not yet checked", "passed": false},
+    "secrets": {"checked_at": null, "evidence": "not yet checked", "passed": false}
+  },
+  "criteria": {},
+  "feature_id": "WEV-0007",
+  "human_approvals": [],
+  "replays": [],
+  "schema_version": "worldeval/feature-evidence/1.0.0",
+  "tests": []
+}

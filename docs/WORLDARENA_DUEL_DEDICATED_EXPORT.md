@@ -11,7 +11,7 @@ sign, publish, or deploy a build.
 - Renderer policy: the source project remains on `gl_compatibility`.
 - Runtime feature: `dedicated_server=true`, which makes an exported project use the headless display
   server and Dummy audio driver.
-- Resource mode: explicit selected-resource allowlist. Every `scripts/duel/*.gd` file outside the
+- Resource mode: explicit selected-resource allowlist. Every `worlds/worldarena/godot/scripts/duel/*.gd` file outside the
   visual/launch `app/` and `presentation/` subtrees must appear exactly once. Adding a new authority
   script fails certification until the preset is deliberately updated.
 - Script mode: text. This lets the archive inspector compare every exported script byte-for-byte
@@ -20,7 +20,7 @@ sign, publish, or deploy a build.
   auditable text instead of becoming an opaque generated `.scn` plus remap.
 - File logging: disabled for both generic and desktop overrides. Protected managed-launch input and
   offline authority secrets therefore cannot be copied into Godot's rotating log files.
-- Canonical data: every runtime file from `game/duel_protocol/` is copied byte-for-byte into the
+- Canonical data: every runtime file from `worlds/worldarena/game/duel_protocol/` is copied byte-for-byte into the
   temporary project at `res://data/duel_protocol/`. `README.md` is the sole documentation-only
   omission. Authority paths are relocated only in the temporary copy; checked-in gameplay code is
   not rewritten.
@@ -32,8 +32,8 @@ sign, publish, or deploy a build.
   envelope only from a bounded anonymous stdin pipe; it is not the default offline entrypoint.
 
 The authoritative policy is
-`godot/duel_dedicated_export_policy.json`, and the matching Godot preset is
-`godot/export_presets.cfg`.
+`worlds/worldarena/godot/duel_dedicated_export_policy.json`, and the matching Godot preset is
+`worlds/worldarena/godot/export_presets.cfg`.
 
 ## Explicit exclusions
 
@@ -41,8 +41,8 @@ The export cannot contain any of these trees:
 
 - `addons/`, including Terrain3D and LimboAI or any native library;
 - `assets/`, `art/`, presentation scenes, arena scenes/scripts, showcases, or tests;
-- `scripts/duel/app/`, including the visual coordinator and outbound HTTP launch client;
-- `scripts/duel/presentation/`;
+- `worlds/worldarena/godot/scripts/duel/app/`, including the visual coordinator and outbound HTTP launch client;
+- `worlds/worldarena/godot/scripts/duel/presentation/`;
 - textures, meshes, materials, animations, visual/gameplay scenes, particles/shaders, audio,
   fonts, or native extension formats. The exact nonvisual CLI `.tscn` is the sole scene exception.
 
@@ -56,12 +56,12 @@ or copied. This is tested both at preset level and against the emitted ZIP inven
 From the repository root:
 
 ```sh
-.venv/bin/python scripts/validate_duel_dedicated_export.py \
+.venv/bin/python worlds/worldarena/scripts/validate_duel_dedicated_export.py \
   --godot /Applications/Godot.app/Contents/MacOS/Godot \
   --json
 
 duel_stage="$(mktemp -d /tmp/worldarena-duel-export.XXXXXX)"
-.venv/bin/python scripts/validate_duel_dedicated_export.py \
+.venv/bin/python worlds/worldarena/scripts/validate_duel_dedicated_export.py \
   --stage "$duel_stage" \
   --json
 
@@ -152,7 +152,7 @@ Source-project invocation:
 ```sh
 input_sha256="$(shasum -a 256 /absolute/run.json | cut -d ' ' -f 1)"
 /Applications/Godot.app/Contents/MacOS/Godot \
-  --headless --path /absolute/WorldEval/godot \
+  --headless --path /absolute/WorldEval/worlds/worldarena/godot \
   --script res://scripts/duel/match/duel_headless_cli.gd -- \
   --input=/absolute/run.json \
   --expected-input-sha256="$input_sha256" \
@@ -185,14 +185,14 @@ duel_archive="${duel_stage}.zip"
   --headless --path "$duel_stage" \
   --export-pack "WorldArena Duel Dedicated Server" "$duel_archive"
 
-.venv/bin/python scripts/validate_duel_dedicated_export.py \
+.venv/bin/python worlds/worldarena/scripts/validate_duel_dedicated_export.py \
   --inspect-zip "$duel_archive" \
   --json
 ```
 
 The archive inspector rejects unsafe or duplicate paths, any non-allowlisted file, every forbidden
 visual/native suffix or directory, missing authority/protocol files, changed staged authority
-bytes, and protocol bytes that differ from `game/duel_protocol/`. A passing archive currently has
+bytes, and protocol bytes that differ from `worlds/worldarena/game/duel_protocol/`. A passing archive currently has
 68 authority scripts, one nonvisual CLI scene, 35 canonical protocol files, Godot's two internal
 UID/class-cache files, and `project.binary`; it has no presentation or native payload.
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.golden import (
@@ -12,8 +11,9 @@ from genesis_arena.embodiment.golden import (
     verify_runtime_output,
 )
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GOLDEN_ROOT = ROOT / "game" / "embodiment_protocol" / "golden"
 GOLDEN = GOLDEN_ROOT / "stage-a-orientation-forward-v1.json"
 EXPECTED = {

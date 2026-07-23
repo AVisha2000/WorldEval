@@ -1,0 +1,64 @@
+{
+  "$id": "https://worldeval.dev/schemas/replay/incomplete-run.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "canonical_json": {
+      "const": "rfc8785-integer-nfc-subset-v1"
+    },
+    "details": {
+      "type": "object"
+    },
+    "last_tick": {
+      "maximum": 9007199254740991,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "phase": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "reason": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "recoverable": {
+      "type": "boolean"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "schema": {
+      "const": "worldeval/incomplete-run/1.0.0"
+    },
+    "seal": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "value": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "canonical_json",
+    "run_id",
+    "phase",
+    "reason",
+    "recoverable",
+    "seal"
+  ],
+  "title": "WorldEval Incomplete Run Diagnostic v1",
+  "type": "object"
+}

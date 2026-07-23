@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -13,8 +12,9 @@ from genesis_arena.embodiment.trio_games.common import (
 )
 from genesis_arena.embodiment.trio_games.scheduler import TrioSeriesScheduler
 from genesis_arena.embodiment.trio_games.scheduling import build_cyclic_trio_plan
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 class _NoFrameSession:

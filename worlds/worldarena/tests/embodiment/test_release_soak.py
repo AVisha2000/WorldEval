@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from scripts.run_embodiment_release_soak import (
     EVIDENCE_PREFIX,
     ReleaseSoakError,

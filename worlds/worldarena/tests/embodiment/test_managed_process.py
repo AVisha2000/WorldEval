@@ -17,8 +17,9 @@ from genesis_arena.embodiment.managed_process import (
 )
 from genesis_arena.embodiment.protocol import canonical_sha256
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 class FakeProcess:

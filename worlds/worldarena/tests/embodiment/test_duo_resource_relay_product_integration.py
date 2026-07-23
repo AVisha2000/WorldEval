@@ -12,8 +12,9 @@ from genesis_arena.embodiment.duel.live_runtime import default_duel_series_servi
 from genesis_arena.embodiment.duel.managed import _winner_participant
 from genesis_arena.embodiment.duo_games.catalog import DUO_GAME_CATALOG
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 TASK_ID = "duo-resource-relay-v0"
 
@@ -183,7 +184,9 @@ async def test_resource_relay_two_leg_demo_managed_hybrid_evaluation_and_archive
             task_id=TASK_ID,
         )
         series_id = str(created["series_id"])
-        for _ in range(300):
+        # This scenario exercises two full 600-tick authority legs. Wall-clock execution is
+        # intentionally uncoupled from simulated time and can exceed one minute on a busy runner.
+        for _ in range(600):
             status = await service.status(series_id)
             if status["state"] in ("completed", "failed"):
                 break
@@ -230,7 +233,11 @@ async def test_resource_relay_two_leg_demo_managed_hybrid_evaluation_and_archive
         assert public.layer == "public"
         assert b"authority_replay" not in public.bundle_bytes
         assert b"observation_json_base64" not in public.bundle_bytes
-        archive = await service.archive_status(series_id)
+        for _ in range(80):
+            archive = await service.archive_status(series_id)
+            if archive["evidence"]["state"] != "saving":
+                break
+            await asyncio.sleep(0.05)
         assert archive["evidence"]["state"] == "ready"
 
         for participant_id in ("participant_0", "participant_1"):
@@ -266,3 +273,4 @@ async def test_resource_relay_two_leg_demo_managed_hybrid_evaluation_and_archive
             server.force_exit = True
             server_task.cancel()
             await asyncio.gather(server_task, return_exceptions=True)
+        listener.close()

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/feature-evidence/1.0.0",
+  "title": "WorldEval feature evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature_id",
+    "criteria",
+    "tests",
+    "replays",
+    "checks",
+    "human_approvals"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval/feature-evidence/1.0.0"},
+    "feature_id": {"type": "string", "pattern": "^WEV-[0-9]{4,}$"},
+    "criteria": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["type", "verified"],
+          "properties": {
+            "type": {
+              "enum": ["artifact", "demo", "document", "metric", "replay", "review", "test"]
+            },
+            "path": {"type": "string"},
+            "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            "verified": {"type": "boolean"},
+            "notes": {"type": "string"}
+          }
+        }
+      }
+    },
+    "tests": {"type": "array", "items": {"type": "object"}},
+    "replays": {"type": "array", "items": {"type": "object"}},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["privacy", "secrets", "migration", "compatibility"],
+      "properties": {
+        "privacy": {"$ref": "#/$defs/check"},
+        "secrets": {"$ref": "#/$defs/check"},
+        "migration": {"$ref": "#/$defs/check"},
+        "compatibility": {"$ref": "#/$defs/check"}
+      }
+    },
+    "human_approvals": {"type": "array", "items": {"type": "object"}}
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "checked_at", "evidence"],
+      "properties": {
+        "passed": {"type": "boolean"},
+        "checked_at": {"type": ["string", "null"], "format": "date-time"},
+        "evidence": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "decision-profile.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "profile_id": "static-event-gated-v1",
+  "kind": "static-event-gated",
+  "minimum_ticks": 1,
+  "maximum_ticks": 50,
+  "default_ticks": 50,
+  "simulation_pauses_during_inference": true,
+  "observation_policy": "event_or_lease_expiry",
+  "interrupt_events": ["waypoint_reached", "movement_blocked", "target_disappeared", "objective_revised", "plan_precondition_false"],
+  "explicit_response_required": true,
+  "missing_response_behavior": "neutral_noop"
+}

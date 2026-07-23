@@ -5,9 +5,11 @@ import argparse
 import sys
 from pathlib import Path
 
+from worldarena.paths import WORLDARENA_ROOT
+
 
 def _repository_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+    return WORLDARENA_ROOT
 
 
 def main() -> int:

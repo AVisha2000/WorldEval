@@ -4,10 +4,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from scripts import render_crossroads_conquest_broadcast as renderer
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 
 

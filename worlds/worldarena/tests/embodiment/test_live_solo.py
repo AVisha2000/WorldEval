@@ -4,7 +4,6 @@ import base64
 import hashlib
 import json
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.construction_task_provider import (
@@ -37,8 +36,9 @@ from genesis_arena.embodiment.replay import ReplayLedger
 from genesis_arena.embodiment.scripted_construction_demo import (
     ScriptedConstructionDemoProvider,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _observation(episode_id: str, *, seq: int, tick: int, ended: bool) -> dict:

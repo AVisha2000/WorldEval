@@ -12,7 +12,7 @@ for the backend-to-Godot attachment channels. Both prefixes therefore need expli
 handling. MP4s are returned by FastAPI `FileResponse` routes below `/api/`; Nginx forwards range
 headers and streams those responses without temporary-file buffering.
 
-The repository carries four core hosted videos under `godot/showcases/`: Solo Multi-Action
+The repository carries four core hosted videos under `worlds/worldarena/godot/showcases/`: Solo Multi-Action
 Construction, Labyrinth Run, Mini RTS Skirmish, and Crossroads Conquest. The API validates their
 checked-in hashes/evidence at startup and serves them without depending on `runs/`, `exports/`, or
 files from the machine that performed the deployment.
@@ -20,7 +20,7 @@ files from the machine that performed the deployment.
 **Automatic video pickup:** a normal `git clone` or `git pull origin main` brings these videos onto
 the host with the rest of the repository. No video upload, path setting, or environment variable is
 needed. When `worldeval-lab-api.service` starts or restarts, the backend finds the packages under
-`godot/showcases/`, verifies their pinned evidence and hashes, and exposes them immediately in the
+`worlds/worldarena/godot/showcases/`, verifies their pinned evidence and hashes, and exposes them immediately in the
 Lab's **Pre-run saves** library. After pulling a newer revision, rebuild the dashboard and restart
 the service so both the UI and API use the newly checked-out media. Missing or modified core media
 causes startup verification to fail instead of silently falling back to files under `runs/` or
@@ -31,10 +31,10 @@ causes startup verification to fail instead of silently falling back to files un
 From the repository root on the host:
 
 ```bash
-./scripts/build_hosting_assets.sh
-sudo install -m 0644 deploy/systemd/worldeval-lab-api.service /etc/systemd/system/
-sudo install -m 0644 deploy/nginx/worldeval-lab.conf /etc/nginx/sites-available/
-sudo install -m 0644 deploy/nginx/worldeval-godot-demo.conf /etc/nginx/sites-available/
+./worlds/worldarena/scripts/build_hosting_assets.sh
+sudo install -m 0644 ops/systemd/worldeval-lab-api.service /etc/systemd/system/
+sudo install -m 0644 ops/nginx/worldeval-lab.conf /etc/nginx/sites-available/
+sudo install -m 0644 ops/nginx/worldeval-godot-demo.conf /etc/nginx/sites-available/
 sudo ln -sfn /etc/nginx/sites-available/worldeval-lab.conf /etc/nginx/sites-enabled/worldeval-lab.conf
 sudo ln -sfn /etc/nginx/sites-available/worldeval-godot-demo.conf /etc/nginx/sites-enabled/worldeval-godot-demo.conf
 sudo systemctl daemon-reload

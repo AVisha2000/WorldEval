@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from backend.genesis_arena.embodiment.trio_games.common import TRIO_PARTICIPANT_IDS
 from backend.genesis_arena.embodiment.trio_games.scheduling import (
     TRIO_DEMO_ENTRANTS,

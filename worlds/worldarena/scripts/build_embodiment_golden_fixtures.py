@@ -6,11 +6,11 @@ from __future__ import annotations
 import argparse
 import base64
 import subprocess
-from pathlib import Path
 
 from genesis_arena.embodiment.golden import verify_golden_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 GODOT_PROJECT = ROOT / "godot"
 GOLDEN_ROOT = ROOT / "game" / "embodiment_protocol" / "golden"
 GENERATOR = "res://tests/embodiment/embodiment_golden_fixture_generator.gd"

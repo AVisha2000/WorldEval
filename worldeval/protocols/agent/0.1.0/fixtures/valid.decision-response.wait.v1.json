@@ -1,0 +1,1 @@
+{"type": "wait", "source": {"observation_seq": 1, "tick": 3, "state_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"}, "maximum_ticks": 3, "until": ["movement_blocked"]}

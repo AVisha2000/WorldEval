@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/decision-profile.v1.schema.json",
+  "title": "WorldEval agent decision profile v1",
+  "oneOf": [
+    {"$ref": "common.v1.schema.json#/$defs/dynamicProfile"},
+    {"$ref": "common.v1.schema.json#/$defs/staticProfile"}
+  ]
+}

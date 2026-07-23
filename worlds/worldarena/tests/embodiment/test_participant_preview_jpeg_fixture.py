@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 from genesis_arena.embodiment.presentation.participant_frames import sanitize_participant_jpeg
 from PIL import Image
+from worldarena.paths import WORLDARENA_ROOT
 
-_REPOSITORY = Path(__file__).resolve().parents[2]
+_REPOSITORY = WORLDARENA_ROOT
 _MAC_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 
 

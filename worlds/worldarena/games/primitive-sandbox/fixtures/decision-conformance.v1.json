@@ -1,0 +1,123 @@
+{
+  "format": "worldeval-agent/decision-conformance/1.0.0",
+  "bases": {
+    "replace": {
+      "type": "plan.replace",
+      "replaces_plan_id": null,
+      "plan": {
+        "schema_version": "action-plan.v1",
+        "protocol": "worldeval-agent/0.1.0",
+        "plan_id": "plan-1",
+        "source": {
+          "observation_seq": 0,
+          "tick": 0,
+          "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "lease_ticks": 3,
+        "execution_policy": "confirm_each_boundary",
+        "steps": [
+          {
+            "step_id": "step-1",
+            "action": {
+              "action": "move_to",
+              "arguments": {
+                "target": {"object_id": "tree-7", "generation": 1},
+                "navigation": "direct_only"
+              }
+            },
+            "preconditions": [
+              {"kind": "target_visible", "subject": "tree-7", "parameters": {}}
+            ],
+            "expected_completion": {
+              "kind": "agent_at_target",
+              "subject": "tree-7",
+              "parameters": {}
+            },
+            "interrupt_on": ["movement_blocked", "target_disappeared"]
+          }
+        ],
+        "abort_behavior": "cancel_current_action"
+      }
+    },
+    "continue": {
+      "type": "plan.continue",
+      "plan_id": "plan-1",
+      "source": {
+        "observation_seq": 0,
+        "tick": 0,
+        "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "lease_ticks": 5
+    },
+    "abort": {
+      "type": "plan.abort",
+      "plan_id": "plan-1",
+      "source": {
+        "observation_seq": 0,
+        "tick": 0,
+        "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "reason": "The objective is no longer safe."
+    },
+    "wait": {
+      "type": "wait",
+      "source": {
+        "observation_seq": 0,
+        "tick": 0,
+        "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "maximum_ticks": 5,
+      "until": ["movement_blocked"]
+    }
+  },
+  "cases": [
+    {"id": "valid-replace", "base": "replace", "profile": "dynamic", "schema_valid": true, "contract_admissible": true},
+    {"id": "valid-continue", "base": "continue", "profile": "dynamic", "schema_valid": true, "contract_admissible": true},
+    {"id": "valid-abort", "base": "abort", "profile": "dynamic", "schema_valid": true, "contract_admissible": true},
+    {"id": "valid-wait", "base": "wait", "profile": "dynamic", "schema_valid": true, "contract_admissible": true},
+
+    {"id": "response-extra-field", "base": "abort", "profile": "dynamic", "mutation": {"op": "set", "path": ["extra"], "value": true}, "schema_valid": false, "contract_admissible": false},
+    {"id": "response-missing-field", "base": "continue", "profile": "dynamic", "mutation": {"op": "remove", "path": ["lease_ticks"]}, "schema_valid": false, "contract_admissible": false},
+    {"id": "source-extra-field", "base": "wait", "profile": "dynamic", "mutation": {"op": "set", "path": ["source", "extra"], "value": 1}, "schema_valid": false, "contract_admissible": false},
+    {"id": "source-invalid-hash", "base": "continue", "profile": "dynamic", "mutation": {"op": "set", "path": ["source", "state_hash"], "value": "sha256:ABC"}, "schema_valid": false, "contract_admissible": false},
+
+    {"id": "plan-extra-field", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "extra"], "value": true}, "schema_valid": false, "contract_admissible": false},
+    {"id": "plan-missing-protocol", "base": "replace", "profile": "dynamic", "mutation": {"op": "remove", "path": ["plan", "protocol"]}, "schema_valid": false, "contract_admissible": false},
+    {"id": "plan-lease-over-wire-limit", "base": "replace", "profile": "static", "mutation": {"op": "set", "path": ["plan", "lease_ticks"], "value": 51}, "schema_valid": false, "contract_admissible": false},
+    {"id": "plan-lease-six-dynamic", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "lease_ticks"], "value": 6}, "schema_valid": true, "contract_admissible": false},
+    {"id": "plan-lease-fifty-static", "base": "replace", "profile": "static", "mutation": {"op": "set", "path": ["plan", "lease_ticks"], "value": 50}, "schema_valid": true, "contract_admissible": true},
+    {"id": "plan-duplicate-step-id", "base": "replace", "profile": "dynamic", "mutation": {"op": "duplicate_step", "path": ["plan", "steps"]}, "schema_valid": false, "contract_admissible": false},
+
+    {"id": "step-extra-field", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "extra"], "value": true}, "schema_valid": false, "contract_admissible": false},
+    {"id": "step-missing-expected-completion", "base": "replace", "profile": "dynamic", "mutation": {"op": "remove", "path": ["plan", "steps", 0, "expected_completion"]}, "schema_valid": false, "contract_admissible": false},
+    {"id": "predicate-extra-field", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "preconditions", 0, "extra"], "value": true}, "schema_valid": false, "contract_admissible": false},
+
+    {"id": "action-call-extra-field", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "extra"], "value": true}, "schema_valid": false, "contract_admissible": false},
+    {"id": "action-call-missing-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "remove", "path": ["plan", "steps", 0, "action", "arguments"]}, "schema_valid": false, "contract_admissible": false},
+    {"id": "action-invalid-identifier", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "action"], "value": "not valid"}, "schema_valid": false, "contract_admissible": false},
+    {"id": "arguments-not-object", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "arguments"], "value": []}, "schema_valid": false, "contract_admissible": false},
+
+    {"id": "move-extra-argument", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "arguments", "extra"], "value": true}, "schema_valid": true, "contract_admissible": false},
+    {"id": "move-missing-navigation", "base": "replace", "profile": "dynamic", "mutation": {"op": "remove", "path": ["plan", "steps", 0, "action", "arguments", "navigation"]}, "schema_valid": true, "contract_admissible": false},
+    {"id": "move-target-overlapping-variants", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "arguments", "target", "position"], "value": {"x": 23, "y": 12}}, "schema_valid": true, "contract_admissible": false},
+    {"id": "move-object-generation-zero", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "arguments", "target", "generation"], "value": 0}, "schema_valid": true, "contract_admissible": false},
+    {"id": "unknown-action", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action", "action"], "value": "teleport"}, "schema_valid": true, "contract_admissible": false},
+
+    {"id": "valid-equip-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "equip", "arguments": {"item": "axe"}}}, "schema_valid": true, "contract_admissible": true},
+    {"id": "invalid-equip-item", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "equip", "arguments": {"item": "sword"}}}, "schema_valid": true, "contract_admissible": false},
+    {"id": "valid-use-tool-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "use_tool", "arguments": {"tool": "axe", "target": {"object_id": "tree-7", "generation": 1}}}}, "schema_valid": true, "contract_admissible": true},
+    {"id": "invalid-use-tool-extra-target", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "use_tool", "arguments": {"tool": "axe", "target": {"object_id": "tree-7", "generation": 1, "extra": true}}}}, "schema_valid": true, "contract_admissible": false},
+    {"id": "valid-wait-action-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "wait", "arguments": {}}}, "schema_valid": true, "contract_admissible": true},
+    {"id": "invalid-wait-action-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "wait", "arguments": {"ticks": 1}}}, "schema_valid": true, "contract_admissible": false},
+    {"id": "valid-cancel-action-arguments", "base": "replace", "profile": "dynamic", "mutation": {"op": "set", "path": ["plan", "steps", 0, "action"], "value": {"action": "cancel", "arguments": {}}}, "schema_valid": true, "contract_admissible": true},
+
+    {"id": "abort-empty-reason", "base": "abort", "profile": "dynamic", "mutation": {"op": "set", "path": ["reason"], "value": ""}, "schema_valid": false, "contract_admissible": false},
+    {"id": "wait-invalid-until-id", "base": "wait", "profile": "dynamic", "mutation": {"op": "set", "path": ["until"], "value": ["not valid"]}, "schema_valid": false, "contract_admissible": false},
+    {"id": "continue-lease-six-dynamic", "base": "continue", "profile": "dynamic", "mutation": {"op": "set", "path": ["lease_ticks"], "value": 6}, "schema_valid": true, "contract_admissible": false},
+    {"id": "continue-lease-fifty-static", "base": "continue", "profile": "static", "mutation": {"op": "set", "path": ["lease_ticks"], "value": 50}, "schema_valid": true, "contract_admissible": true},
+    {"id": "continue-lease-string", "base": "continue", "profile": "dynamic", "mutation": {"op": "set", "path": ["lease_ticks"], "value": "5"}, "schema_valid": false, "contract_admissible": false},
+    {"id": "wait-lease-six-dynamic", "base": "wait", "profile": "dynamic", "mutation": {"op": "set", "path": ["maximum_ticks"], "value": 6}, "schema_valid": true, "contract_admissible": false},
+    {"id": "wait-lease-fifty-static", "base": "wait", "profile": "static", "mutation": {"op": "set", "path": ["maximum_ticks"], "value": 50}, "schema_valid": true, "contract_admissible": true},
+    {"id": "wait-lease-fractional", "base": "wait", "profile": "dynamic", "mutation": {"op": "set", "path": ["maximum_ticks"], "value": 1.5}, "schema_valid": false, "contract_admissible": false}
+  ]
+}

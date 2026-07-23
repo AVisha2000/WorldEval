@@ -1,0 +1,16 @@
+{
+  "schema_version": "action-catalog.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "catalog_id": "fixture-actions",
+  "action_profile": "fixture-actions-v1",
+  "actions": [{
+    "action_id": "wait",
+    "argument_schema": {"type": "object", "additionalProperties": false, "properties": {}},
+    "preconditions": [],
+    "refusal_conditions": [],
+    "duration": {"kind": "persistent", "maximum_ticks": 5},
+    "cancellation_boundary": "tick_boundary",
+    "authority": {"game_may": ["advance_authorized_ticks"], "game_must_not": ["continue_other_plan"], "navigation": "none", "target_selection": "agent_only"},
+    "receipt_codes": ["wait_complete"]
+  }]
+}

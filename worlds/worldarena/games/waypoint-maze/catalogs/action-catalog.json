@@ -1,0 +1,99 @@
+{
+  "schema_version": "action-catalog.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "catalog_id": "waypoint-maze-actions-v1",
+  "action_profile": "semantic-grid-actions-v1",
+  "actions": [
+    {
+      "action_id": "move_to",
+      "argument_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "navigation"],
+        "properties": {
+          "target": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["position"],
+                "properties": {
+                  "position": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["x", "y"],
+                    "properties": {
+                      "x": {"type": "integer"},
+                      "y": {"type": "integer"}
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["object_id", "generation"],
+                "properties": {
+                  "object_id": {"type": "string"},
+                  "generation": {"type": "integer", "minimum": 1}
+                }
+              }
+            ]
+          },
+          "navigation": {"const": "direct_only"}
+        }
+      },
+      "preconditions": ["target_visible_or_coordinate_known"],
+      "refusal_conditions": ["target_identity_stale", "coordinate_out_of_bounds"],
+      "duration": {"kind": "persistent", "maximum_ticks": 80},
+      "cancellation_boundary": "tick_boundary",
+      "authority": {
+        "game_may": ["apply_declared_motion", "resolve_collision", "detect_blockage"],
+        "game_must_not": ["choose_detour", "change_target"],
+        "navigation": "direct_only",
+        "target_selection": "declared_target_only"
+      },
+      "receipt_codes": ["target_reached", "movement_blocked", "lease_expired"]
+    },
+    {
+      "action_id": "wait",
+      "argument_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "preconditions": [],
+      "refusal_conditions": [],
+      "duration": {"kind": "persistent", "maximum_ticks": 50},
+      "cancellation_boundary": "tick_boundary",
+      "authority": {
+        "game_may": ["advance_authorized_ticks"],
+        "game_must_not": ["continue_other_plan"],
+        "navigation": "none",
+        "target_selection": "agent_only"
+      },
+      "receipt_codes": ["wait_complete"]
+    },
+    {
+      "action_id": "cancel",
+      "argument_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "preconditions": [],
+      "refusal_conditions": [],
+      "duration": {"kind": "instant", "maximum_ticks": 1},
+      "cancellation_boundary": "immediate",
+      "authority": {
+        "game_may": ["cancel_current_action"],
+        "game_must_not": ["select_replacement_action"],
+        "navigation": "none",
+        "target_selection": "agent_only"
+      },
+      "receipt_codes": ["action_cancelled"]
+    }
+  ]
+}

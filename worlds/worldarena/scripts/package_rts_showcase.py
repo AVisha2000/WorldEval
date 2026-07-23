@@ -27,8 +27,9 @@ from genesis_arena.embodiment.protocol import strict_json_loads
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.replay import verify_replay_bytes
 from genesis_arena.embodiment.rts_showcase import SHOWCASE_ID, CachedRtsShowcase
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 SHOWCASE_DIRECTORY = Path("godot/showcases/rts_skirmish")
 VIDEO_NAME = "rts-skirmish-broadcast.mp4"
 REPLAY_NAME = "rts-skirmish-demo.replay.json"

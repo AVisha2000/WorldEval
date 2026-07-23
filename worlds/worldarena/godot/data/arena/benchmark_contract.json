@@ -3,7 +3,7 @@
   "rules": {
     "id": "arena-v0.4",
     "source_path": "godot/scripts/arena/simulation/arena_rules.gd",
-    "hash": "515dd825743ef6f8c02abdf2ff2528acf59031cb792ec6a8a77236fca00e427d"
+    "hash": "f47cd46cf2322b983fca7de4bf7d4e047fdc744cecf789f710c368f602d3025a"
   },
   "map": {
     "id": "tri_13_v1",

@@ -1,0 +1,121 @@
+{
+  "checks": {
+    "compatibility": {
+      "checked_at": "2026-07-23T04:53:27Z",
+      "evidence": "Full Python suite, clean wheel install, legacy/new import and CLI shims, root launchers, frozen locks, source-fingerprint tests, promoted replay checks, and both web builds passed.",
+      "passed": true
+    },
+    "migration": {
+      "checked_at": "2026-07-23T04:53:27Z",
+      "evidence": "Workspace layout gate, document-link gate, moved Godot imports, Pages build, package facades, deployment tests, and hash-locked historical path shim passed.",
+      "passed": true
+    },
+    "privacy": {
+      "checked_at": "2026-07-23T04:53:27Z",
+      "evidence": "Provider-free accepted replays reported zero calls, replay API allow-list tests passed, and binary/text evidence scanning remained fail closed.",
+      "passed": true
+    },
+    "secrets": {
+      "checked_at": "2026-07-23T04:53:27Z",
+      "evidence": "PUBLIC_ARTIFACT_SECRET_SCAN_OK files=85; protected evidence tests and credential-shaped binary transport regression tests passed.",
+      "passed": true
+    }
+  },
+  "criteria": {
+    "WEV-0001-AC-01": [
+      {
+        "notes": "Immutable base revision, subsystem trees, and frozen package identities captured before cutover.",
+        "path": "features/in-progress/wev-0001-repository-cutover/evidence/cutover-baseline.json",
+        "sha256": "20b498fb6e86a2952075532ad3f0b20b25f29a6d27d6d49098f393497452cdea",
+        "type": "artifact",
+        "verified": true
+      },
+      {
+        "notes": "Physical layout, byte locks, package build, web build, Godot authority, and full-suite results.",
+        "path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+        "sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+        "type": "test",
+        "verified": true
+      }
+    ],
+    "WEV-0001-AC-02": [
+      {
+        "notes": "Legacy/new imports and commands, routes, launchers, frozen locks, and replay verification passed.",
+        "path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+        "sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+        "type": "test",
+        "verified": true
+      }
+    ],
+    "WEV-0001-AC-03": [
+      {
+        "notes": "Claim, collision, lease, recovery, evidence, and completion-gate tests are included in the full suite.",
+        "path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+        "sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+        "type": "test",
+        "verified": true
+      },
+      {
+        "notes": "Root agent policy defines claim-first work, bounded scope, replay evidence, dirty-worktree preservation, and completion gates.",
+        "path": "AGENTS.md",
+        "sha256": "e79130bf4ac6d3eab1941f15ace870e2c7801c0b8fd9c88a56d5886d93694c26",
+        "type": "document",
+        "verified": true
+      }
+    ]
+  },
+  "feature_id": "WEV-0001",
+  "human_approvals": [],
+  "replays": [],
+  "schema_version": "worldeval/feature-evidence/1.0.0",
+  "tests": [
+    {
+      "command": ".venv/bin/python -m pytest",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "1121 passed, 3 skipped",
+      "timestamp": "2026-07-23T04:53:27Z"
+    },
+    {
+      "command": ".venv/bin/python -m pytest worldeval/tests/test_workspace.py worlds/worldarena/tests/duel/test_duel_map.py::test_generated_artifact_is_deterministic_and_current -q",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "6 passed",
+      "timestamp": "2026-07-23T04:53:27Z"
+    },
+    {
+      "command": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && VITE_BASE_PATH=/WorldEval/ pnpm build:pages",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "12 files and 110 tests passed; local and Pages builds passed",
+      "timestamp": "2026-07-23T04:53:27Z"
+    },
+    {
+      "command": "Godot Primitive Sandbox and Waypoint Maze headless suites; promoted demo --check commands",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "two Godot suites and three independently reexecuted bundles passed",
+      "timestamp": "2026-07-23T05:05:24Z"
+    },
+    {
+      "command": ".venv/bin/python -m pytest worlds/worldarena/tests/test_package_facades.py worlds/worldarena/tests/test_waypoint_maze.py worldeval/tests/test_workspace.py -q",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "14 passed",
+      "timestamp": "2026-07-23T05:08:21Z"
+    },
+    {
+      "command": "clean wheel build/install plus workspace, frozen-byte, protocol-lock, feature, privacy, link, launcher, and diff gates",
+      "exit_code": 0,
+      "report_path": "features/in-progress/wev-0001-repository-cutover/evidence/verification-report.json",
+      "report_sha256": "cb24c7bc83ae12f8fd09305850f3f6f7a5962a225dc2b04d4626a1bf298c0af0",
+      "result": "all gates passed",
+      "timestamp": "2026-07-23T05:05:24Z"
+    }
+  ]
+}

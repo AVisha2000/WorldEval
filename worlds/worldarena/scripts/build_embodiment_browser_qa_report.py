@@ -11,8 +11,10 @@ import zlib
 from pathlib import Path
 
 from genesis_arena.embodiment.source_fingerprint import browser_runtime_source_fingerprint
+from worldeval.workspace import find_workspace
 
-ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = find_workspace(__file__)
+ROOT = WORKSPACE.path("worldarena")
 REPORT_FORMAT = "llm-controller/browser-qa/1.1.0"
 CHECKS = (
     "console_health",
@@ -123,7 +125,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "exports/embodiment-pilot/browser-qa-report.json",
+        default=WORKSPACE.path("exports") / "embodiment-pilot/browser-qa-report.json",
     )
     parser.add_argument("--confirm-hybrid-solo", action="store_true")
     parser.add_argument("--confirm-symmetric-duel", action="store_true")

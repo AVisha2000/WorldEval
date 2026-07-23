@@ -30,8 +30,9 @@ from genesis_arena.embodiment.scripted_construction_demo import (
     SCRIPTED_CONSTRUCTION_TASK,
 )
 from genesis_arena.embodiment.scripted_solo_demo import scripted_demo_model
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def test_v2_movie_archive_selects_versioned_participant_renderer(

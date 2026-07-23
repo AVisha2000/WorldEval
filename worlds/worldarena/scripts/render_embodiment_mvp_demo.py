@@ -15,12 +15,15 @@ from typing import Sequence
 
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage
 from genesis_arena.embodiment.replay import verify_replay_bytes
+from worldeval.workspace import find_workspace
 
-ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = find_workspace(__file__)
+WORKSPACE_ROOT = WORKSPACE.root
+ROOT = WORKSPACE.path("worldarena")
 GODOT_PROJECT = ROOT / "godot"
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 LOCAL_FFMPEG = (
-    ROOT
+    WORKSPACE_ROOT
     / ".video-tools/lib/python3.9/site-packages/imageio_ffmpeg/binaries/ffmpeg-macos-aarch64-v7.1"
 )
 Y_BOT_MANIFEST = GODOT_PROJECT / "assets/external/mixamo/approved-y-bot.manifest.json"
@@ -72,7 +75,7 @@ def render_demo(
             replay_dir = work / "replays"
             _run(
                 [
-                    str(ROOT / ".venv/bin/python"),
+                    str(WORKSPACE_ROOT / ".venv/bin/python"),
                     "scripts/build_embodiment_demo_replays.py",
                     "--output-dir",
                     str(replay_dir),

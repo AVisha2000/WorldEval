@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import json
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment import (
@@ -14,8 +13,9 @@ from genesis_arena.embodiment import (
     EpisodeConfig,
     ProtocolValidationError,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 CORPUS_PATH = (
     ROOT / "game" / "embodiment_protocol" / "conformance" / "protocol-conformance.v1.json"
 )

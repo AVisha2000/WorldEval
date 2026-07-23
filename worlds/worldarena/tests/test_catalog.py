@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from genesis_arena.catalog import ActionCatalog, ActionValidationError
 from genesis_arena.models import ActionCommand, ActionName
+from worldarena.paths import WORLDARENA_ROOT
 
 from .helpers import observation
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 
 
 def test_catalog_emits_strict_function_tools() -> None:

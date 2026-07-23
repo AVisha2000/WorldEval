@@ -1,0 +1,14 @@
+{
+  "schema_version": "objective.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "objective_id": "fixture-objective",
+  "instruction": "Remain at the start for one decision window.",
+  "coordinate_frame": "world_grid",
+  "targets": [{"role": "destination", "object_id": null, "object_type": null, "position": {"x": 0, "y": 0}}],
+  "success_predicates": [{"kind": "wait_complete", "subject": "worker-1", "parameters": {}}],
+  "failure_predicates": [],
+  "safety_constraints": [],
+  "priorities": ["wait"],
+  "tick_budget": 5,
+  "permitted_fallback": "wait"
+}

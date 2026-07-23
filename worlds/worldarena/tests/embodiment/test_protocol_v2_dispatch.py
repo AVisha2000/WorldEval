@@ -31,8 +31,9 @@ from genesis_arena.embodiment.replay import (
     ReplayValidationError,
     verify_replay_bytes,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 V1 = "llm-controller/0.1.0"
 V2 = "llm-controller/0.2.0"
 

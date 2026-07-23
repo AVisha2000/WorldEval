@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scripts.run_embodiment_managed_soak import ManagedSoakError, validate_soak_metrics
 
 

@@ -12,8 +12,9 @@ from genesis_arena.embodiment.api import router
 from genesis_arena.embodiment.duel.live_runtime import default_duel_series_service
 from genesis_arena.embodiment.duo_games.catalog import DUO_GAME_CATALOG
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 
 
@@ -60,8 +61,13 @@ async def test_api_demo_provider_managed_v2_sealed_archive_survives_restart(
     while not server.started:
         await asyncio.sleep(0)
     game = DUO_GAME_CATALOG[task_id]
+    # RTS exercises two 1,200-tick authority legs plus replay verification. Its simulated
+    # tick budget is intentionally independent of wall time, especially with hybrid frames.
+    status_poll_attempts = 720 if game.maximum_episode_ticks >= 1_200 else 240
     try:
-        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}") as client:
+        async with httpx.AsyncClient(
+            base_url=f"http://127.0.0.1:{port}", timeout=30
+        ) as client:
             response = await client.post(
                 "/api/embodiment/series",
                 json={
@@ -77,7 +83,7 @@ async def test_api_demo_provider_managed_v2_sealed_archive_survives_restart(
             assert response.status_code == 202
             assert "api_key" not in response.text
             series_id = response.json()["series_id"]
-            for _ in range(240):
+            for _ in range(status_poll_attempts):
                 status_response = await client.get(f"/api/embodiment/series/{series_id}")
                 assert status_response.status_code == 200
                 status = status_response.json()
@@ -112,10 +118,19 @@ async def test_api_demo_provider_managed_v2_sealed_archive_survives_restart(
             assert replay.status_code == 200
             assert replay.headers["x-content-sha256"]
             assert b"observation_json_base64" not in replay.content
-            for _ in range(80):
-                archive = (
-                    await client.get(f"/api/embodiment/series/{series_id}/archive")
-                ).json()
+            archive = {"evidence": {"state": "saving"}}
+            archive_poll_attempts = 1_200 if game.maximum_episode_ticks >= 1_200 else 80
+            for _ in range(archive_poll_attempts):
+                try:
+                    archive_response = await client.get(
+                        f"/api/embodiment/series/{series_id}/archive"
+                    )
+                except httpx.TransportError:
+                    # A saturated hybrid-render runner can close an idle keep-alive connection
+                    # while the already-completed authority evidence is being archived.
+                    await asyncio.sleep(0.05)
+                    continue
+                archive = archive_response.json()
                 if archive["evidence"]["state"] != "saving":
                     break
                 await asyncio.sleep(0.05)
@@ -146,4 +161,10 @@ async def test_api_demo_provider_managed_v2_sealed_archive_survives_restart(
     finally:
         await service.aclose()
         server.should_exit = True
-        await server_task
+        try:
+            await asyncio.wait_for(server_task, 5)
+        except asyncio.TimeoutError:
+            server.force_exit = True
+            server_task.cancel()
+            await asyncio.gather(server_task, return_exceptions=True)
+        listener.close()

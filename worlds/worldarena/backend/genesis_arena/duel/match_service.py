@@ -35,6 +35,7 @@ from typing import (
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
+from worldarena.paths import WORLDARENA_ROOT
 
 from .baselines import (
     NoOpDuelProviderAdapter,
@@ -1170,7 +1171,7 @@ def default_duel_match_service(
             replay_authority_material=replay_authority_material,
         )
 
-    repository_root = Path(__file__).resolve().parents[3]
+    repository_root = WORLDARENA_ROOT
     if godot_executable is None:
         conventional = Path("/Applications/Godot.app/Contents/MacOS/Godot")
         discovered = shutil.which("godot") or shutil.which("Godot")

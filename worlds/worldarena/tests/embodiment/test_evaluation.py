@@ -1,6 +1,5 @@
 import json
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.evaluation import (
@@ -19,8 +18,9 @@ from genesis_arena.embodiment.providers.contracts import (
     ProviderTelemetry,
 )
 from genesis_arena.embodiment.replay import ReplayLedger, verify_replay_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _golden_replay(name: str):

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/action-plan.v1.schema.json",
+  "title": "WorldEval agent interruptible action plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "plan_id", "source", "lease_ticks", "execution_policy", "steps", "abort_behavior"],
+  "properties": {
+    "schema_version": {"const": "action-plan.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "plan_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "source": {"$ref": "common.v1.schema.json#/$defs/source"},
+    "lease_ticks": {"type": "integer", "minimum": 1, "maximum": 50},
+    "execution_policy": {"const": "confirm_each_boundary"},
+    "steps": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "common.v1.schema.json#/$defs/planStep"}},
+    "abort_behavior": {"enum": ["neutral", "cancel_current_action"]}
+  }
+}

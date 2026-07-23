@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+from worldarena.paths import WORLDARENA_ROOT
+
+REPOSITORY_ROOT = WORLDARENA_ROOT
 CONTRACT_PATH = REPOSITORY_ROOT / "godot" / "data" / "arena" / "benchmark_contract.json"
 
 

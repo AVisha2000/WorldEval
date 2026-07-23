@@ -1,0 +1,20 @@
+{
+  "schema_version": "environment-init.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "environment_id": "fixture-environment",
+  "game_id": "fixture-game",
+  "session_id": "fixture-session",
+  "initialization_hash": "sha256:0c4a1398fdb2a754c68b781334182df359ba77b8e058b8664c5e46b98a651d52",
+  "briefing": {"premise": "A conformance fixture.", "agent_role": "Control worker-1.", "success_model": "Complete the objective.", "rules": ["Respond explicitly."]},
+  "authority": {"engine": "godot", "simulation_hz": 10, "numeric_model": "integer-grid"},
+  "profiles": {"action": "fixture-actions-v1", "observation": "fixture-visible-v1", "decision": "dynamic-step-locked-v1"},
+  "coordinate_frames": [{"frame_id": "world_grid", "dimensions": 2, "width": 1, "height": 1, "origin": "bottom_left", "x_axis": "east", "y_axis": "north", "units": "cells"}],
+  "controlled_assets": [{"object_id": "worker-1", "type_id": "worker", "generation": 1, "position": {"x": 0, "y": 0}, "affordances": ["movable"], "state": {}, "capabilities": ["wait"]}],
+  "object_catalog": {"schema_version": "object-catalog.v1", "protocol": "worldeval-agent/0.1.0", "catalog_id": "fixture-objects", "object_types": [{"type_id": "worker", "traits": ["controllable"], "affordances": ["movable"], "visible_state_fields": ["position"], "lifecycle_events": ["spawned", "updated", "despawned"], "stable_identity": true}]},
+  "action_catalog": {"schema_version": "action-catalog.v1", "protocol": "worldeval-agent/0.1.0", "catalog_id": "fixture-actions", "action_profile": "fixture-actions-v1", "actions": [{"action_id": "wait", "argument_schema": {"type": "object", "additionalProperties": false, "properties": {}}, "preconditions": [], "refusal_conditions": [], "duration": {"kind": "persistent", "maximum_ticks": 5}, "cancellation_boundary": "tick_boundary", "authority": {"game_may": ["advance_authorized_ticks"], "game_must_not": ["continue_other_plan"], "navigation": "none", "target_selection": "agent_only"}, "receipt_codes": ["wait_complete"]}]},
+  "decision_profile": {"schema_version": "decision-profile.v1", "protocol": "worldeval-agent/0.1.0", "profile_id": "dynamic-step-locked-v1", "kind": "dynamic-step-locked", "minimum_ticks": 1, "maximum_ticks": 5, "default_ticks": 3, "simulation_pauses_during_inference": true, "observation_policy": "every_boundary", "interrupt_events": ["movement_blocked"], "explicit_response_required": true, "missing_response_behavior": "neutral_noop"},
+  "active_objective": {"schema_version": "objective.v1", "protocol": "worldeval-agent/0.1.0", "objective_id": "fixture-objective", "instruction": "Remain at the start for one decision window.", "coordinate_frame": "world_grid", "targets": [{"role": "destination", "object_id": null, "object_type": null, "position": {"x": 0, "y": 0}}], "success_predicates": [{"kind": "wait_complete", "subject": "worker-1", "parameters": {}}], "failure_predicates": [], "safety_constraints": [], "priorities": ["wait"], "tick_budget": 5, "permitted_fallback": "wait"},
+  "capabilities": [{"capability_id": "wait", "available": true, "reason": null}],
+  "contracts": {"environment_init": "schemas/environment-init.v1.schema.json", "objective": "schemas/objective.v1.schema.json", "object_catalog": "schemas/object-catalog.v1.schema.json", "action_catalog": "schemas/action-catalog.v1.schema.json", "observation": "schemas/observation.v1.schema.json", "action_plan": "schemas/action-plan.v1.schema.json", "decision_response": "schemas/decision-response.v1.schema.json", "action_receipt": "schemas/action-receipt.v1.schema.json", "decision_profile": "schemas/decision-profile.v1.schema.json", "skill_manifest": "schemas/skill-manifest.v1.schema.json", "replay_bundle": "schemas/replay-bundle.v1.schema.json"},
+  "example_traces": []
+}

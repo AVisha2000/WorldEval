@@ -1,0 +1,62 @@
+{
+  "schema_version": "environment-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "environment_id": "worldarena-waypoint-maze-v0",
+  "game_id": "worldarena-waypoint-maze-v0",
+  "name": "WorldArena Waypoint Maze",
+  "briefing": {
+    "premise": "A deterministic fixed-wall maze tests reusable semantic navigation and sparse decision timing.",
+    "agent_role": "You control navigator-1 and must explicitly select every waypoint and movement target.",
+    "success_model": "Visit the four numbered beacons in order, then reach exit-1 before the 80-tick limit.",
+    "rules": [
+      "Coordinates use maze_grid with x east and y north.",
+      "All route markers and fixed walls are visible from initialization.",
+      "move_to follows only the direct line to the exact target you declare.",
+      "The authority resolves movement and collisions but never chooses a waypoint, path, or detour.",
+      "A waypoint event or other material event ends the current static lease early.",
+      "Every reopened boundary requires an explicit response; silence and invalid output are neutral no-ops."
+    ]
+  },
+  "authority": {
+    "engine": "godot",
+    "simulation_hz": 10,
+    "numeric_model": "integer-grid"
+  },
+  "profiles": {
+    "action": "semantic-grid-actions-v1",
+    "observation": "semantic-grid-visible-v1",
+    "decision": "static-event-gated-v1"
+  },
+  "coordinate_frames": [
+    {
+      "frame_id": "maze_grid",
+      "dimensions": 2,
+      "width": 12,
+      "height": 9,
+      "origin": "bottom_left",
+      "x_axis": "east",
+      "y_axis": "north",
+      "units": "cells"
+    }
+  ],
+  "controllable_asset_types": ["navigator"],
+  "object_catalog": "catalogs/object-catalog.json",
+  "action_catalog": "catalogs/action-catalog.json",
+  "decision_profile": "decision-profiles/static-event-gated-v1.json",
+  "contracts": {
+    "environment_init": "schemas/environment-init.v1.schema.json",
+    "objective": "schemas/objective.v1.schema.json",
+    "object_catalog": "schemas/object-catalog.v1.schema.json",
+    "action_catalog": "schemas/action-catalog.v1.schema.json",
+    "observation": "schemas/observation.v1.schema.json",
+    "action_plan": "schemas/action-plan.v1.schema.json",
+    "decision_response": "schemas/decision-response.v1.schema.json",
+    "action_receipt": "schemas/action-receipt.v1.schema.json",
+    "decision_profile": "schemas/decision-profile.v1.schema.json",
+    "skill_manifest": "schemas/skill-manifest.v1.schema.json",
+    "replay_bundle": "schemas/replay-bundle.v1.schema.json"
+  },
+  "example_traces": ["examples/beacon-route-plan.json"],
+  "semantic_world_commands_exposed": true,
+  "exact_world_coordinates_exposed": true
+}

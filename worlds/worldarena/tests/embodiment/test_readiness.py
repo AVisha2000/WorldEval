@@ -7,14 +7,29 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from genesis_arena.embodiment.api import router
 from genesis_arena.embodiment.readiness import (
+    READINESS_REPORT_FORMAT,
+    READINESS_REPORT_FORMAT_V2,
     READINESS_VIEW_FORMAT,
     PilotReadinessStore,
 )
+from genesis_arena.embodiment.source_fingerprint import (
+    SOURCE_FINGERPRINT_V1,
+    SOURCE_FINGERPRINT_V2,
+)
 
 
-def _report(path: Path, *, fingerprint: str = "b" * 64) -> Path:
+def _report(
+    path: Path,
+    *,
+    fingerprint: str = "b" * 64,
+    fingerprint_version: str = SOURCE_FINGERPRINT_V1,
+) -> Path:
     value = {
-        "format": "llm-controller/embodiment-pilot-readiness/1.1.0",
+        "format": (
+            READINESS_REPORT_FORMAT_V2
+            if fingerprint_version == SOURCE_FINGERPRINT_V2
+            else READINESS_REPORT_FORMAT
+        ),
         "gates": {
             "offline": {"passed": True},
             "approved_mixamo_y_bot": {
@@ -46,6 +61,8 @@ def _report(path: Path, *, fingerprint: str = "b" * 64) -> Path:
         },
         "source_fingerprint": fingerprint,
     }
+    if fingerprint_version == SOURCE_FINGERPRINT_V2:
+        value["source_fingerprint_version"] = SOURCE_FINGERPRINT_V2
     path.write_text(json.dumps(value), encoding="utf-8")
     return path
 
@@ -77,6 +94,7 @@ def test_readiness_projection_is_allow_listed_and_credential_free(tmp_path: Path
     assert projected["format"] == READINESS_VIEW_FORMAT
     assert projected["report_available"] is True
     assert projected["source_fingerprint"] == "b" * 64
+    assert projected["source_fingerprint_version"] == SOURCE_FINGERPRINT_V1
     assert "must-never-leave-the-store" not in encoded
     assert "report_sha256" not in encoded
 
@@ -129,3 +147,62 @@ def test_invalid_current_fingerprint_fails_closed(tmp_path: Path) -> None:
     ).read()
     assert projected["report_available"] is False
     assert projected["ready_for_promotion"] is False
+
+
+def test_readiness_uses_the_fingerprint_algorithm_declared_by_its_format(
+    tmp_path: Path,
+) -> None:
+    calls: list[str] = []
+    resolvers = {
+        SOURCE_FINGERPRINT_V1: lambda: calls.append(SOURCE_FINGERPRINT_V1) or "a" * 64,
+        SOURCE_FINGERPRINT_V2: lambda: calls.append(SOURCE_FINGERPRINT_V2) or "b" * 64,
+    }
+    legacy = _report(tmp_path / "legacy.json", fingerprint="a" * 64)
+    current = _report(
+        tmp_path / "current.json",
+        fingerprint="b" * 64,
+        fingerprint_version=SOURCE_FINGERPRINT_V2,
+    )
+
+    legacy_view = PilotReadinessStore(
+        legacy, current_source_fingerprints=resolvers
+    ).read()
+    current_view = PilotReadinessStore(
+        current, current_source_fingerprints=resolvers
+    ).read()
+
+    assert calls == [SOURCE_FINGERPRINT_V1, SOURCE_FINGERPRINT_V2]
+    assert legacy_view["report_available"] is True
+    assert legacy_view["source_fingerprint_version"] == SOURCE_FINGERPRINT_V1
+    assert current_view["report_available"] is True
+    assert current_view["source_fingerprint_version"] == SOURCE_FINGERPRINT_V2
+
+
+def test_readiness_rejects_ambiguous_or_unsupported_fingerprint_versions(
+    tmp_path: Path,
+) -> None:
+    path = _report(
+        tmp_path / "readiness.json",
+        fingerprint_version=SOURCE_FINGERPRINT_V2,
+    )
+    value = json.loads(path.read_text(encoding="utf-8"))
+    value.pop("source_fingerprint_version")
+    path.write_text(json.dumps(value), encoding="utf-8")
+    assert PilotReadinessStore(
+        path,
+        current_source_fingerprints={
+            SOURCE_FINGERPRINT_V1: lambda: "b" * 64,
+            SOURCE_FINGERPRINT_V2: lambda: "b" * 64,
+        },
+    ).read()["report_available"] is False
+
+    value["format"] = READINESS_REPORT_FORMAT
+    value["source_fingerprint_version"] = SOURCE_FINGERPRINT_V2
+    path.write_text(json.dumps(value), encoding="utf-8")
+    assert PilotReadinessStore(
+        path,
+        current_source_fingerprints={
+            SOURCE_FINGERPRINT_V1: lambda: "b" * 64,
+            SOURCE_FINGERPRINT_V2: lambda: "b" * 64,
+        },
+    ).read()["report_available"] is False

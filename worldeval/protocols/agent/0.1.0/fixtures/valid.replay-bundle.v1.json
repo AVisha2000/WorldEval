@@ -1,0 +1,52 @@
+{
+  "schema_version": "replay-bundle.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "run_id": "fixture-replay",
+  "environment_id": "fixture-environment",
+  "scenario_id": "fixture-scenario",
+  "initialization_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "initial_state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "terminal_state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "terminal_outcome": "incomplete",
+  "terminal_tick": 0,
+  "authority_metrics": {
+    "forbidden_autonomy_count": 0,
+    "hostile_attacks": 0
+  },
+  "decisions": [],
+  "observations": [
+    {
+      "schema_version": "observation.v1",
+      "protocol": "worldeval-agent/0.1.0",
+      "environment_id": "fixture-environment",
+      "session_id": "fixture-session",
+      "observation_seq": 0,
+      "tick": 0,
+      "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "coordinate_frame": "world_grid",
+      "controlled_assets": [
+        {
+          "object_id": "worker-1",
+          "type_id": "worker",
+          "generation": 1,
+          "position": {"x": 0, "y": 0},
+          "affordances": ["movable"],
+          "state": {},
+          "capabilities": ["wait"]
+        }
+      ],
+      "visible_objects": [],
+      "events": [],
+      "active_plan": null,
+      "decision_required": {
+        "reason": "terminal",
+        "allowed_responses": [],
+        "interrupt_events": []
+      },
+      "terminal": true
+    }
+  ],
+  "receipts": [],
+  "provider_calls": 0,
+  "offline_verified": true
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/environment-init.v1.schema.json",
+  "title": "WorldEval agent environment initialization v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "environment_id", "game_id", "session_id", "initialization_hash", "briefing", "authority", "profiles", "coordinate_frames", "controlled_assets", "object_catalog", "action_catalog", "decision_profile", "active_objective", "capabilities", "contracts", "example_traces"],
+  "properties": {
+    "schema_version": {"const": "environment-init.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "environment_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "game_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "session_id": {"$ref": "common.v1.schema.json#/$defs/id"},
+    "initialization_hash": {"$ref": "common.v1.schema.json#/$defs/hash"}, "briefing": {"$ref": "common.v1.schema.json#/$defs/briefing"},
+    "authority": {"$ref": "common.v1.schema.json#/$defs/authority"}, "profiles": {"$ref": "common.v1.schema.json#/$defs/profiles"},
+    "coordinate_frames": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "common.v1.schema.json#/$defs/coordinateFrame"}},
+    "controlled_assets": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/controlledAsset"}},
+    "object_catalog": {"$ref": "common.v1.schema.json#/$defs/objectCatalog"}, "action_catalog": {"$ref": "common.v1.schema.json#/$defs/actionCatalog"},
+    "decision_profile": {"oneOf": [{"$ref": "common.v1.schema.json#/$defs/dynamicProfile"}, {"$ref": "common.v1.schema.json#/$defs/staticProfile"}]},
+    "active_objective": {"$ref": "common.v1.schema.json#/$defs/objective"},
+    "capabilities": {"type": "array", "maxItems": 128, "items": {"$ref": "common.v1.schema.json#/$defs/capability"}},
+    "contracts": {"$ref": "common.v1.schema.json#/$defs/contracts"}, "example_traces": {"type": "array", "maxItems": 32, "items": {"type": "string"}}
+  }
+}

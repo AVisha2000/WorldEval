@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "paths": {
+    "worldeval": "worldeval",
+    "worldarena": "worlds/worldarena",
+    "worldarena_backend": "worlds/worldarena/backend",
+    "worldarena_game": "worlds/worldarena/game",
+    "worldarena_godot": "worlds/worldarena/godot",
+    "worldarena_games": "worlds/worldarena/games",
+    "worldeval_web": "apps/worldeval-web",
+    "features": "features",
+    "runs": "runs",
+    "exports": "exports",
+    "operations": "ops",
+    "media": "media"
+  }
+}

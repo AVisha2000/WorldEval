@@ -25,8 +25,9 @@ from genesis_arena.duel.runtime import (
     canonical_provider_input_envelope_bytes,
 )
 from genesis_arena.duel.schema_validation import DuelSchemaValidator
+from worldarena.paths import WORLDARENA_ROOT
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = WORLDARENA_ROOT
 PACKAGE = ProtocolPackage(REPOSITORY_ROOT / "game" / "duel_protocol")
 FACTIONS = ("vanguard-v1", "warhost-v1", "grove-v1", "crypt-v1")
 MODES = ("fixed_simultaneous", "continuous_realtime")

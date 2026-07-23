@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-dashboard_dir="$repo_root/dashboard"
+repo_root=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)
+dashboard_dir="$repo_root/apps/worldeval-web"
+godot_project="$repo_root/worlds/worldarena/godot"
 godot_bin=${GODOT_BIN:-/tmp/worldeval-godot-4.5/Godot_v4.5-stable_linux.x86_64}
 
 if [[ ! -x "$godot_bin" ]]; then
@@ -16,7 +17,7 @@ VITE_BASE_PATH=/ VITE_CONTROLLER_LAB_URL='https://lab.openai-buildweek.lissan.de
 popd >/dev/null
 
 mkdir -p "$repo_root/exports/godot-web"
-"$godot_bin" --headless --path "$repo_root/godot" --export-release \
+"$godot_bin" --headless --path "$godot_project" --export-release \
     "WorldArena Browser Demo" "$repo_root/exports/godot-web/index.html"
 
 # Nginx runs as www-data. Preserve the least privilege needed to traverse and

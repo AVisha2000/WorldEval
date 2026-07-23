@@ -1,16 +1,16 @@
 # WorldEval Remotion demo media
 
 This folder is the editing library for the three pre-run demonstrations shown in the
-WorldArena Controller Lab. Everything lives under `remotion/public/`, so a Remotion
+WorldArena Controller Lab. Everything lives under `media/remotion/public/`, so a Remotion
 composition can load an asset directly with `staticFile()`.
 
 ## Portal demo videos
 
 | Demo | Remotion path | Canonical source |
 |---|---|---|
-| Labyrinth Run | `demo-media/videos/labyrinth-run-broadcast.mp4` | `godot/showcases/labyrinth_run/labyrinth-run-broadcast.mp4` |
-| Mini RTS Skirmish | `demo-media/videos/mini-rts-skirmish-broadcast.mp4` | `godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4` |
-| Crossroads Conquest | `demo-media/videos/crossroads-conquest-broadcast.mp4` | `godot/showcases/crossroads_conquest/crossroads-conquest-broadcast.mp4` |
+| Labyrinth Run | `demo-media/videos/labyrinth-run-broadcast.mp4` | `worlds/worldarena/godot/showcases/labyrinth_run/labyrinth-run-broadcast.mp4` |
+| Mini RTS Skirmish | `demo-media/videos/mini-rts-skirmish-broadcast.mp4` | `worlds/worldarena/godot/showcases/rts_skirmish/rts-skirmish-broadcast.mp4` |
+| Crossroads Conquest | `demo-media/videos/crossroads-conquest-broadcast.mp4` | `worlds/worldarena/godot/showcases/crossroads_conquest/crossroads-conquest-broadcast.mp4` |
 
 These are full portal masters rather than shortened highlights. Keep them muted in an
 explainer unless an approved gameplay audio track is intentionally required.

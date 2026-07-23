@@ -95,6 +95,6 @@ replay. Standard, Agentic, and Open results never share a leaderboard.
 
 ## Migration
 
-The competitive scene is `godot/scenes/arena_v1.tscn`. The original sequential survival slice
-is preserved independently at `godot/scenes/main.tscn` and on the legacy `/ws/world` protocol;
+The competitive scene is `worlds/worldarena/godot/scenes/arena_v1.tscn`. The original sequential survival slice
+is preserved independently at `worlds/worldarena/godot/scenes/main.tscn` and on the legacy `/ws/world` protocol;
 Arena logic is not implemented as conditional branches inside that scenario.

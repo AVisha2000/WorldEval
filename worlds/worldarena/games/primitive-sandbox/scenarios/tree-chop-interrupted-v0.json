@@ -1,0 +1,41 @@
+{
+  "schema_version": "primitive-grid-scenario.v1",
+  "scenario_id": "tree-chop-interrupted-v0",
+  "environment_id": "worldarena-primitive-sandbox-v0",
+  "session_id": "demo-interrupted-v0",
+  "objective_id": "tree-chop-interrupted-v0",
+  "width": 30,
+  "height": 25,
+  "coordinate_frame": "world_grid",
+  "tick_budget": 200,
+  "base_position": {"x": 2, "y": 12},
+  "agent": {
+    "object_id": "worker-1",
+    "type_id": "worker",
+    "generation": 1,
+    "position": {"x": 2, "y": 12},
+    "affordances": ["movable", "can_equip", "can_use_tool"],
+    "state": {"health": 100},
+    "capabilities": ["locomotion", "equip", "use_tool"],
+    "inventory": ["axe", "pickaxe"]
+  },
+  "objects": [
+    {"object_id": "base-1", "type_id": "base", "generation": 1, "position": {"x": 2, "y": 12}, "affordances": ["approachable", "safe_return_target"], "state": {}},
+    {"object_id": "tree-7", "type_id": "tree", "generation": 1, "position": {"x": 23, "y": 12}, "affordances": ["approachable", "choppable"], "state": {"health": 1}}
+  ],
+  "triggers": [
+    {
+      "trigger_id": "barrier-after-x10",
+      "kind": "spawn_barrier_after_x",
+      "threshold_x": 10,
+      "object": {"object_id": "barrier-3", "type_id": "barrier", "generation": 1, "position": {"x": 12, "y": 12}, "affordances": ["blocks_movement"], "state": {"blocks_movement": true}}
+    },
+    {
+      "trigger_id": "enemy-after-x14",
+      "kind": "spawn_enemy_after_x",
+      "threshold_x": 14,
+      "object": {"object_id": "enemy-1", "type_id": "enemy", "generation": 1, "position": {"x": 23, "y": 12}, "affordances": ["visible_hostile"], "state": {"health": 100, "hostile": true}}
+    }
+  ],
+  "expected_outcome": "safe_return"
+}

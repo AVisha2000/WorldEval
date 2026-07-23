@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from worldarena.paths import WORLDARENA_ROOT
+
 from .canonical import canonical_json_bytes, canonical_sha256, strict_json_loads
 
 DUEL_PROTOCOL_VERSION = "worldeval-rts/1.0.0"
@@ -35,7 +37,7 @@ class ArtifactDigest:
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return WORLDARENA_ROOT
 
 
 class ProtocolPackage:

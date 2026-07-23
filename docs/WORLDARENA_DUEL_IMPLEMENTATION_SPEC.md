@@ -76,7 +76,7 @@ Do not make `controller.md` the contract. The coding implementation MUST create 
 package instead:
 
 ```text
-game/duel_protocol/
+worlds/worldarena/game/duel_protocol/
   README.md                              human-readable normative guide
   VERSION                                worldeval-rts/1.0.0
   protocol-lock.json                     hashes every artifact below
@@ -123,7 +123,7 @@ region sketch in this document, is the executable source of map truth. The imple
 Phase 1 is not complete until this artifact validates against `map-manifest.v1.schema.json`, passes
 every mirror assertion, and its canonical SHA-256 appears in `protocol-lock.json`.
 
-The existing `game/controller.md` belongs to the preserved survival scenario and MUST NOT be
+The existing `worlds/worldarena/game/controller.md` belongs to the preserved survival scenario and MUST NOT be
 silently repurposed.
 
 ---
@@ -2193,8 +2193,8 @@ Do not rewrite the current three-player `arena` or legacy survival scenario in p
 under new namespaces until all acceptance gates pass:
 
 ```text
-godot/scenes/duel_v1.tscn
-godot/scripts/duel/
+worlds/worldarena/godot/scenes/duel_v1.tscn
+worlds/worldarena/godot/scripts/duel/
   duel_match_controller.gd
   simulation/
     duel_simulation.gd
@@ -2223,7 +2223,7 @@ godot/scripts/duel/
     duel_fog_view.gd
     duel_hud.gd
     duel_replay_player.gd
-backend/genesis_arena/duel/
+worlds/worldarena/backend/genesis_arena/duel/
   models.py
   gateway.py
   runtime.py
@@ -2232,8 +2232,8 @@ backend/genesis_arena/duel/
   artifacts.py
   evaluation.py
   season.py
-tests/duel/
-godot/tests/duel/
+worlds/worldarena/tests/duel/
+worlds/worldarena/godot/tests/duel/
 ```
 
 Existing reusable commit/reveal, provider, artifact, season, and replay concepts SHOULD be extracted
@@ -2579,7 +2579,7 @@ Before import, record for every archive:
 - license text and attribution requirement;
 - imported-file allowlist, transformations, and resulting Godot resource paths.
 
-Use the repository's `godot/assets/asset_manifest.json` and asset-intake workflow. Never commit an
+Use the repository's `worlds/worldarena/godot/assets/asset_manifest.json` and asset-intake workflow. Never commit an
 unreviewed interactive download, paid archive, or unverifiable “latest” package. Preserve upstream
 license files beside imported subsets.
 

@@ -34,6 +34,15 @@ const DUO_TASKS := [
 	"duo-resource-relay-v0",
 	"rts-skirmish-v0", "rts-skirmish-v1",
 ]
+## This is the public capability vocabulary frozen into llm-controller/0.2.0.  The
+## experimental RTS v1 authority remains dispatchable for its separate live path, but
+## must not leak into the v2 episode_ready frame consumed by legacy managed sessions.
+const PROTOCOL_TASKS := [
+	"movement-maze-v0", "operator-action-course-v0",
+	"duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0",
+	"duo-resource-relay-v0",
+	"rts-skirmish-v0",
+]
 const TASKS := [
 	"movement-maze-v0", "operator-action-course-v0",
 	"duo-checkpoint-race-v0", "duo-relay-control-v0", "duo-spar-v0",
@@ -128,7 +137,7 @@ func capability_status() -> Dictionary:
 	return {
 		"implemented_modes": ["solo-curriculum-v0", "scripted-duel-v0", "model-duel-v0"],
 		"implemented_observation_profiles": ["text-visible-v1", "hybrid-visible-v1"],
-		"implemented_tasks": TASKS.duplicate(),
+		"implemented_tasks": PROTOCOL_TASKS.duplicate(),
 		"certified_modes": [],
 		"certified_observation_profiles": [],
 		"scored_observation_profiles": [],

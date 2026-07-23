@@ -17,8 +17,9 @@ from typing import Any, Mapping, Sequence
 from genesis_arena.embodiment.protocol import canonical_json_bytes
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.replay import verify_replay_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 SHOWCASE_ID = "rts-skirmish-v0"
 REPLAY_NAME = "rts-skirmish-demo.replay.json"
 VIDEO_NAME = "rts-skirmish-broadcast.mp4"

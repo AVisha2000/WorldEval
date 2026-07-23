@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import json
-from pathlib import Path
+from copy import deepcopy
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from genesis_arena.embodiment.api import router
 from genesis_arena.embodiment.rts_showcase import CachedRtsShowcase, RtsShowcaseError
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _app() -> FastAPI:

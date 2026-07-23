@@ -13,10 +13,10 @@ htmlcov/
 dist/
 build/
 *.egg-info/
-godot/.godot/
+worlds/worldarena/godot/.godot/
 runs/
 exports/
-remotion/node_modules/
-remotion/out/
-remotion/.remotion/
+media/remotion/node_modules/
+media/remotion/out/
+media/remotion/.remotion/
 outputs/

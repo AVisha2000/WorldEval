@@ -1,0 +1,5 @@
+{
+  "schema_version": "skill-manifest.v1", "protocol": "worldeval-agent/0.1.0", "skill_id": "fixture.wait-v1", "description": "A visible wait plan template.",
+  "required_target_affordances": [], "required_tool_affordances": [], "suggested_actions": ["wait"], "preconditions": [], "decision_points": ["movement_blocked"],
+  "success_predicate": {"kind": "wait_complete", "subject": "worker-1", "parameters": {}}, "compatible_action_profiles": ["fixture-actions-v1"], "execution": "agent_expands_to_visible_actions"
+}

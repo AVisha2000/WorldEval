@@ -1,0 +1,139 @@
+name: WorldEval verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worldeval-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python, contracts, workflow, and compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install workspace
+        run: python -m pip install --upgrade pip build && python -m pip install -e ".[dev]"
+      - name: Validate repository layout
+        run: |
+          python tools/check_workspace_layout.py
+          python tools/check_frozen_protocol_bytes.py
+          python tools/check_public_artifact_secrets.py
+          python tools/check_document_links.py
+      - name: Validate feature lifecycle
+        run: |
+          worldeval feature validate
+          worldeval feature doctor
+      - name: Lint maintained Python surfaces
+        run: >-
+          ruff check
+          worldeval/src
+          worldeval/tests
+          tools
+          worlds/worldarena/backend/worldarena
+          worlds/worldarena/scripts/build_primitive_sandbox_demos.py
+          worlds/worldarena/scripts/build_waypoint_maze_demo.py
+          worlds/worldarena/tests/test_package_facades.py
+          worlds/worldarena/tests/test_primitive_sandbox_api.py
+          worlds/worldarena/tests/test_primitive_sandbox_sessions.py
+          worlds/worldarena/tests/test_waypoint_maze.py
+          worlds/worldarena/tests/test_worldeval_replay_api.py
+          worlds/worldarena/tests/embodiment/test_source_fingerprint_versions.py
+      - name: Build distributable wheel
+        run: python -m build --wheel
+      - name: Run the complete Python suite
+        run: python -m pytest
+      - name: Verify frozen protocol locks
+        run: |
+          python worlds/worldarena/scripts/build_embodiment_protocol_lock.py --check
+          python worlds/worldarena/scripts/build_duel_protocol_lock.py --check
+
+  godot:
+    name: Godot authority and network-isolated accepted replay demos
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install workspace
+        run: python -m pip install -e ".[dev]"
+      - name: Set up Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.5.0
+          use-dotnet: false
+          include-templates: false
+      - name: Import the moved Godot project
+        run: godot --headless --editor --path worlds/worldarena/godot --quit
+      - name: Run primitive sandbox authority tests
+        run: >-
+          godot --headless
+          --path worlds/worldarena/godot
+          --script res://tests/agent_sandbox/primitive_sandbox_headless_test.gd
+      - name: Run waypoint maze authority tests
+        run: >-
+          godot --headless
+          --path worlds/worldarena/godot
+          --script res://tests/agent_waypoint_maze/waypoint_maze_headless_test.gd
+      - name: Verify promoted primitive sandbox demos
+        run: python worlds/worldarena/scripts/build_primitive_sandbox_demos.py --check
+      - name: Verify the promoted waypoint maze demo
+        run: python worlds/worldarena/scripts/build_waypoint_maze_demo.py --check
+      - name: Run the real Godot-to-API integration
+        run: >-
+          python -m pytest
+          worlds/worldarena/tests/test_primitive_sandbox_api.py
+          worlds/worldarena/tests/test_waypoint_maze.py
+
+  web:
+    name: Controller Lab and Pages build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worldeval-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/worldeval-web/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build local app
+        run: pnpm build
+      - name: Build Pages app
+        env:
+          VITE_BASE_PATH: /WorldEval/
+        run: pnpm build:pages

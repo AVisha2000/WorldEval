@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.demo_provider import DemoPolicyLock
@@ -16,8 +15,9 @@ from genesis_arena.embodiment.protocol import (
 from genesis_arena.embodiment.providers import provider_capabilities
 from genesis_arena.embodiment.providers.contracts import ProviderRequest
 from genesis_arena.embodiment.scripted_solo_demo import SCRIPTED_SOLO_MODELS
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _visible_entity(entity_id: str, *, state: str) -> dict[str, object]:

@@ -1,0 +1,50 @@
+{
+  "schema_version": "action-plan.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "plan_id": "example-visible-beacon-route",
+  "source": {
+    "observation_seq": 0,
+    "tick": 0,
+    "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "lease_ticks": 50,
+  "execution_policy": "confirm_each_boundary",
+  "steps": [
+    {
+      "step_id": "visit-beacon-1",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "beacon-1", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "beacon-1", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "agent_at_target", "subject": "beacon-1", "parameters": {}},
+      "interrupt_on": ["waypoint_reached", "movement_blocked", "target_disappeared"]
+    },
+    {
+      "step_id": "visit-beacon-2",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "beacon-2", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "beacon-2", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "agent_at_target", "subject": "beacon-2", "parameters": {}},
+      "interrupt_on": ["waypoint_reached", "movement_blocked", "target_disappeared"]
+    },
+    {
+      "step_id": "visit-beacon-3",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "beacon-3", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "beacon-3", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "agent_at_target", "subject": "beacon-3", "parameters": {}},
+      "interrupt_on": ["waypoint_reached", "movement_blocked", "target_disappeared"]
+    },
+    {
+      "step_id": "visit-beacon-4",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "beacon-4", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "beacon-4", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "agent_at_target", "subject": "beacon-4", "parameters": {}},
+      "interrupt_on": ["waypoint_reached", "movement_blocked", "target_disappeared"]
+    },
+    {
+      "step_id": "reach-exit-1",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "exit-1", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "exit-1", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "route_complete", "subject": "navigator-1", "parameters": {}},
+      "interrupt_on": ["waypoint_reached", "movement_blocked", "target_disappeared"]
+    }
+  ],
+  "abort_behavior": "cancel_current_action"
+}

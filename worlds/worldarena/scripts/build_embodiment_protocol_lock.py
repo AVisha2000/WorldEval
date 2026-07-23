@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
 PIN_RELATIVE_PATH = Path(
     "godot/scripts/embodiment/protocol/embodiment_protocol_package_identity.gd"
@@ -27,7 +28,7 @@ def main() -> int:
     parser.add_argument(
         "--repository-root",
         type=Path,
-        default=Path(__file__).resolve().parents[1],
+        default=WORLDARENA_ROOT,
     )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

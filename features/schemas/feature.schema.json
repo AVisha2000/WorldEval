@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/feature/1.0.0",
+  "title": "WorldEval feature record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "slug",
+    "title",
+    "summary",
+    "product",
+    "kind",
+    "priority",
+    "risk",
+    "dependencies",
+    "related_features",
+    "supersedes",
+    "scope",
+    "affected_paths",
+    "exclusive_shared_surfaces",
+    "acceptance_criteria",
+    "required_approvals",
+    "requirements"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval/feature/1.0.0"},
+    "id": {"type": "string", "pattern": "^WEV-[0-9]{4,}$"},
+    "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "product": {"type": "string", "minLength": 1},
+    "kind": {"type": "string", "minLength": 1},
+    "priority": {"enum": ["p0", "p1", "p2", "p3"]},
+    "risk": {"enum": ["low", "medium", "high", "critical"]},
+    "dependencies": {"$ref": "#/$defs/featureIds"},
+    "related_features": {"$ref": "#/$defs/featureIds"},
+    "supersedes": {"$ref": "#/$defs/featureIds"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["in", "out"],
+      "properties": {
+        "in": {"$ref": "#/$defs/stringArray"},
+        "out": {"$ref": "#/$defs/stringArray"}
+      }
+    },
+    "affected_paths": {"$ref": "#/$defs/stringArray"},
+    "exclusive_shared_surfaces": {"$ref": "#/$defs/stringArray"},
+    "required_approvals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["behavioral", "visual"]}
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/acceptanceCriterion"}
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compatibility", "privacy", "migration", "rollback"],
+      "properties": {
+        "compatibility": {"$ref": "#/$defs/stringArray"},
+        "privacy": {"$ref": "#/$defs/stringArray"},
+        "migration": {"$ref": "#/$defs/stringArray"},
+        "rollback": {"$ref": "#/$defs/stringArray"}
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "featureIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^WEV-[0-9]{4,}$"}
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "proof_types", "demo_required", "replay_required"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^WEV-[0-9]{4,}-AC-[0-9]{2,}$"},
+        "description": {"type": "string", "minLength": 1},
+        "proof_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["artifact", "demo", "document", "metric", "replay", "review", "test"]
+          }
+        },
+        "demo_required": {"type": "boolean"},
+        "replay_required": {"type": "boolean"}
+      }
+    }
+  }
+}

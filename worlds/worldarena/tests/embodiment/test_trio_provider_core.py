@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from backend.genesis_arena.embodiment.protocol import canonical_json_bytes
 from backend.genesis_arena.embodiment.providers.contracts import ProviderRequest
 from backend.genesis_arena.embodiment.trio_games.common import (

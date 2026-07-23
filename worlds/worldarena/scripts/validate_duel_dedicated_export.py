@@ -22,7 +22,9 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+from worldarena.paths import WORLDARENA_ROOT
+
+REPOSITORY_ROOT = WORLDARENA_ROOT
 DEFAULT_POLICY = REPOSITORY_ROOT / "godot" / "duel_dedicated_export_policy.json"
 DEFAULT_PRESET = REPOSITORY_ROOT / "godot" / "export_presets.cfg"
 PRESET_SECTION = "preset.0"

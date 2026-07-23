@@ -1,0 +1,8 @@
+{
+  "schema_version": "observation.v1", "protocol": "worldeval-agent/0.1.0", "environment_id": "fixture-environment", "session_id": "fixture-session",
+  "observation_seq": 0, "tick": 0, "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "coordinate_frame": "world_grid",
+  "controlled_assets": [{"object_id": "worker-1", "type_id": "worker", "generation": 1, "position": {"x": 0, "y": 0}, "affordances": ["movable"], "state": {}, "capabilities": ["wait"]}],
+  "visible_objects": [], "events": [], "active_plan": null,
+  "decision_required": {"reason": "initial", "allowed_responses": ["plan.replace", "wait"], "interrupt_events": []},
+  "terminal": false
+}

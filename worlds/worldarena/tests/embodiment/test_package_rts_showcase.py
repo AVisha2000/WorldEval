@@ -5,10 +5,10 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import package_rts_showcase as package
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _sha256(value: bytes) -> str:

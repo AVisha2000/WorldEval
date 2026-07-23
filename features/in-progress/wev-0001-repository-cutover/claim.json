@@ -1,0 +1,49 @@
+{
+  "affected_paths": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/pages.yml",
+    ".gitignore",
+    "HOSTING_SERVER.md",
+    "agents.toml",
+    "render_highlight_replay.command",
+    "run_fast_deterministic_tests.command",
+    "run_simulation.command",
+    "run_worldarena.command",
+    "worldeval",
+    "worlds",
+    "apps",
+    "features",
+    "docs",
+    "tools",
+    "ops",
+    "media",
+    "pyproject.toml",
+    "worldeval.workspace.json",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "base_revision": "244acf44f587899070d1a9dc793ee63cfd6f9caa",
+  "blockers": [],
+  "branch": "codex/wev-0001-repository-cutover",
+  "claimed_at": "2026-07-23T01:22:49Z",
+  "collaborators": [
+    "repository-cutover-agent",
+    "feature-workflow-agent",
+    "protocol-sandbox-agent",
+    "replay-agent"
+  ],
+  "exclusive_shared_surfaces": [
+    "repository-layout",
+    "python-packaging",
+    "workspace-path-resolution",
+    "feature-lifecycle"
+  ],
+  "expires_at": "2026-07-24T01:22:49Z",
+  "feature_id": "WEV-0001",
+  "owner": "codex-agent-team",
+  "reclaim_history": [],
+  "renewed_at": "2026-07-23T01:22:49Z",
+  "schema_version": "worldeval/feature-claim/1.0.0",
+  "task_id": "root-plan-implementation",
+  "work_state": "active"
+}

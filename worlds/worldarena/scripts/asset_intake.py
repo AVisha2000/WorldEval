@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import shutil
-import sys
 import tarfile
 import urllib.error
 import urllib.parse
@@ -16,8 +15,9 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 MANIFEST_PATH = ROOT / "godot" / "assets" / "asset_manifest.json"
 ASSETS_DIR = ROOT / "godot" / "assets"
 CACHE_DIR = ASSETS_DIR / ".intake" / "downloads"

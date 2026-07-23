@@ -1,0 +1,14 @@
+{
+  "schema_version": "skill-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "skill_id": "safety.return_to_base-v1",
+  "description": "Visible planning template for abandoning a revoked objective and selecting explicit waypoints back to a known safe base.",
+  "required_target_affordances": ["safe_return_target"],
+  "required_tool_affordances": [],
+  "suggested_actions": ["cancel", "move_to"],
+  "preconditions": [{"kind": "base_known", "subject": null, "parameters": {}}],
+  "decision_points": ["movement_blocked", "health_threshold_crossed", "objective_revised"],
+  "success_predicate": {"kind": "agent_at_base", "subject": null, "parameters": {}},
+  "compatible_action_profiles": ["semantic-grid-actions-v1"],
+  "execution": "agent_expands_to_visible_actions"
+}

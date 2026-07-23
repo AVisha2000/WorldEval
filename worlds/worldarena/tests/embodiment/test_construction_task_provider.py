@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from genesis_arena.embodiment.construction_task_provider import ConstructionTaskProvider
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
 from genesis_arena.embodiment.providers.contracts import (
     ProviderCallResult,
+    ProviderFailureKind,
     ProviderRequest,
     ProviderTelemetry,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 class _Provider:
@@ -94,7 +94,7 @@ async def test_construction_task_provider_calls_model_once_then_replays_local_ti
 
 
 @pytest.mark.asyncio
-async def test_construction_task_provider_waits_for_an_invalid_milestone() -> None:
+async def test_construction_task_provider_rejects_an_invalid_milestone() -> None:
     package = EmbodimentProtocolPackage.from_repository(ROOT)
     provider = _Provider(
         {
@@ -108,6 +108,5 @@ async def test_construction_task_provider_waits_for_an_invalid_milestone() -> No
     )
     result = await ConstructionTaskProvider(provider, package).request(_request())
 
-    assert result.failure is None
-    assert result.raw_output is not None
-    assert b'"autonomous_task":"wait"' in result.raw_output
+    assert result.failure is ProviderFailureKind.INVALID_RESPONSE
+    assert result.raw_output is None

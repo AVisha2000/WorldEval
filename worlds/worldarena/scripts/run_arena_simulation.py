@@ -16,9 +16,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
-ROOT = Path(__file__).resolve().parents[1]
+from worldarena.paths import RUNS_ROOT as WORKSPACE_RUNS_ROOT
+from worldarena.paths import WORLDARENA_ROOT
+
+ROOT = WORLDARENA_ROOT
 GODOT_PROJECT = ROOT / "godot"
-RUNS_ROOT = ROOT / "runs" / "simulations"
+RUNS_ROOT = WORKSPACE_RUNS_ROOT / "simulations"
 RUNNER_SCRIPT = "res://scripts/arena/simulation/arena_batch_runner.gd"
 SAFE_RUN_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 SAFE_SEED = re.compile(r"^[A-Za-z0-9._:-]{1,96}$")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.contracts import (
@@ -14,8 +13,9 @@ from genesis_arena.embodiment.contracts import (
 from genesis_arena.embodiment.duel_runner import DuelDecisionDispatcher
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
 from genesis_arena.embodiment.providers.contracts import ProviderCallResult, ProviderTelemetry
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 PARTICIPANTS = ("participant_alpha", "participant_bravo")
 
 

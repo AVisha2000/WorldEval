@@ -8,10 +8,15 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from ..config import REPOSITORY_ROOT
-from .source_fingerprint import certification_source_fingerprint
+from .source_fingerprint import (
+    SOURCE_FINGERPRINT_V1,
+    SOURCE_FINGERPRINT_V2,
+    source_fingerprint_for_version,
+)
 
 READINESS_VIEW_FORMAT = "llm-controller/embodiment-readiness-view/1.1.0"
 READINESS_REPORT_FORMAT = "llm-controller/embodiment-pilot-readiness/1.1.0"
+READINESS_REPORT_FORMAT_V2 = "llm-controller/embodiment-pilot-readiness/1.2.0"
 _MAX_REPORT_BYTES = 1_048_576
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _CODE = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
@@ -33,11 +38,30 @@ class PilotReadinessStore:
         path: Path,
         *,
         current_source_fingerprint: Callable[[], str] | None = None,
+        current_source_fingerprints: Mapping[str, Callable[[], str]] | None = None,
     ) -> None:
         self._path = Path(path).resolve()
-        self._current_source_fingerprint = current_source_fingerprint or (
-            lambda: certification_source_fingerprint(REPOSITORY_ROOT)
-        )
+        if (
+            current_source_fingerprint is not None
+            and current_source_fingerprints is not None
+        ):
+            raise ValueError("provide one source-fingerprint resolver form")
+        if current_source_fingerprints is not None:
+            self._current_source_fingerprints = dict(current_source_fingerprints)
+        elif current_source_fingerprint is not None:
+            self._current_source_fingerprints = {
+                SOURCE_FINGERPRINT_V1: current_source_fingerprint,
+                SOURCE_FINGERPRINT_V2: current_source_fingerprint,
+            }
+        else:
+            self._current_source_fingerprints = {
+                version: (
+                    lambda selected=version: source_fingerprint_for_version(
+                        REPOSITORY_ROOT, selected
+                    )
+                )
+                for version in (SOURCE_FINGERPRINT_V1, SOURCE_FINGERPRINT_V2)
+            }
 
     def read(self) -> Mapping[str, Any]:
         try:
@@ -45,10 +69,18 @@ class PilotReadinessStore:
             if not payload or len(payload) > _MAX_REPORT_BYTES:
                 raise ValueError
             value = json.loads(payload.decode("utf-8"), object_pairs_hook=_unique_object)
-            current_fingerprint = self._current_source_fingerprint()
+            version = _fingerprint_version(value)
+            resolver = self._current_source_fingerprints.get(version)
+            if resolver is None:
+                raise ValueError
+            current_fingerprint = resolver()
             if _SHA256.fullmatch(current_fingerprint) is None:
                 raise ValueError
-            return _project(value, current_fingerprint=current_fingerprint)
+            return _project(
+                value,
+                current_fingerprint=current_fingerprint,
+                fingerprint_version=version,
+            )
         except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
             return _unavailable()
 
@@ -62,17 +94,39 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return output
 
 
-def _project(value: object, *, current_fingerprint: str) -> Mapping[str, Any]:
-    if not isinstance(value, dict) or set(value) != {
+def _fingerprint_version(value: object) -> str:
+    if not isinstance(value, dict):
+        raise ValueError("readiness report must be an object")
+    if (
+        value.get("format") == READINESS_REPORT_FORMAT
+        and "source_fingerprint_version" not in value
+    ):
+        return SOURCE_FINGERPRINT_V1
+    if (
+        value.get("format") == READINESS_REPORT_FORMAT_V2
+        and value.get("source_fingerprint_version") == SOURCE_FINGERPRINT_V2
+    ):
+        return SOURCE_FINGERPRINT_V2
+    raise ValueError("readiness fingerprint version is unsupported")
+
+
+def _project(
+    value: object,
+    *,
+    current_fingerprint: str,
+    fingerprint_version: str,
+) -> Mapping[str, Any]:
+    expected_fields = {
         "format",
         "gates",
         "ready_for_promotion",
         "runtime_capabilities",
         "source_fingerprint",
-    }:
+    }
+    if fingerprint_version == SOURCE_FINGERPRINT_V2:
+        expected_fields.add("source_fingerprint_version")
+    if not isinstance(value, dict) or set(value) != expected_fields:
         raise ValueError("readiness report shape differs")
-    if value["format"] != READINESS_REPORT_FORMAT:
-        raise ValueError("readiness report format differs")
     fingerprint = value["source_fingerprint"]
     if not isinstance(fingerprint, str) or _SHA256.fullmatch(fingerprint) is None:
         raise ValueError("readiness fingerprint is invalid")
@@ -100,6 +154,7 @@ def _project(value: object, *, current_fingerprint: str) -> Mapping[str, Any]:
         "report_available": True,
         "runtime_capabilities": runtime,
         "source_fingerprint": current_fingerprint,
+        "source_fingerprint_version": fingerprint_version,
     }
 
 
@@ -139,7 +194,13 @@ def _unavailable() -> Mapping[str, Any]:
             "passed": False,
         },
         "source_fingerprint": None,
+        "source_fingerprint_version": None,
     }
 
 
-__all__ = ["PilotReadinessStore", "READINESS_VIEW_FORMAT"]
+__all__ = [
+    "PilotReadinessStore",
+    "READINESS_REPORT_FORMAT",
+    "READINESS_REPORT_FORMAT_V2",
+    "READINESS_VIEW_FORMAT",
+]

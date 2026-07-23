@@ -203,10 +203,19 @@ def test_offline_promotion_gate_requires_exact_current_matrix(tmp_path: Path) ->
         "results": results,
         "selected_steps_passed": True,
         "source_fingerprint": certification._certification_source_fingerprint(),
+        "source_fingerprint_version": certification.SOURCE_FINGERPRINT_V2,
     }
     report.write_bytes(certification.canonical_json_bytes(value) + b"\n")
     assert promotion._offline_gate(report)["passed"] is True
 
+    value.pop("source_fingerprint_version")
+    report.write_bytes(certification.canonical_json_bytes(value) + b"\n")
+    assert promotion._offline_gate(report) == {
+        "passed": False,
+        "code": "offline_report_stale_or_invalid",
+    }
+
+    value["source_fingerprint_version"] = certification.SOURCE_FINGERPRINT_V2
     value["results"].pop()
     report.write_bytes(certification.canonical_json_bytes(value) + b"\n")
     assert promotion._offline_gate(report) == {
@@ -229,7 +238,12 @@ def test_readiness_report_is_fail_closed(monkeypatch) -> None:
         }
     )
     assert report["ready_for_promotion"] is False
+    assert report["format"] == certification.READINESS_REPORT_FORMAT
     assert report["source_fingerprint"] == "c" * 64
+    assert (
+        report["source_fingerprint_version"]
+        == certification.SOURCE_FINGERPRINT_V2
+    )
 
 
 def test_promotion_writes_package_bound_overlay_without_mutating_protocol(

@@ -522,11 +522,309 @@ export type CachedCrossroadsEvaluationView = {
   }>
 }
 
+export type PrimitiveSandboxScenario = {
+  scenarioId: string
+  label: string
+  objective: string
+}
+
+export type PrimitiveSandboxCatalogView = {
+  gameId: "worldarena-primitive-sandbox-v0"
+  protocol: "worldeval-agent/0.1.0"
+  actionProfile: "semantic-grid-actions-v1"
+  observationProfile: "semantic-grid-visible-v1"
+  decisionProfile: "dynamic-step-locked-v1"
+  scenarios: PrimitiveSandboxScenario[]
+}
+
+export type PublicJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | PublicJsonValue[]
+  | { [key: string]: PublicJsonValue }
+
+const MAX_PUBLIC_JSON_DEPTH = 32
+
+export type PrimitiveSandboxPoint = { x: number; y: number }
+
+export type PrimitiveSandboxRunView = {
+  runId: string
+  status: "ready"
+  scenarioId: string
+  onboarding: { [key: string]: PublicJsonValue }
+  objective: { [key: string]: PublicJsonValue }
+  grid: {
+    width: 30
+    height: 25
+    base: PrimitiveSandboxPoint
+    agent: PrimitiveSandboxPoint
+    tree: PrimitiveSandboxPoint
+    barrier?: PrimitiveSandboxPoint
+    enemy?: PrimitiveSandboxPoint
+  }
+  observationSeq: number
+  tick: number
+  activeLease: { [key: string]: PublicJsonValue } | null
+  plan: { [key: string]: PublicJsonValue } | null
+  timeline: Array<{ [key: string]: PublicJsonValue }>
+  evaluation: { [key: string]: PublicJsonValue }
+  replay: {
+    verified: boolean
+    bundleUrl: string
+    primaryUrl: string
+  }
+}
+
+
 async function checked<T>(response: Response): Promise<T> {
   if (!response.ok)
     throw new Error(`Episode service returned ${response.status}`)
   return response.json() as Promise<T>
 }
+
+export async function getPrimitiveSandbox(): Promise<PrimitiveSandboxCatalogView> {
+  return parsePrimitiveSandboxCatalog(
+    await checked<unknown>(
+      await fetch("/api/worldeval/sandbox", { cache: "no-store" })
+    )
+  )
+}
+
+export async function createPrimitiveSandboxRun(
+  scenarioId: string
+): Promise<PrimitiveSandboxRunView> {
+  if (!sandboxIdentifier(scenarioId))
+    throw new Error("Primitive Sandbox scenario is invalid")
+  return parsePrimitiveSandboxRun(
+    await checked<unknown>(
+      await fetch("/api/worldeval/sandbox/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ scenarioId }),
+      })
+    )
+  )
+}
+
+function parsePrimitiveSandboxCatalog(
+  raw: unknown
+): PrimitiveSandboxCatalogView {
+  const value = objectValue(raw, "Primitive Sandbox catalog")
+  if (
+    value.gameId !== "worldarena-primitive-sandbox-v0" ||
+    value.protocol !== "worldeval-agent/0.1.0" ||
+    value.actionProfile !== "semantic-grid-actions-v1" ||
+    value.observationProfile !== "semantic-grid-visible-v1" ||
+    value.decisionProfile !== "dynamic-step-locked-v1" ||
+    !Array.isArray(value.scenarios) ||
+    value.scenarios.length < 2
+  )
+    throw new Error("Primitive Sandbox catalog is invalid")
+
+  const scenarios = value.scenarios.map((rawScenario) => {
+    const scenario = objectValue(rawScenario, "Primitive Sandbox scenario")
+    const scenarioId = sandboxIdentifier(scenario.scenarioId)
+    const label = sandboxDisplayText(scenario.label, 96)
+    const objective = sandboxDisplayText(scenario.objective, 800)
+    if (!scenarioId || !label || !objective)
+      throw new Error("Primitive Sandbox scenario is invalid")
+    return { scenarioId, label, objective }
+  })
+  const ids = new Set(scenarios.map((scenario) => scenario.scenarioId))
+  if (
+    ids.size !== scenarios.length ||
+    !ids.has("tree-chop-nominal-v0") ||
+    !ids.has("tree-chop-interrupted-v0")
+  )
+    throw new Error("Primitive Sandbox scenarios are incomplete")
+
+  return {
+    gameId: "worldarena-primitive-sandbox-v0",
+    protocol: "worldeval-agent/0.1.0",
+    actionProfile: "semantic-grid-actions-v1",
+    observationProfile: "semantic-grid-visible-v1",
+    decisionProfile: "dynamic-step-locked-v1",
+    scenarios,
+  }
+}
+
+function parsePrimitiveSandboxRun(raw: unknown): PrimitiveSandboxRunView {
+  const value = objectValue(raw, "Primitive Sandbox run")
+  const grid = objectValue(value.grid, "Primitive Sandbox grid")
+  const replay = objectValue(value.replay, "Primitive Sandbox replay")
+  const runId = sandboxIdentifier(value.runId)
+  const scenarioId = sandboxIdentifier(value.scenarioId)
+  const width = publicPositiveInteger(grid.width)
+  const height = publicPositiveInteger(grid.height)
+  const observationSeq = publicNonNegativeInteger(value.observationSeq)
+  const tick = publicNonNegativeInteger(value.tick)
+  const bundleUrl = sandboxReplayUrl(replay.bundleUrl)
+  const primaryUrl = sandboxReplayUrl(replay.primaryUrl)
+  if (
+    !runId ||
+    !scenarioId ||
+    value.status !== "ready" ||
+    width !== 30 ||
+    height !== 25 ||
+    observationSeq === null ||
+    tick === null ||
+    typeof replay.verified !== "boolean" ||
+    !bundleUrl ||
+    !primaryUrl ||
+    !Array.isArray(value.timeline)
+  )
+    throw new Error("Primitive Sandbox run is invalid")
+
+  const base = sandboxPoint(grid.base, width, height)
+  const agent = sandboxPoint(grid.agent, width, height)
+  const tree = sandboxPoint(grid.tree, width, height)
+  const barrier =
+    grid.barrier === undefined
+      ? undefined
+      : sandboxPoint(grid.barrier, width, height)
+  const enemy =
+    grid.enemy === undefined
+      ? undefined
+      : sandboxPoint(grid.enemy, width, height)
+  const onboarding = sandboxJsonObject(
+    value.onboarding,
+    "Primitive Sandbox onboarding"
+  )
+  const objective = sandboxJsonObject(
+    value.objective,
+    "Primitive Sandbox objective"
+  )
+  const activeLease =
+    value.activeLease === null
+      ? null
+      : sandboxJsonObject(value.activeLease, "Primitive Sandbox lease")
+  const plan =
+    value.plan === null
+      ? null
+      : sandboxJsonObject(value.plan, "Primitive Sandbox plan")
+  const timeline = value.timeline.map((event) =>
+    sandboxJsonObject(event, "Primitive Sandbox timeline event")
+  )
+  const evaluation = sandboxJsonObject(
+    value.evaluation,
+    "Primitive Sandbox evaluation"
+  )
+
+  return {
+    runId,
+    status: "ready",
+    scenarioId,
+    onboarding,
+    objective,
+    grid: { width: 30, height: 25, base, agent, tree, barrier, enemy },
+    observationSeq,
+    tick,
+    activeLease,
+    plan,
+    timeline,
+    evaluation,
+    replay: { verified: replay.verified, bundleUrl, primaryUrl },
+  }
+}
+
+function sandboxPoint(
+  raw: unknown,
+  width: number,
+  height: number
+): PrimitiveSandboxPoint {
+  const point = objectValue(raw, "Primitive Sandbox coordinate")
+  const x = publicNonNegativeInteger(point.x)
+  const y = publicNonNegativeInteger(point.y)
+  if (x === null || y === null || x >= width || y >= height)
+    throw new Error("Primitive Sandbox coordinate is invalid")
+  return { x, y }
+}
+
+function sandboxJsonObject(
+  raw: unknown,
+  name: string
+): { [key: string]: PublicJsonValue } {
+  if (typeof raw === "string") {
+    const text = sandboxDisplayText(raw, 4096)
+    if (!text) throw new Error(`${name} is invalid`)
+    return { summary: text }
+  }
+  const value = objectValue(raw, name)
+  return sandboxJsonValue(value, name, 0) as { [key: string]: PublicJsonValue }
+}
+
+function sandboxJsonValue(
+  raw: unknown,
+  name: string,
+  depth: number
+): PublicJsonValue {
+  // Authored JSON Schemas inside environment-init legitimately nest through
+  // action arguments, union branches, and coordinate properties. Keep a firm
+  // recursion ceiling, but place it above the deepest locked protocol fixture.
+  if (depth > MAX_PUBLIC_JSON_DEPTH)
+    throw new Error(`${name} is too deeply nested`)
+  if (raw === null || typeof raw === "boolean") return raw
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw
+  if (typeof raw === "string") {
+    const value = sandboxDisplayText(raw, 4096)
+    if (!value) throw new Error(`${name} contains invalid text`)
+    return value
+  }
+  if (Array.isArray(raw)) {
+    if (raw.length > 1000) throw new Error(`${name} is too large`)
+    return raw.map((value) => sandboxJsonValue(value, name, depth + 1))
+  }
+  if (!raw || typeof raw !== "object") throw new Error(`${name} is invalid`)
+  const result: { [key: string]: PublicJsonValue } = {}
+  for (const [key, child] of Object.entries(raw)) {
+    if (!sandboxIdentifier(key) || sandboxPrivateKey(key))
+      throw new Error(`${name} contains a protected field`)
+    result[key] = sandboxJsonValue(child, name, depth + 1)
+  }
+  return result
+}
+
+function sandboxPrivateKey(value: string): boolean {
+  return /api_?key|authorization|bearer|chain_?of_?thought|credential|private|prompt|provider_?output|raw_?output|secret|spectator|token/i.test(
+    value
+  )
+}
+
+function sandboxIdentifier(value: unknown): string | null {
+  return typeof value === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value)
+    ? value
+    : null
+}
+
+function sandboxDisplayText(value: unknown, maxLength: number): string | null {
+  if (
+    typeof value !== "string" ||
+    !value ||
+    value.length > maxLength ||
+    value.includes("\u0000")
+  )
+    return null
+  if (
+    /authorization:\s*bearer|api[ _-]?key\s*[:=]|client[ _-]?secret\s*[:=]/i.test(
+      value
+    )
+  )
+    return null
+  return value
+}
+
+function sandboxReplayUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.includes("\\") || value.includes(".."))
+    return null
+  return /^\/api\/worldeval\/replays\/[A-Za-z0-9._~%/-]+$/.test(value)
+    ? value
+    : null
+}
+
 
 export async function createEpisode(setup: EpisodeSetup): Promise<EpisodeView> {
   const isScriptedDemo = setup.controllerMode === "scripted_demo"

@@ -1,0 +1,34 @@
+{
+  "schema_version": "objective.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "objective_id": "beacon-route-v0",
+  "instruction": "Visit beacon-1, beacon-2, beacon-3, and beacon-4 in order, then reach exit-1 before tick 80.",
+  "coordinate_frame": "maze_grid",
+  "targets": [
+    {"role": "waypoint", "object_id": "beacon-1", "object_type": "waypoint", "position": {"x": 1, "y": 6}},
+    {"role": "waypoint", "object_id": "beacon-2", "object_type": "waypoint", "position": {"x": 5, "y": 6}},
+    {"role": "waypoint", "object_id": "beacon-3", "object_type": "waypoint", "position": {"x": 5, "y": 2}},
+    {"role": "waypoint", "object_id": "beacon-4", "object_type": "waypoint", "position": {"x": 9, "y": 2}},
+    {"role": "exit", "object_id": "exit-1", "object_type": "exit", "position": {"x": 10, "y": 7}}
+  ],
+  "success_predicates": [
+    {
+      "kind": "route_complete",
+      "subject": "navigator-1",
+      "parameters": {
+        "ordered_targets": ["beacon-1", "beacon-2", "beacon-3", "beacon-4", "exit-1"]
+      }
+    }
+  ],
+  "failure_predicates": [
+    {
+      "kind": "tick_budget_exhausted",
+      "subject": null,
+      "parameters": {"maximum_tick": 80}
+    }
+  ],
+  "safety_constraints": [],
+  "priorities": ["visit_waypoints_in_order", "avoid_invalid_actions", "minimize_decision_calls"],
+  "tick_budget": 80,
+  "permitted_fallback": "fail"
+}

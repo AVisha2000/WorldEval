@@ -14,11 +14,14 @@ import pytest
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage
 from genesis_arena.embodiment.replay import ReplayLedger
 from genesis_arena.embodiment.source_fingerprint import (
+    SOURCE_FINGERPRINT_V2,
+    SourceComponent,
     browser_runtime_source_fingerprint,
     certification_source_fingerprint,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 SPEC = importlib.util.spec_from_file_location(
     "embodiment_mvp_certification", ROOT / "scripts/run_embodiment_mvp_certification.py"
 )
@@ -345,8 +348,11 @@ def test_source_fingerprint_ignores_generated_python_and_godot_cache_files(
     uid = source_root / "authority.gd.uid"
     uid.write_text("uid://first", encoding="utf-8")
     monkeypatch.setattr(certification, "ROOT", tmp_path)
-    monkeypatch.setattr(certification, "_SOURCE_ROOTS", ("source",))
-    monkeypatch.setattr(certification, "_SOURCE_FILES", ())
+    monkeypatch.setattr(
+        certification,
+        "_SOURCE_COMPONENTS",
+        (SourceComponent("test.authority", "source", "tree"),),
+    )
 
     first = certification._certification_source_fingerprint()
     bytecode.write_bytes(b"changed-cache")
@@ -354,6 +360,17 @@ def test_source_fingerprint_ignores_generated_python_and_godot_cache_files(
     assert certification._certification_source_fingerprint() == first
     source.write_text("VALUE = 2\n", encoding="utf-8")
     assert certification._certification_source_fingerprint() != first
+
+
+def test_new_certification_reports_bind_the_v2_algorithm_explicitly() -> None:
+    plan: dict[str, str] = {}
+    report = certification.run_certification(fingerprint_plan=plan)
+
+    assert plan
+    assert report["format"] == certification.REPORT_FORMAT
+    assert certification.REPORT_FORMAT != certification.REPORT_FORMAT_V1
+    assert report["source_fingerprint_version"] == SOURCE_FINGERPRINT_V2
+    assert report["source_fingerprint"] == certification._certification_source_fingerprint()
 
 
 def test_browser_fingerprint_excludes_release_overlay_but_tracks_runtime(tmp_path: Path) -> None:
@@ -451,10 +468,12 @@ def test_passing_final_seal_projects_all_six_readiness_gates(
         {
             "external_gates": external,
             "source_fingerprint": "b" * 64,
+            "source_fingerprint_version": SOURCE_FINGERPRINT_V2,
         },
         certification_report=tmp_path / "final.json",
     )
     assert readiness["format"] == certification.READINESS_REPORT_FORMAT
+    assert readiness["source_fingerprint_version"] == SOURCE_FINGERPRINT_V2
     assert readiness["ready_for_promotion"] is True
     assert set(readiness["gates"]) == {
         "offline",

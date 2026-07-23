@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.contracts import EpisodeConfig
@@ -13,8 +12,9 @@ from genesis_arena.embodiment.managed_session import (
     episode_config_as_dict,
 )
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_sha256
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def test_episode_config_wire_shape_is_exact() -> None:

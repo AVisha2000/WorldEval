@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import re
-from pathlib import Path
 from typing import Any, Mapping
+
+from worldarena.paths import WORLDARENA_ROOT
 
 MOVEMENT_MAZE_MAP_VERSION = "movement-maze-map/1.0.0"
 MOVEMENT_MAZE_MAP_SHA256 = "9ff4376b7ba0839e334af7eea39bff7a2aa0879b7007c59bb629b63c2552bf68"
 _MAP_SOURCE_PATH = (
-    Path(__file__).resolve().parents[4]
+    WORLDARENA_ROOT
     / "godot"
     / "scripts"
     / "embodiment"

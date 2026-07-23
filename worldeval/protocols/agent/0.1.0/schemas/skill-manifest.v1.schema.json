@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/skill-manifest.v1.schema.json",
+  "title": "WorldEval visible agent skill template v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol", "skill_id", "description", "required_target_affordances", "required_tool_affordances", "suggested_actions", "preconditions", "decision_points", "success_predicate", "compatible_action_profiles", "execution"],
+  "properties": {
+    "schema_version": {"const": "skill-manifest.v1"}, "protocol": {"$ref": "common.v1.schema.json#/$defs/protocol"},
+    "skill_id": {"$ref": "common.v1.schema.json#/$defs/id"}, "description": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "required_target_affordances": {"type": "array", "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "required_tool_affordances": {"type": "array", "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "suggested_actions": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "preconditions": {"type": "array", "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/predicate"}},
+    "decision_points": {"type": "array", "maxItems": 64, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "success_predicate": {"$ref": "common.v1.schema.json#/$defs/predicate"},
+    "compatible_action_profiles": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "common.v1.schema.json#/$defs/id"}},
+    "execution": {"const": "agent_expands_to_visible_actions"}
+  }
+}

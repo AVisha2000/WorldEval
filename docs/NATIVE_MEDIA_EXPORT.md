@@ -23,7 +23,7 @@ video sidecar.
 From the repository root:
 
 ```bash
-.venv/bin/python scripts/render_worldarena_native_replay.py \
+.venv/bin/python worlds/worldarena/scripts/render_worldarena_native_replay.py \
   --replay /absolute/path/to/authority.replay.json \
   --showcase solo \
   --scenario-id multi-action-demo-v0 \

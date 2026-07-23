@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, strict_json_loads
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 PREFIX = "EMBODIMENT_HYBRID_OBSERVATION_BASE64="
 

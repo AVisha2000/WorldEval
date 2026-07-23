@@ -28,6 +28,9 @@ func _test_first_class_story_and_checkpoint() -> void:
 	_check(authority.resources.blue_tree_0.position_mt == Vector2i(-6200, 5000) and authority.resources.red_tree_0.position_mt == Vector2i(6200, -5000), "resource coordinates are not the shared mirrored map table")
 	var initial_public: Dictionary = authority.participant_presentation_source("participant_0")
 	_check(int(initial_public.own.tower.health_percent) == 0, "unbuilt tower leaked its future full health into the public HUD")
+	for participant_id: String in ["participant_0", "participant_1"]:
+		for entity: Dictionary in authority.observe(participant_id).visible_entities:
+			_check(str(entity.id).begins_with("v_"), "visible entity id does not satisfy the frozen v2 protocol: %s" % str(entity.id))
 	var previous: Vector2i = authority.units.blue_0.position_mt
 	authority.step_window(_window(authority))
 	var current: Vector2i = authority.units.blue_0.position_mt

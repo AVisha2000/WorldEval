@@ -20,7 +20,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
-ROOT = Path(__file__).resolve().parents[1]
+from worldarena.paths import WORLDARENA_ROOT
+
+ROOT = WORLDARENA_ROOT
 GODOT_PROJECT = ROOT / "godot"
 RUNNER_DIRECTORY = GODOT_PROJECT / "tests" / "duel"
 EXCLUDED_RUNNERS = frozenset(

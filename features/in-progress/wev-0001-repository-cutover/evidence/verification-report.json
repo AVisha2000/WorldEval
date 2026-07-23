@@ -1,0 +1,132 @@
+{
+  "base_revision": "244acf44f587899070d1a9dc793ee63cfd6f9caa",
+  "branch": "codex/wev-0001-repository-cutover",
+  "browser_qa": {
+    "console_errors": 0,
+    "desktop": "passed",
+    "mobile": "passed after the tab-overflow correction",
+    "replay": {
+      "offline_verified": true,
+      "provider_calls": 0,
+      "run_id": "sandbox-tree-chop-interrupted-v0-d567394389ac",
+      "seal": "94c9c29234ba5867c43d122fb766864b956397f44ec3f464c6a34556e8883e04",
+      "terminal_outcome": "safe_return",
+      "terminal_tick": 27
+    },
+    "scenario": "tree-chop-interrupted-v0",
+    "workflow": [
+      "initial plan submission",
+      "movement_blocked suspension",
+      "explicit waypoint detour",
+      "hostile_near_target suspension",
+      "plan abort and safe return",
+      "verified replay ready state"
+    ]
+  },
+  "feature_id": "WEV-0001",
+  "godot": {
+    "primitive_sandbox": {
+      "command": "/Applications/Godot.app/Contents/MacOS/Godot --headless --path worlds/worldarena/godot --script res://tests/agent_sandbox/primitive_sandbox_headless_test.gd",
+      "exit_code": 0,
+      "result": "PRIMITIVE_SANDBOX_GODOT_TESTS_OK"
+    },
+    "promoted_demo_checks": {
+      "primitive": "two bundles passed independent Godot reexecution",
+      "waypoint": "one bundle passed independent Godot reexecution"
+    },
+    "waypoint_maze": {
+      "command": "/Applications/Godot.app/Contents/MacOS/Godot --headless --path worlds/worldarena/godot --script res://tests/agent_waypoint_maze/waypoint_maze_headless_test.gd",
+      "decisions": 5,
+      "exit_code": 0,
+      "terminal_tick": 23
+    }
+  },
+  "lifecycle": {
+    "dependent_candidates": ["WEV-0002", "WEV-0003", "WEV-0004", "WEV-0005", "WEV-0006"],
+    "remaining_incremental_migration": "WEV-0007",
+    "state": "in-progress",
+    "why_not_completed": "The cutover remains in progress until its evidence-ready implementation commit receives review and crosses the single merge boundary; behavioral and visual dependent features retain their explicit human-approval gates."
+  },
+  "packaging": {
+    "commands": [
+      "python -m pip wheel --no-deps .",
+      "python -m pip install <built-wheel>",
+      "worldeval --help",
+      "worldeval feature --help",
+      "worldarena --help",
+      "genesis-evaluate --help",
+      "genesis-season-schedule --help"
+    ],
+    "legacy_import": "passed",
+    "new_import": "passed",
+    "protocol_package_sha256": "5723c9297942f290e884e8eb317477d45b20d48bc1ba05274dbed00ccfdc2222",
+    "version": "0.3.0",
+    "wheel_sha256": "05821295178093d6441253ebdbb4f382c88a19dccba456ea94c75508b2e34dcb"
+  },
+  "python": {
+    "final_focused": {
+      "command": ".venv/bin/python -m pytest worlds/worldarena/tests/test_package_facades.py worlds/worldarena/tests/test_waypoint_maze.py worldeval/tests/test_workspace.py -q",
+      "exit_code": 0,
+      "passed": 14
+    },
+    "full_suite": {
+      "command": ".venv/bin/python -m pytest",
+      "duration_seconds": 1066.97,
+      "exit_code": 0,
+      "passed": 1121,
+      "skipped": 3,
+      "warnings": 260
+    },
+    "post_suite_delta": {
+      "command": ".venv/bin/python -m pytest worldeval/tests/test_workspace.py worlds/worldarena/tests/duel/test_duel_map.py::test_generated_artifact_is_deterministic_and_current -q",
+      "exit_code": 0,
+      "passed": 6
+    }
+  },
+  "recorded_at": "2026-07-23T05:08:21Z",
+  "replay_acceptance": [
+    {
+      "engine_build_hash": "b410d624df3b39ad6958b7d9a4f943b6cdf0d8d350350aeda6e8cbeb8057b063",
+      "manifest_sha256": "d52882c1df7323743378ff3a93ccaf7a7a41ae1f7afb22fef002c86e74213bbb",
+      "replay_sha256": "25226bf11741c99a5a79ff64c0c56551a79cffc674fbb88020777d00cb4a76d9",
+      "role": "primitive-nominal",
+      "seal": "486c02bfd2f01f5c09110ec3fcf17e4f28a70ad301ade8190c9f4b0904fe807a"
+    },
+    {
+      "engine_build_hash": "b410d624df3b39ad6958b7d9a4f943b6cdf0d8d350350aeda6e8cbeb8057b063",
+      "manifest_sha256": "0a6ab388810c1f44cb58b46d960a7b08b667861cb1a9cca86e62288dd24d02f5",
+      "replay_sha256": "909659d1b6c7ce4c8a8ad6ead2e9cd4296fe926066017fde881dbaeb6995a9a5",
+      "role": "primitive-interrupted",
+      "seal": "78ecea584018e85b0180f61143cd2b54d176f9cf1f153d23b2361f5c68009012"
+    },
+    {
+      "engine_build_hash": "75f42c2823d78010484f4615dbe8aabec6c0269174bbc9a552cfb4383bb1ab27",
+      "manifest_sha256": "94715c0c6875f74d9812385edfb23df7b0414e510f7065bf653a7a1dd18e3b90",
+      "replay_sha256": "e66bc4a756205df1a13bce0f1d49c86d213a126c960b93d48e92ddfc71515b6b",
+      "role": "waypoint-second-game",
+      "seal": "1a6079ff98a801be8564532650cb35d70472b797e905d87c3189e266ba6ec792"
+    }
+  ],
+  "repository_gates": {
+    "document_links": "DOCUMENT_LINKS_OK files=77",
+    "feature_doctor": "passed",
+    "feature_validate": "passed",
+    "frozen_protocol_bytes": "FROZEN_PROTOCOL_BYTES_OK",
+    "git_diff_check": "passed",
+    "launcher_syntax": "passed for all four root .command wrappers",
+    "protocol_locks": "passed",
+    "public_artifact_secret_scan": "PUBLIC_ARTIFACT_SECRET_SCAN_OK files=85",
+    "ruff": "passed for new WorldEval core, public WorldArena adapters, sandbox scripts, and their focused tests",
+    "workspace_layout": "WORKSPACE_LAYOUT_OK"
+  },
+  "result": "passed",
+  "schema_version": "worldeval/cutover-verification/1.0.0",
+  "web": {
+    "build_local": "passed",
+    "build_pages": "passed with VITE_BASE_PATH=/WorldEval/",
+    "lint": "passed",
+    "test_files": 12,
+    "tests_passed": 110,
+    "typecheck": "passed"
+  }
+}

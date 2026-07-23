@@ -1,0 +1,445 @@
+{
+  "$id": "https://worldeval.dev/schemas/replay/replay-bundle.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "contains": {
+        "properties": {
+          "kind": {
+            "const": "replay"
+          },
+          "role": {
+            "const": "primary"
+          }
+        },
+        "required": [
+          "kind",
+          "role"
+        ]
+      },
+      "items": {
+        "$ref": "#/$defs/artifact"
+      },
+      "maxContains": 1,
+      "minContains": 1,
+      "minItems": 1,
+      "type": "array"
+    },
+    "canonical_json": {
+      "const": "rfc8785-integer-nfc-subset-v1"
+    },
+    "created_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "engine": {
+      "additionalProperties": false,
+      "properties": {
+        "build_hash": {
+          "$ref": "#/$defs/hashId"
+        },
+        "id": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "id",
+        "build_hash"
+      ],
+      "type": "object"
+    },
+    "extensions": {
+      "type": "object"
+    },
+    "game": {
+      "$ref": "#/$defs/namedIdentity"
+    },
+    "offline_verification": {
+      "additionalProperties": false,
+      "properties": {
+        "provider_calls": {
+          "const": 0
+        },
+        "verified": {
+          "const": true
+        },
+        "verified_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "verifier": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "verified",
+        "provider_calls",
+        "verifier"
+      ],
+      "type": "object"
+    },
+    "profiles": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/identifier"
+        },
+        "decision": {
+          "$ref": "#/$defs/identifier"
+        },
+        "observation": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "action",
+        "observation",
+        "decision"
+      ],
+      "type": "object"
+    },
+    "protocol": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "package_hash": {
+          "$ref": "#/$defs/hashId"
+        },
+        "version": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "package_hash"
+      ],
+      "type": "object"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "scenario": {
+      "$ref": "#/$defs/namedIdentity"
+    },
+    "schema": {
+      "const": "worldeval/replay-bundle/1.0.0"
+    },
+    "seal": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "value": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "type": "object"
+    },
+    "seed": {
+      "oneOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer"
+        },
+        {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        }
+      ]
+    },
+    "subject": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "task": {
+      "$ref": "#/$defs/namedIdentity"
+    },
+    "terminal": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/identifier"
+        },
+        "reason": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tick_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "outcome",
+        "tick_count"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "canonical_json",
+    "run_id",
+    "game",
+    "scenario",
+    "task",
+    "subject",
+    "protocol",
+    "engine",
+    "seed",
+    "profiles",
+    "artifacts",
+    "terminal",
+    "offline_verification",
+    "seal"
+  ],
+  "title": "WorldEval Replay Bundle Manifest v1",
+  "type": "object",
+  "$defs": {
+    "artifact": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "replay"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "optional"
+              ]
+            },
+            "properties": {
+              "path": {
+                "pattern": "^replays/(?![.]{0,2}(?:/|$))[^\\\\]+$"
+              }
+            },
+            "required": [
+              "native_schema",
+              "verifier",
+              "final_state_hash"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "evidence"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "native_schema"
+                  ]
+                },
+                {
+                  "required": [
+                    "verifier"
+                  ]
+                },
+                {
+                  "required": [
+                    "final_state_hash"
+                  ]
+                },
+                {
+                  "required": [
+                    "optional"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "path": {
+                "pattern": "^evidence/(?![.]{0,2}(?:/|$))[^\\\\]+$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "media"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "native_schema"
+                  ]
+                },
+                {
+                  "required": [
+                    "verifier"
+                  ]
+                },
+                {
+                  "required": [
+                    "final_state_hash"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "optional": {
+                "const": true
+              },
+              "path": {
+                "pattern": "^media/(?![.]{0,2}(?:/|$))[^\\\\]+$"
+              }
+            },
+            "required": [
+              "optional"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "final_state_hash": {
+          "$ref": "#/$defs/hashId"
+        },
+        "kind": {
+          "enum": [
+            "replay",
+            "evidence",
+            "media"
+          ]
+        },
+        "leg": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "media_type": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "native_schema": {
+          "$ref": "#/$defs/identifier"
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "participants": {
+          "items": {
+            "$ref": "#/$defs/identifier"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "path": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "verifier": {
+          "$ref": "#/$defs/identifier"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "protected"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "role",
+        "path",
+        "media_type",
+        "sha256",
+        "size_bytes",
+        "visibility"
+      ],
+      "type": "object"
+    },
+    "hashId": {
+      "pattern": "^(?:sha256:)?[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "identifier": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+\\-]{0,255}$",
+      "type": "string"
+    },
+    "namedIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  }
+}

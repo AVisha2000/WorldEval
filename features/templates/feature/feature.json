@@ -1,0 +1,36 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "The implementation satisfies the documented feature plan.",
+      "id": "WEV-9999-AC-01",
+      "proof_types": ["test"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": ["path/to/subsystem"],
+  "dependencies": [],
+  "exclusive_shared_surfaces": [],
+  "id": "WEV-9999",
+  "kind": "capability",
+  "priority": "p2",
+  "product": "worldeval",
+  "related_features": [],
+  "required_approvals": [],
+  "requirements": {
+    "compatibility": [],
+    "migration": [],
+    "privacy": [],
+    "rollback": []
+  },
+  "risk": "medium",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": ["Describe included behavior"],
+    "out": ["Describe intentionally excluded behavior"]
+  },
+  "slug": "feature-slug",
+  "summary": "One concise explanation of the outcome.",
+  "supersedes": [],
+  "title": "Feature title"
+}

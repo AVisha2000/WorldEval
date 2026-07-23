@@ -1,11 +1,11 @@
 import json
 from dataclasses import FrozenInstanceError
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.baselines import BaselineLock, baseline_intent, decide_baseline
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _entity(*, kind, bearing="front", distance="near", affordances=()):

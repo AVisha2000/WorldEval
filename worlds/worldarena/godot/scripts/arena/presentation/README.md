@@ -48,7 +48,7 @@ presentation.configure_from_snapshot({
 })
 ```
 
-Events follow the `feature.md` envelope: `event_id`, `round`, `kind`, `actor_id`,
+Events follow the archived competitive-arena feature envelope: `event_id`, `round`, `kind`, `actor_id`,
 `target_ids`, `visibility`, `visible_to`, `summary`, `state`, and optional `payload`.
 
 Run the standalone mock presentation with:

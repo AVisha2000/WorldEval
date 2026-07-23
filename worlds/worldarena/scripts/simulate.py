@@ -11,7 +11,9 @@ import tempfile
 from pathlib import Path
 from typing import Dict
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+from worldarena.paths import WORLDARENA_ROOT
+
+REPOSITORY_ROOT = WORLDARENA_ROOT
 sys.path.insert(0, str(REPOSITORY_ROOT / "backend"))
 
 from genesis_arena.config import Settings  # noqa: E402

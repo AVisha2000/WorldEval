@@ -1,0 +1,92 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "The repository is physically organized around WorldEval, WorldArena, apps, features, operations, and media without changing frozen protocol bytes.",
+      "id": "WEV-0001-AC-01",
+      "proof_types": ["test", "artifact"],
+      "replay_required": false
+    },
+    {
+      "demo_required": false,
+      "description": "Legacy and new Python imports, command names, API routes, launchers, and checked-in replay verification remain compatible.",
+      "id": "WEV-0001-AC-02",
+      "proof_types": ["test"],
+      "replay_required": false
+    },
+    {
+      "demo_required": false,
+      "description": "Repository agents can validate, claim, block, release, recover, and evidence-gate features using directory-authoritative state.",
+      "id": "WEV-0001-AC-03",
+      "proof_types": ["test", "document"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/pages.yml",
+    ".gitignore",
+    "HOSTING_SERVER.md",
+    "agents.toml",
+    "render_highlight_replay.command",
+    "run_fast_deterministic_tests.command",
+    "run_simulation.command",
+    "run_worldarena.command",
+    "worldeval",
+    "worlds",
+    "apps",
+    "features",
+    "docs",
+    "tools",
+    "ops",
+    "media",
+    "pyproject.toml",
+    "worldeval.workspace.json",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "dependencies": [],
+  "exclusive_shared_surfaces": [
+    "repository-layout",
+    "python-packaging",
+    "workspace-path-resolution",
+    "feature-lifecycle"
+  ],
+  "id": "WEV-0001",
+  "kind": "infrastructure",
+  "priority": "p0",
+  "product": "worldeval",
+  "related_features": ["WEV-0002", "WEV-0003", "WEV-0007"],
+  "required_approvals": [],
+  "requirements": {
+    "compatibility": [
+      "Preserve frozen protocol package bytes and locks.",
+      "Keep genesis_arena imports, genesis-* commands, API routes, game IDs, replay schemas, and artifact identifiers valid."
+    ],
+    "migration": [
+      "Move complete subsystem roots in one integration cutover and repair path consumers through the workspace manifest."
+    ],
+    "privacy": ["Do not introduce credentials or private run artifacts into tracked files."],
+    "rollback": ["The cutover must remain revertible as one merge without destructive resets."]
+  },
+  "risk": "critical",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": [
+      "Repository reorganization and workspace path resolution",
+      "Python package and command compatibility facades",
+      "Repository-native feature governance and recovery",
+      "Cutover verification"
+    ],
+    "out": [
+      "Changing gameplay behavior",
+      "Modifying released protocol contracts",
+      "Splitting the combined web application",
+      "Migrating the frozen WorldArena game compatibility capsule"
+    ]
+  },
+  "slug": "repository-cutover",
+  "summary": "Reorganize the monorepo and install a safe, evidence-driven workflow for coding agents without breaking historical WorldArena behavior.",
+  "supersedes": [],
+  "title": "Repository governance and single-cutover reorganization"
+}

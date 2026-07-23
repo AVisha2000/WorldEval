@@ -15,7 +15,7 @@ Environment=GENESIS_FFMPEG_EXECUTABLE=/usr/bin/ffmpeg
 Environment=PYTHONUNBUFFERED=1
 ExecStartPre=/usr/bin/test -x /tmp/worldeval-godot-4.5/Godot_v4.5-stable_linux.x86_64
 ExecStartPre=/usr/bin/test -x /usr/bin/ffmpeg
-ExecStart=/home/lissan/codex-build-week/WorldEval/.venv/bin/uvicorn genesis_arena.main:app --host 127.0.0.1 --port 18083 --no-access-log
+ExecStart=/home/lissan/codex-build-week/WorldEval/.venv/bin/uvicorn worldarena.main:app --host 127.0.0.1 --port 18083 --no-access-log
 Restart=on-failure
 RestartSec=5
 UMask=0077

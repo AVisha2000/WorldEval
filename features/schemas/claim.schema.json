@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.dev/schemas/feature-claim/1.0.0",
+  "title": "WorldEval active feature claim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature_id",
+    "owner",
+    "collaborators",
+    "branch",
+    "base_revision",
+    "task_id",
+    "affected_paths",
+    "exclusive_shared_surfaces",
+    "claimed_at",
+    "renewed_at",
+    "expires_at",
+    "work_state",
+    "blockers",
+    "reclaim_history"
+  ],
+  "properties": {
+    "schema_version": {"const": "worldeval/feature-claim/1.0.0"},
+    "feature_id": {"type": "string", "pattern": "^WEV-[0-9]{4,}$"},
+    "owner": {"type": "string", "minLength": 1},
+    "collaborators": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "branch": {"type": "string", "pattern": "^codex/"},
+    "base_revision": {"type": "string", "minLength": 1},
+    "task_id": {"type": ["string", "null"]},
+    "affected_paths": {"type": "array", "items": {"type": "string"}},
+    "exclusive_shared_surfaces": {"type": "array", "items": {"type": "string"}},
+    "claimed_at": {"type": "string", "format": "date-time"},
+    "renewed_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "ready_at": {"type": "string", "format": "date-time"},
+    "work_state": {"enum": ["active", "blocked", "ready"]},
+    "blockers": {"type": "array", "items": {"type": "object"}},
+    "reclaim_history": {"type": "array", "items": {"type": "object"}}
+  }
+}

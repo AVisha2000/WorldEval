@@ -5,7 +5,9 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+from worldarena.paths import WORLDARENA_ROOT
+
+ROOT = WORLDARENA_ROOT
 SCRIPT = ROOT / "scripts" / "run_duel_headless_suite.py"
 
 

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from genesis_arena.embodiment.protocol import (
     EmbodimentProtocolPackage,
@@ -14,8 +12,9 @@ from genesis_arena.embodiment.scripted_solo_demo import (
     ScriptedSoloDemoProvider,
     scripted_demo_model,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _request(task_id: str, observation: dict) -> ProviderRequest:

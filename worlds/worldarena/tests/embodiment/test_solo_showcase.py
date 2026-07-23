@@ -1,11 +1,11 @@
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from genesis_arena.embodiment.api import router
 from genesis_arena.embodiment.solo_showcase import CachedSoloShowcase
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def test_checked_in_solo_showcase_is_evidence_bound_and_public_safe() -> None:

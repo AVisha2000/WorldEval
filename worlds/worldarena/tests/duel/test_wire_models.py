@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from genesis_arena.duel import (
@@ -12,6 +11,7 @@ from genesis_arena.duel import (
     Observation,
 )
 from pydantic import ValidationError
+from worldarena.paths import WORLDARENA_ROOT
 
 
 def _batch(**updates: object) -> dict[str, object]:
@@ -60,7 +60,7 @@ def test_match_config_requires_mirrored_slots_and_official_mode_values() -> None
 
 def test_match_init_model_covers_every_required_schema_field() -> None:
     fixture_path = (
-        Path(__file__).resolve().parents[2]
+        WORLDARENA_ROOT
         / "game"
         / "duel_protocol"
         / "fixtures"
@@ -80,7 +80,7 @@ def test_match_init_model_covers_every_required_schema_field() -> None:
 
 def test_observation_model_covers_every_required_schema_field() -> None:
     fixture_path = (
-        Path(__file__).resolve().parents[2]
+        WORLDARENA_ROOT
         / "game"
         / "duel_protocol"
         / "fixtures"

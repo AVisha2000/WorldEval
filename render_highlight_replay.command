@@ -8,7 +8,7 @@
 set -euo pipefail
 
 PROJECT_DIR="${0:A:h}"
-GODOT_PROJECT="$PROJECT_DIR/godot"
+GODOT_PROJECT="$PROJECT_DIR/worlds/worldarena/godot"
 SHOWCASE_MANIFEST="${WORLD_ARENA_SHOWCASE:-$GODOT_PROJECT/showcases/demo_highlight/showcase.json}"
 EXPORT_DIR="$PROJECT_DIR/exports"
 VIDEO_TOOL_DIR="$PROJECT_DIR/.video-tools"

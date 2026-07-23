@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from backend.genesis_arena.duel.artifacts import (
     decode_canonical_jsonl,
     decode_canonical_transcript,
@@ -22,8 +21,9 @@ from backend.genesis_arena.duel.replay import (
     _verify_compiled_sources,
 )
 from backend.genesis_arena.duel.schema_validation import DuelSchemaValidator
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 CLI_SCRIPT = "res://scripts/duel/match/duel_headless_cli.gd"
 

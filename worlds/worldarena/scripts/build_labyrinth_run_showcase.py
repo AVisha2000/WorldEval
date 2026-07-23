@@ -20,13 +20,15 @@ from genesis_arena.embodiment.labyrinth_run import (
     public_evaluation,
 )
 from genesis_arena.embodiment.protocol import canonical_json_bytes
+from worldeval.workspace import find_workspace
 
 try:
     from scripts.package_rts_showcase import probe_video
 except ModuleNotFoundError:
     from package_rts_showcase import probe_video
 
-ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = find_workspace(__file__)
+ROOT = WORKSPACE.path("worldarena")
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 VIDEO_NAME = "labyrinth-run-broadcast.mp4"
 REPLAY_NAME = "labyrinth-run-demo.replay.json"
@@ -44,7 +46,8 @@ def _default_ffmpeg() -> Path:
     except (ImportError, RuntimeError):
         pass
     candidate = (
-        ROOT / "remotion/node_modules/.pnpm/@remotion+compositor-darwin-arm64@4.0.491/"
+        WORKSPACE.path("media")
+        / "remotion/node_modules/.pnpm/@remotion+compositor-darwin-arm64@4.0.491/"
         "node_modules/@remotion/compositor-darwin-arm64/ffmpeg"
     )
     return candidate

@@ -13,8 +13,9 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, WebSocket
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 sys.path.insert(0, str(ROOT / "backend"))
 
 from genesis_arena.embodiment.contracts import (  # noqa: E402

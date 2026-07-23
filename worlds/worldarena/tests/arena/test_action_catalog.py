@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from genesis_arena.arena.models import COMMAND_POINT_COST, PhysicalAction
+from worldarena.paths import WORLDARENA_ROOT
 
 
 def test_frozen_arena_action_catalog_matches_wire_enum_and_costs() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = WORLDARENA_ROOT
     catalog = json.loads((root / "game" / "arena_actions.json").read_text(encoding="utf-8"))
     actions = catalog["actions"]
 

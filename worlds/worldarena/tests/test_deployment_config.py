@@ -1,6 +1,6 @@
-from pathlib import Path
+from worldeval.workspace import find_workspace
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = find_workspace(__file__).root
 
 
 def _location(config: str, declaration: str) -> str:
@@ -18,7 +18,7 @@ def _location(config: str, declaration: str) -> str:
 
 
 def test_lab_proxy_supports_api_websockets_and_ranged_video() -> None:
-    config = (REPOSITORY_ROOT / "deploy/nginx/worldeval-lab.conf").read_text()
+    config = (REPOSITORY_ROOT / "ops/nginx/worldeval-lab.conf").read_text()
 
     assert "map $http_upgrade $worldeval_connection_upgrade" in config
     api = _location(config, "location /api/")
@@ -34,8 +34,10 @@ def test_lab_proxy_supports_api_websockets_and_ranged_video() -> None:
 
 
 def test_legacy_lab_path_redirects_to_the_canonical_api_origin() -> None:
-    config = (REPOSITORY_ROOT / "deploy/nginx/worldeval-godot-demo.conf").read_text()
-    build_script = (REPOSITORY_ROOT / "scripts/build_hosting_assets.sh").read_text()
+    config = (REPOSITORY_ROOT / "ops/nginx/worldeval-godot-demo.conf").read_text()
+    build_script = (
+        REPOSITORY_ROOT / "worlds/worldarena/scripts/build_hosting_assets.sh"
+    ).read_text()
 
     assert config.count("return 308 https://lab.openai-buildweek.lissan.dev/;") == 2
     assert "dashboard/dist-lab/" not in config
@@ -43,7 +45,7 @@ def test_legacy_lab_path_redirects_to_the_canonical_api_origin() -> None:
 
 
 def test_lab_service_checks_native_video_dependencies() -> None:
-    unit = (REPOSITORY_ROOT / "deploy/systemd/worldeval-lab-api.service").read_text()
+    unit = (REPOSITORY_ROOT / "ops/systemd/worldeval-lab-api.service").read_text()
 
     assert "Environment=GENESIS_FFMPEG_EXECUTABLE=/usr/bin/ffmpeg" in unit
     assert "ExecStartPre=/usr/bin/test -x /usr/bin/ffmpeg" in unit

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.protocol import (
@@ -11,8 +10,9 @@ from genesis_arena.embodiment.protocol import (
 )
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.replay import ReplayLedger, ReplayValidationError, verify_replay_bytes
+from worldarena.paths import WORLDARENA_GODOT_ROOT, WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _observation() -> dict:
@@ -108,7 +108,10 @@ def _rts_replay_with_task_plan_evidence() -> bytes:
     """
 
     value = json.loads(
-        (ROOT / "runs/rts-skirmish-v0/rts-skirmish-cinematic-final.replay.json").read_bytes()
+        (
+            WORLDARENA_GODOT_ROOT
+            / "showcases/rts_skirmish/rts-skirmish-demo.replay.json"
+        ).read_bytes()
     )
     evidence: list[dict] = []
     for index, step in enumerate(value["steps"]):

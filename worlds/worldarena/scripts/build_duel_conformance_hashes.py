@@ -7,9 +7,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from worldarena.paths import WORLDARENA_ROOT
+
 
 def _repository_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+    return WORLDARENA_ROOT
 
 
 def _raw_record(package_root: Path, relative_path: str) -> dict[str, Any]:

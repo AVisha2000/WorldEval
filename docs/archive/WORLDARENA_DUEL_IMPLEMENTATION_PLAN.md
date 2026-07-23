@@ -19,11 +19,11 @@ replay scripted matches byte-for-byte.
 
 The implementation has four hard boundaries:
 
-1. `game/duel_protocol/` owns public schemas, catalogs, prompts, maps, fixtures, and locked hashes.
-2. `godot/scripts/duel/` owns authoritative game state and consequences.
-3. `backend/genesis_arena/duel/` owns provider-neutral orchestration, strict wire validation, timing,
+1. `worlds/worldarena/game/duel_protocol/` owns public schemas, catalogs, prompts, maps, fixtures, and locked hashes.
+2. `worlds/worldarena/godot/scripts/duel/` owns authoritative game state and consequences.
+3. `worlds/worldarena/backend/genesis_arena/duel/` owns provider-neutral orchestration, strict wire validation, timing,
    and artifact management; it never resolves game mechanics.
-4. `godot/scripts/duel/presentation/` owns visuals only and must be removable from a headless export.
+4. `worlds/worldarena/godot/scripts/duel/presentation/` owns visuals only and must be removable from a headless export.
 
 The old three-player arena and survival prototype remain regression fixtures. Delete or rewrite an
 old component only after the duel replacement has equivalent tests and no preserved scenario imports
@@ -54,7 +54,7 @@ component may become an authoritative dependency.
 
 ### A. Protocol and catalogs
 
-Owns `game/duel_protocol/` except generated map data while the map workstream is active.
+Owns `worlds/worldarena/game/duel_protocol/` except generated map data while the map workstream is active.
 
 - Draft 2020-12 schemas with `additionalProperties:false`.
 - Full rules, action, attack/armor, item, neutral, and four faction catalogs.
@@ -66,7 +66,7 @@ locked hashes.
 
 ### B. Map and spatial rules
 
-Owns `game/duel_protocol/maps/`, its deterministic generator, and map-specific tests.
+Owns `worlds/worldarena/game/duel_protocol/maps/`, its deterministic generator, and map-specific tests.
 
 - Exact 384×256 logical grid at 500 mt/cell.
 - Region graph, terrain/elevation/LOS, resources, camps, neutral buildings, build sites, footprints,
@@ -78,7 +78,7 @@ paths and starting resources.
 
 ### C. Godot authoritative core
 
-Owns `godot/scripts/duel/simulation/`, shared duel data types, and headless Godot tests.
+Owns `worlds/worldarena/godot/scripts/duel/simulation/`, shared duel data types, and headless Godot tests.
 
 - Integer state, entity/order/event IDs, explicit tick phases, delta ledger, occupancy, deterministic
   A*, keyed contests, canonical checkpoints, replay application, and terminal state.
@@ -89,7 +89,7 @@ rendering is never initialized.
 
 ### D. Agent Gateway and evaluation
 
-Owns `backend/genesis_arena/duel/`, duel API routes, provider adapters, and Python integration tests.
+Owns `worlds/worldarena/backend/genesis_arena/duel/`, duel API routes, provider adapters, and Python integration tests.
 
 - Strict decoding and restricted-JCS canonicalization.
 - Per-player knowledge/observation messages and opaque aliases.
@@ -219,9 +219,9 @@ benchmark environment ID.
 
 Work begins with these concrete outputs:
 
-- `game/duel_protocol/` schemas, catalogs, prompt, fixtures, exact map, and hash tooling;
-- `backend/genesis_arena/duel/` strict canonicalization and package validation;
-- `godot/scripts/duel/` render-free constants/state/pathing/tick skeleton;
+- `worlds/worldarena/game/duel_protocol/` schemas, catalogs, prompt, fixtures, exact map, and hash tooling;
+- `worlds/worldarena/backend/genesis_arena/duel/` strict canonicalization and package validation;
+- `worlds/worldarena/godot/scripts/duel/` render-free constants/state/pathing/tick skeleton;
 - Python and headless Godot smoke/conformance tests;
 - a regression result for the existing test suite and current arena deterministic runner.
 

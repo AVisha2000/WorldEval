@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_DIR="${0:A:h}"
-GODOT_PROJECT="$PROJECT_DIR/godot"
+GODOT_PROJECT="$PROJECT_DIR/worlds/worldarena/godot"
 FAST_MAX_ROUNDS="${WORLD_ARENA_FAST_ROUNDS:-8}"
 
 cleanup() {

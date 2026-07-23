@@ -24,8 +24,9 @@ from genesis_arena.embodiment.presentation.preview_ingress import derive_trio_pr
 from genesis_arena.embodiment.protocol import ProtocolValidationError, strict_json_loads
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.replay import verify_replay_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 V1_SHA256 = "ddfc8998dfe33c0bb68aff31f78118a227792f4d568bd438d732c3d3abe0c34d"
 V2_SHA256 = "edbd41865f3ed7186b02f6d370dd6e655910bcfebe66c330bafa42d5e533fff5"
 V3 = "llm-controller/0.3.0"

@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => {
   const pagesBase = normalizeBasePath(
     environment.VITE_BASE_PATH || repositoryName || "WorldArena"
   )
+  const apiProxyTarget =
+    environment.VITE_API_PROXY_TARGET || "http://127.0.0.1:8000"
 
   return {
     base: mode === "pages" ? pagesBase : "/",
@@ -35,7 +37,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       proxy: {
-        "/api": "http://127.0.0.1:8000",
+        "/api": apiProxyTarget,
       },
     },
     test: {

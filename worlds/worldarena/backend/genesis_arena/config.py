@@ -6,8 +6,11 @@ from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from worldeval.workspace import find_workspace
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+_WORKSPACE = find_workspace(Path(__file__))
+WORKSPACE_ROOT = _WORKSPACE.root
+REPOSITORY_ROOT = _WORKSPACE.path("worldarena")
 
 
 def _default_godot_executable() -> Path:
@@ -28,7 +31,7 @@ def _default_ffmpeg_executable() -> Path:
     """Use the checked-in local video tool when one is available."""
 
     candidates = (
-        REPOSITORY_ROOT
+        WORKSPACE_ROOT
         / ".video-tools/lib/python3.9/site-packages/imageio_ffmpeg/binaries/"
         "ffmpeg-macos-aarch64-v7.1",
         Path("/opt/homebrew/bin/ffmpeg"),
@@ -45,7 +48,7 @@ class Settings(BaseSettings):
     """Runtime configuration loaded from GENESIS_* variables and .env."""
 
     model_config = SettingsConfigDict(
-        env_file=str(REPOSITORY_ROOT / ".env"),
+        env_file=str(WORKSPACE_ROOT / ".env"),
         env_prefix="GENESIS_",
         extra="ignore",
     )
@@ -57,11 +60,11 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, ge=1, le=65535)
     decision_timeout_seconds: float = Field(default=45.0, gt=1, le=300)
     action_catalog_path: Path = REPOSITORY_ROOT / "game" / "actions.json"
-    memory_dir: Path = REPOSITORY_ROOT / "memory"
-    agents_dir: Path = REPOSITORY_ROOT / "agents"
-    runs_dir: Path = REPOSITORY_ROOT / "runs"
+    memory_dir: Path = REPOSITORY_ROOT / "legacy" / "survival" / "memory"
+    agents_dir: Path = REPOSITORY_ROOT / "legacy" / "survival" / "agents"
+    runs_dir: Path = WORKSPACE_ROOT / "runs"
     embodiment_readiness_path: Path = (
-        REPOSITORY_ROOT / "exports/embodiment-pilot/readiness.json"
+        WORKSPACE_ROOT / "exports/embodiment-pilot/readiness.json"
     )
     godot_executable: Path = Field(default_factory=_default_godot_executable)
     godot_project_path: Path = REPOSITORY_ROOT / "godot"

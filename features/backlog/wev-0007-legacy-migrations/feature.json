@@ -1,0 +1,50 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "Legacy demos receive additive sealed outer manifests and complete authority replay retention without changing frozen inner replay bytes.",
+      "id": "WEV-0007-AC-01",
+      "proof_types": ["test", "artifact", "replay"],
+      "replay_required": true
+    },
+    {
+      "demo_required": false,
+      "description": "Missing terminal-failure, multi-leg authority, Live Labyrinth, and solo multi-action replay evidence gaps are closed or explicitly documented as unrecoverable.",
+      "id": "WEV-0007-AC-02",
+      "proof_types": ["test", "document"],
+      "replay_required": false
+    },
+    {
+      "demo_required": false,
+      "description": "Legacy game internals migrate incrementally behind compatibility facades with per-feature verification and rollback evidence.",
+      "id": "WEV-0007-AC-03",
+      "proof_types": ["test", "document"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": ["worlds/worldarena/demos", "worlds/worldarena/legacy", "worlds/worldarena/game", "worlds/worldarena/godot", "worlds/worldarena/backend"],
+  "dependencies": ["WEV-0001", "WEV-0002"],
+  "exclusive_shared_surfaces": ["legacy-demo-migration", "worldarena-compatibility-capsule"],
+  "id": "WEV-0007",
+  "kind": "migration",
+  "priority": "p2",
+  "product": "worldarena",
+  "related_features": ["WEV-0002"],
+  "required_approvals": [],
+  "requirements": {
+    "compatibility": ["Preserve old package hashes, game IDs, source-fingerprint-v1 behavior, replay bytes, and public identifiers."],
+    "migration": ["Split each legacy migration into a separately claimed descendant feature before editing implementation internals."],
+    "privacy": ["Protected authority and live-provider artifacts remain private even when retention gaps are closed."],
+    "rollback": ["Every descendant migration includes an independently reversible compatibility boundary."]
+  },
+  "risk": "high",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": ["Legacy replay evidence normalization", "Compatibility-capsule migrations", "Source-fingerprint v1 retention and v2 adoption", "Per-migration feature records"],
+    "out": ["Re-signing historical evidence", "Bulk rewrites of frozen protocols", "Treating historical plans as proof of implementation"]
+  },
+  "slug": "legacy-migrations",
+  "summary": "Incrementally normalize historical demos and migrate legacy WorldArena internals only after the new repository, replay, and compatibility foundations are proven.",
+  "supersedes": [],
+  "title": "Legacy demo and game-internal migrations"
+}

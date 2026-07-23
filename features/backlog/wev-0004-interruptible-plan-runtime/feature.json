@@ -1,0 +1,50 @@
+{
+  "acceptance_criteria": [
+    {
+      "demo_required": false,
+      "description": "Multi-action plans are bound to a fresh observation and lease; only the current boundary is authorized and stale continuation fails closed.",
+      "id": "WEV-0004-AC-01",
+      "proof_types": ["test"],
+      "replay_required": false
+    },
+    {
+      "demo_required": true,
+      "description": "A material state change suspends an active plan and requires an explicit continue, replace, abort, or wait response; silence produces a no-op.",
+      "id": "WEV-0004-AC-02",
+      "proof_types": ["demo", "replay", "test"],
+      "replay_required": true
+    },
+    {
+      "demo_required": false,
+      "description": "Dynamic step-locked and static event-gated profiles expose deterministic public decision boundaries with different inference cadence.",
+      "id": "WEV-0004-AC-03",
+      "proof_types": ["test", "metric"],
+      "replay_required": false
+    }
+  ],
+  "affected_paths": ["worldeval/src/worldeval/runtime", "worldeval/tests", "worlds/worldarena/backend"],
+  "dependencies": ["WEV-0002", "WEV-0003"],
+  "exclusive_shared_surfaces": ["agent-plan-runtime", "decision-profile-runtime"],
+  "id": "WEV-0004",
+  "kind": "behavioral",
+  "priority": "p0",
+  "product": "worldeval",
+  "related_features": ["WEV-0005", "WEV-0006"],
+  "required_approvals": ["behavioral"],
+  "requirements": {
+    "compatibility": ["Keep existing deterministic authority clocks and legacy fallback behavior unchanged."],
+    "migration": ["Only environments declaring a new decision profile use the interruptible runtime."],
+    "privacy": ["Decision events contain only observation-visible causes."],
+    "rollback": ["Disabling the new profile returns consumers to their prior execution loop."]
+  },
+  "risk": "high",
+  "schema_version": "worldeval/feature/1.0.0",
+  "scope": {
+    "in": ["Revocable action leases", "Material interrupt handling", "Explicit decision responses", "Dynamic and static decision tempo"],
+    "out": ["Game-selected detours", "Implicit continuation", "Provider-cost optimization", "Real-time latency leaderboards"]
+  },
+  "slug": "interruptible-plan-runtime",
+  "summary": "Execute agent plans in bounded deterministic leases so new observations can suspend stale intent and force explicit reconsideration.",
+  "supersedes": [],
+  "title": "Interruptible plans and decision-tempo runtime"
+}

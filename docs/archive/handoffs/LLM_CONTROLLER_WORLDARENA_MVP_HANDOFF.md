@@ -30,18 +30,18 @@ interactive browser session, or access to the previous chat.
 6. `docs/LLM_CONTROLLER_WORLDARENA_LIVE_SOLO.md` and
    `docs/LLM_CONTROLLER_WORLDARENA_CERTIFICATION.md` for implemented provider/replay/dashboard
    context; live-provider gates in those documents are deferred by the new plan.
-7. `game/embodiment_protocol/worldarena.environment.json`, its schemas, fixtures, and
+7. `worlds/worldarena/game/embodiment_protocol/worldarena.environment.json`, its schemas, fixtures, and
    `protocol-lock.json`.
-8. `backend/genesis_arena/embodiment/`, especially:
+8. `worlds/worldarena/backend/genesis_arena/embodiment/`, especially:
    - `scripted_solo_demo.py`, `scripted_construction_demo.py`, and
      `construction_task_provider.py`;
    - `episode_service.py`, `live_runtime.py`, `live_solo.py`, `evaluation.py`, and
      `replay_archive.py`;
    - `duel/`.
-9. `godot/scripts/embodiment/`, especially the authority, presentation, preview, transport, duel,
-   and replay namespaces, plus the focused runners in `godot/tests/embodiment/`.
-10. `dashboard/src/App.tsx`, `dashboard/src/api.ts`, `dashboard/src/components/`, and
-    `dashboard/src/marketing/`, plus `.github/workflows/pages.yml`.
+9. `worlds/worldarena/godot/worlds/worldarena/scripts/embodiment/`, especially the authority, presentation, preview, transport, duel,
+   and replay namespaces, plus the focused runners in `worlds/worldarena/godot/tests/embodiment/`.
+10. `apps/worldeval-web/src/App.tsx`, `apps/worldeval-web/src/api.ts`, `apps/worldeval-web/src/components/`, and
+    `apps/worldeval-web/src/marketing/`, plus `.github/workflows/pages.yml`.
 
 Inspect every applicable `AGENTS.md` before editing. Check `git status` and recent history first.
 The worktree may contain user or agent changes; preserve unrelated work and never reset, checkout,
@@ -191,7 +191,7 @@ explicitly verified in a later phase.
   regenerate the `0.1.0` lock in place.
 - Preserve the 2,048 UTF-8-byte episode-only Python scratchpad, reset it between multiplayer legs,
   and never send it to Godot or public evidence.
-- Never modify frozen `game/duel_protocol/**` (`worldeval-rts/1.0.0`) or imply protocol
+- Never modify frozen `worlds/worldarena/game/duel_protocol/**` (`worldeval-rts/1.0.0`) or imply protocol
   interchangeability.
 - Do not use Remotion. Native videos must come from verified replay through Godot Movie Maker and
   FFmpeg.
@@ -205,7 +205,7 @@ On a fresh cloud checkout, bootstrap only the committed project dependencies if 
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 
-cd dashboard
+cd apps/worldeval-web
 pnpm install --frozen-lockfile
 cd ..
 ```
@@ -217,7 +217,7 @@ broad suites before handoff or publication:
 .venv/bin/pytest -q tests/embodiment
 .venv/bin/pytest -q tests/duel
 
-cd dashboard
+cd apps/worldeval-web
 pnpm lint
 pnpm test
 pnpm typecheck
@@ -233,7 +233,7 @@ Setup/Live/Timeline/Result/Evaluation/Replay states.
 At each checkpoint report:
 
 - the completed behavior and remaining phase;
-- changed files grouped by authority/provider/API/evaluation/presentation/dashboard/docs;
+- changed files grouped by authority/provider/API/evaluation/presentation/apps/worldeval-web/docs;
 - exact tests and commands run;
 - unavailable tools or unverified assumptions;
 - confirmation that no credential or protected participant data was introduced.

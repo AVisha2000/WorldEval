@@ -1,0 +1,7 @@
+{
+  "schema_version": "action-plan.v1", "protocol": "worldeval-agent/0.1.0", "plan_id": "fixture-plan",
+  "source": {"observation_seq": 0, "tick": 0, "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+  "lease_ticks": 3, "execution_policy": "confirm_each_boundary",
+  "steps": [{"step_id": "wait-step", "action": {"action": "wait", "arguments": {}}, "preconditions": [], "expected_completion": {"kind": "wait_complete", "subject": "worker-1", "parameters": {}}, "interrupt_on": ["movement_blocked"]}],
+  "abort_behavior": "neutral"
+}

@@ -113,13 +113,14 @@ class ConstructionTaskProvider:
             if task not in TASKS or not _task_visible_and_valid(task, observation):
                 raise ValueError("task is not visible or valid")
         except Exception:
-            # A model may produce a schema-valid but currently impossible milestone (for example,
-            # trying to build before materials have arrived).  Keep the authority live by
-            # converting that unsafe plan into one local wait tick; the protected raw response is
-            # still retained by the wrapped adapter's audit trail for evaluation.  Treating it as
-            # a transport failure used to terminate an otherwise healthy live game after three
-            # such plans.
-            return _generated(request, "wait", telemetry=result.telemetry)
+            # Invalid or currently impossible plans are neutral no-input decisions.  The runtime
+            # may ask again at the next boundary, but it must never manufacture a local control
+            # action and call that a model decision.  The wrapped adapter's protected audit trail
+            # still preserves the original output for evaluation.
+            return ProviderCallResult.failed(
+                ProviderFailureKind.INVALID_RESPONSE,
+                result.telemetry,
+            )
         try:
             task_tick_limit = self._task_timeout_ticks(task, observation)
         except Exception:

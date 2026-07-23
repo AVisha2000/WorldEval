@@ -106,9 +106,9 @@ by both a real pinned-engine smoke test and fake-process isolation tests.
 
 ```text
 .venv/bin/pytest -q \
-  tests/duel/test_duel_managed_process_launcher.py \
-  tests/duel/test_duel_match_service.py \
-  tests/duel/test_duel_api.py
+  worlds/worldarena/tests/duel/test_duel_managed_process_launcher.py \
+  worlds/worldarena/tests/duel/test_duel_match_service.py \
+  worlds/worldarena/tests/duel/test_duel_api.py
 ```
 
 The focused suite verifies canonical stdin-only handoff, a stripped child environment, loopback

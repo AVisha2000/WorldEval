@@ -27,6 +27,7 @@ import {
 import worldArenaThumbnail from "@/assets/worldarena-build-things-thumbnail.jpg"
 import { CrossroadsWorkspace } from "@/components/crossroads-workspace"
 import { EpisodeWorkspace, ReplaySpeedControls } from "@/components/episode-workspace"
+import { PrimitiveSandboxWorkspace } from "@/components/primitive-sandbox-workspace"
 import { SetupPanel } from "@/components/setup-panel"
 import { SoloShowcaseWorkspace } from "@/components/solo-showcase-workspace"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -271,7 +272,7 @@ export function App() {
   const [setup, setSetup] = useState(INITIAL_SETUP)
   const submittedSetup = useRef<EpisodeSetup | null>(null)
   const [episodeId, setEpisodeId] = useState<string | null>(null)
-  const [showcase, setShowcase] = useState<"solo" | "rts" | "maze" | "crossroads" | null>(null)
+  const [showcase, setShowcase] = useState<"solo" | "rts" | "maze" | "crossroads" | "sandbox" | null>(null)
   const [selected, setSelected] = useState(0)
   const [view, setView] = useState("run")
   const create = useMutation({
@@ -379,7 +380,7 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-brand">
-          <h1>WorldArea</h1>
+          <h1>WorldArena</h1>
           <img
             alt="WorldArena agents building on a shared world"
             className="app-header-thumbnail"
@@ -426,6 +427,11 @@ export function App() {
             setEpisodeId(null)
             setView("run")
           }}
+          onSandboxQuickStart={() => {
+            setShowcase("sandbox")
+            setEpisodeId(null)
+            setView("run")
+          }}
         />
         {showcase === "solo" ? (
           <SoloShowcaseWorkspace
@@ -457,6 +463,8 @@ export function App() {
             showcaseError={cachedCrossroadsShowcase.isError}
             view={view}
           />
+        ) : showcase === "sandbox" ? (
+          <PrimitiveSandboxWorkspace view={view} />
         ) : (
           <EpisodeWorkspace
             key={episode?.episodeId ?? "empty"}

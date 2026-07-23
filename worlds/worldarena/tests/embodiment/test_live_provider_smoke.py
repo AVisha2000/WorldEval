@@ -5,7 +5,6 @@ import os
 import time
 import zlib
 from binascii import crc32
-from pathlib import Path
 from struct import pack
 
 import pytest
@@ -18,8 +17,9 @@ from genesis_arena.embodiment.live_runtime import (
 from genesis_arena.embodiment.live_solo import parse_controller_action
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_json_bytes
 from genesis_arena.embodiment.providers.contracts import ProviderRequest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _png() -> bytes:

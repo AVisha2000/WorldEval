@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.protocol import ProtocolValidationError
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 V1_SHA256 = "ddfc8998dfe33c0bb68aff31f78118a227792f4d568bd438d732c3d3abe0c34d"
 V2_SHA256 = "edbd41865f3ed7186b02f6d370dd6e655910bcfebe66c330bafa42d5e533fff5"
 V3_SHA256 = "49435d7099c6a28a45f1e08dd8640a4f5e786c6dc2fed8bf4eede862c6da984a"
@@ -195,7 +197,7 @@ def test_registry_parser_rejects_unknown_fields(tmp_path: Path) -> None:
 def test_v2_lock_and_registry_are_reproducible() -> None:
     completed = subprocess.run(
         [
-            str(ROOT / ".venv" / "bin" / "python"),
+            sys.executable,
             str(ROOT / "scripts" / "build_embodiment_protocol_registry.py"),
             "--repository-root",
             str(ROOT),

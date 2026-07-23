@@ -199,7 +199,7 @@ Responsibilities are separated:
 
 ## 9. Machine-readable package
 
-`game/embodiment_protocol/` is the executable contract:
+`worlds/worldarena/game/embodiment_protocol/` is the executable contract:
 
 - `VERSION` — protocol version;
 - `worldarena.environment.json` — sensors, controls, modes, timing, constraints, and curricula;
@@ -275,7 +275,7 @@ The playable demo must make agency obvious:
 
 1. Freeze this MVP contract and validate the machine-readable package in Python tests.
 2. Add provider-neutral `EnvironmentAdapter`, `EpisodeConfig`, `ControllerAction`, `StepResult`,
-   and runtime validation types under `backend/genesis_arena/embodiment/`.
+   and runtime validation types under `worlds/worldarena/backend/genesis_arena/embodiment/`.
 3. Build the Godot orientation arena and one Operator body with deterministic controller input.
 4. Implement text-visible observation projection and action receipts.
 5. Complete Stages A through D with scripted regression episodes.

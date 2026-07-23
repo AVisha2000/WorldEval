@@ -1,0 +1,14 @@
+{
+  "schema_version": "objective.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "objective_id": "tree-chop-nominal-v0",
+  "instruction": "Destroy tree-7 at (23,12) before the tick limit.",
+  "coordinate_frame": "world_grid",
+  "targets": [{"role": "resource", "object_id": "tree-7", "object_type": "tree", "position": {"x": 23, "y": 12}}],
+  "success_predicates": [{"kind": "object_destroyed", "subject": "tree-7", "parameters": {"generation": 1}}],
+  "failure_predicates": [{"kind": "tick_budget_exhausted", "subject": null, "parameters": {"maximum_tick": 200}}],
+  "safety_constraints": [],
+  "priorities": ["destroy_tree", "avoid_invalid_actions"],
+  "tick_budget": 200,
+  "permitted_fallback": "fail"
+}

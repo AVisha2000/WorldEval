@@ -7,6 +7,15 @@ from typing import Any, AsyncIterator, Dict
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
+from worldarena.primitive_sandbox.api import router as primitive_sandbox_router
+from worldarena.primitive_sandbox.godot import (
+    GodotPrimitiveSandboxRunner,
+    network_isolation_available,
+)
+from worldarena.primitive_sandbox.service import PrimitiveSandboxService
+from worldarena.replay_api import ReplayCatalog
+from worldarena.replay_api import router as worldeval_replay_router
+from worldarena.replay_verifiers import default_native_verifiers
 
 from .arena.simulation_jobs import (
     ReplayBundle,
@@ -16,7 +25,7 @@ from .arena.simulation_jobs import (
     SimulationRequest,
 )
 from .arena_api import arena_socket
-from .config import REPOSITORY_ROOT, Settings
+from .config import REPOSITORY_ROOT, WORKSPACE_ROOT, Settings
 from .duel.api import router as duel_router
 from .duel.match_service import default_duel_match_service
 from .embodiment.api import router as embodiment_router
@@ -42,8 +51,25 @@ settings = Settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    require_replay_network_isolation = network_isolation_available()
     app.state.orchestrator = Orchestrator(settings)
     app.state.simulation_jobs = SimulationJobManager(settings)
+    app.state.worldeval_replays = ReplayCatalog(
+        (settings.runs_dir / "replays", REPOSITORY_ROOT / "demos"),
+        native_verifiers=default_native_verifiers(
+            godot_executable=settings.godot_executable,
+            godot_project_path=settings.godot_project_path,
+            require_network_isolation=require_replay_network_isolation,
+        ),
+    )
+    app.state.primitive_sandbox = PrimitiveSandboxService(
+        runner=GodotPrimitiveSandboxRunner(
+            executable=settings.godot_executable,
+            project_path=settings.godot_project_path,
+            require_network_isolation=require_replay_network_isolation,
+        ),
+        replay_root=settings.runs_dir / "replays",
+    )
     app.state.duel_matches = default_duel_match_service(
         port=settings.port,
         runs_dir=settings.runs_dir,
@@ -133,6 +159,8 @@ app = FastAPI(
 app.include_router(duel_router)
 app.include_router(embodiment_router)
 app.include_router(internal_preview_router)
+app.include_router(worldeval_replay_router)
+app.include_router(primitive_sandbox_router)
 
 
 @app.websocket("/ws/embodiment/{ticket}")
@@ -313,7 +341,7 @@ async def arena_v1_socket(websocket: WebSocket) -> None:
 # Static presentation is mounted after every API and WebSocket route. A source checkout without a
 # completed Vite build remains a valid API server; `pnpm build` makes the local dashboard available
 # from the same origin without introducing a second credential-handling process.
-mount_built_dashboard(app, REPOSITORY_ROOT / "dashboard" / "dist")
+mount_built_dashboard(app, WORKSPACE_ROOT / "apps" / "worldeval-web" / "dist")
 
 
 def run() -> None:

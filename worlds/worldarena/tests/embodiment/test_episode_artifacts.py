@@ -1,5 +1,5 @@
+import base64
 import json
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.artifacts import (
@@ -13,8 +13,9 @@ from genesis_arena.embodiment.artifacts import (
 )
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_sha256
 from genesis_arena.embodiment.replay import ReplayLedger, verify_replay_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _stage_a_replay() -> tuple[bytes, EmbodimentProtocolPackage]:
@@ -171,6 +172,45 @@ def test_artifacts_reject_credential_keys_and_secret_like_bytes() -> None:
         EpisodeArtifact.json("evaluation", {"api_key": "not-allowed"})
     with pytest.raises(EpisodeArtifactError, match="credential-like"):
         EpisodeArtifact("provider_outputs", "application/json", b'"sk-secret-value"')
+
+
+def test_artifacts_do_not_scan_binary_base64_transport_as_text() -> None:
+    credential_shaped = "AIza" + ("A" * 20)
+    png_transport = base64.b64encode(
+        b"\x89PNG\r\n\x1a\n"
+        + b"\x00"
+        + base64.b64decode(credential_shaped, validate=True)
+    ).decode("ascii")
+    assert credential_shaped in png_transport
+    EpisodeArtifact.json(
+        "frames",
+        {
+            "frame_png_base64": png_transport,
+            "png_base64": png_transport,
+        },
+    )
+
+
+def test_artifacts_reject_non_png_binary_base64_and_raw_media() -> None:
+    not_png = base64.b64encode(b"not a PNG").decode("ascii")
+    with pytest.raises(EpisodeArtifactError, match="PNG base64"):
+        EpisodeArtifact.json("frames", {"frame_png_base64": not_png})
+    with pytest.raises(EpisodeArtifactError, match="PNG artifact"):
+        EpisodeArtifact("frames", "image/png", b"not a PNG")
+
+
+def test_artifacts_scan_decoded_text_and_json_base64_fields() -> None:
+    encoded_secret = base64.b64encode(b'"sk-secret-value"').decode("ascii")
+    with pytest.raises(EpisodeArtifactError, match="credential-like"):
+        EpisodeArtifact.json("provider_outputs", {"raw_output_base64": encoded_secret})
+
+    encoded_credential_key = base64.b64encode(
+        b'{"nested":{"api_key":"opaque-session-value"}}'
+    ).decode("ascii")
+    with pytest.raises(EpisodeArtifactError, match="credential/header"):
+        EpisodeArtifact.json(
+            "observations", {"observation_json_base64": encoded_credential_key}
+        )
 
 
 @pytest.mark.parametrize(

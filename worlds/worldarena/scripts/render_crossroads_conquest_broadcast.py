@@ -21,8 +21,9 @@ from pathlib import Path
 from typing import Sequence
 
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 WIDTH = 1920
 HEIGHT = 1080

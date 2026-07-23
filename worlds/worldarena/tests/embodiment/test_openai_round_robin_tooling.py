@@ -7,7 +7,6 @@ from typing import Mapping, Sequence
 
 import pytest
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
-
 from scripts import run_embodiment_openai_round_robin as tournament
 
 

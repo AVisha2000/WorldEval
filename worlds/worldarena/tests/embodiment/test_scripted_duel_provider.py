@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.duel.scripted_provider import ScriptedBaselineAdapter
@@ -8,8 +7,9 @@ from genesis_arena.embodiment.protocol import (
     strict_json_loads,
 )
 from genesis_arena.embodiment.providers.contracts import ProviderRequest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _request(observation):

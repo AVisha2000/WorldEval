@@ -54,6 +54,9 @@ _SECRET_PATTERNS = (
     re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{8,}"),
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 )
+_BINARY_BASE64_KEYS = frozenset({"framepngbase64", "pngbase64"})
+_JSON_BASE64_KEYS = frozenset({"actionschemajsonbase64", "observationjsonbase64"})
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _PUBLIC_ROLES = frozenset(
     {"checkpoints", "evaluation", "public_events", "receipts", "replay_summary"}
 )
@@ -115,7 +118,6 @@ class EpisodeArtifact:
             raise EpisodeArtifactError("artifact media type is invalid")
         if not isinstance(self.data, bytes):
             raise TypeError("artifact data must be immutable bytes")
-        _assert_secret_free_bytes(self.data)
         if self.media_type == "application/json":
             try:
                 _assert_secret_free_value(strict_json_loads(self.data))
@@ -123,6 +125,17 @@ class EpisodeArtifact:
                 raise
             except Exception as error:
                 raise EpisodeArtifactError("JSON artifact data is invalid") from error
+        elif self.media_type == "application/x-ndjson":
+            try:
+                for line in self.data.splitlines():
+                    if line:
+                        _assert_secret_free_value(strict_json_loads(line))
+            except EpisodeArtifactError:
+                raise
+            except Exception as error:
+                raise EpisodeArtifactError("NDJSON artifact data is invalid") from error
+        elif not self.data.startswith(_PNG_SIGNATURE):
+            raise EpisodeArtifactError("PNG artifact data is invalid")
 
     @classmethod
     def json(cls, role: str, value: Any) -> EpisodeArtifact:
@@ -673,12 +686,42 @@ def _assert_secret_free_value(value: Any) -> None:
                 or (normalized.endswith("key") and normalized.startswith("provider"))
             ):
                 raise EpisodeArtifactError("artifact contains a forbidden credential/header key")
-            _assert_secret_free_value(child)
+            if isinstance(child, str) and normalized.endswith("base64"):
+                _assert_secret_free_base64(normalized, child)
+            else:
+                _assert_secret_free_value(child)
     elif isinstance(value, (list, tuple)):
         for child in value:
             _assert_secret_free_value(child)
     elif isinstance(value, str):
         _assert_secret_free_bytes(value.encode("utf-8"))
+
+
+def _assert_secret_free_base64(normalized_key: str, value: str) -> None:
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (TypeError, ValueError) as error:
+        raise EpisodeArtifactError("artifact base64 field is invalid") from error
+    if normalized_key in _BINARY_BASE64_KEYS:
+        # PNG bytes are captured by the trusted game renderer. Regexing their base64 transport
+        # representation produces random credential-prefix matches without inspecting text.
+        if not decoded.startswith(_PNG_SIGNATURE):
+            raise EpisodeArtifactError("artifact PNG base64 field is invalid")
+        return
+    if normalized_key in _JSON_BASE64_KEYS:
+        try:
+            _assert_secret_free_value(strict_json_loads(decoded))
+        except EpisodeArtifactError:
+            raise
+        except Exception as error:
+            raise EpisodeArtifactError("artifact encoded JSON field is invalid") from error
+        return
+    _assert_secret_free_bytes(decoded)
+    try:
+        decoded_value = strict_json_loads(decoded)
+    except Exception:
+        return
+    _assert_secret_free_value(decoded_value)
 
 
 def _assert_secret_free_bytes(value: bytes) -> None:

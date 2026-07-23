@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.construction_task_provider import ConstructionTaskProvider
@@ -17,8 +16,9 @@ from genesis_arena.embodiment.scripted_construction_demo import (
     ScriptedConstructionDemoProvider,
     demo_task_timeout_ticks,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _request(

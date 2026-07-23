@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import build_rts_showcase_artifacts as builder
 from scripts import package_rts_showcase as packager
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _summary(participant: str, outcome: str, *, units_trained: int) -> dict[str, object]:

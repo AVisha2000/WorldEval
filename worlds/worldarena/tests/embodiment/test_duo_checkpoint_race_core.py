@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from genesis_arena.embodiment.duo_games.checkpoint_race import (
     build_checkpoint_race_demo_provider,
@@ -11,8 +9,9 @@ from genesis_arena.embodiment.live_solo import parse_controller_action
 from genesis_arena.embodiment.protocol import ProtocolValidationError, canonical_json_bytes
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.providers.contracts import ProviderFailureKind, ProviderRequest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 PACKAGE = EmbodimentProtocolRegistry.from_repository(ROOT).package("llm-controller/0.2.0")
 
 

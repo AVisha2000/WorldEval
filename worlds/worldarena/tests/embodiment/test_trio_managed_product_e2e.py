@@ -16,8 +16,9 @@ from genesis_arena.embodiment.presentation.preview_ingress import (
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
 from genesis_arena.embodiment.trio_games.live_runtime import default_trio_series_service
 from genesis_arena.embodiment.trio_games.scheduling import TRIO_DEMO_ENTRANTS
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 PARTICIPANTS = ("participant_0", "participant_1", "participant_2")
 ENTRANTS = [
@@ -164,7 +165,7 @@ async def test_api_demo_trio_managed_v3_three_leg_archive_survives_restart(
                 )
                 assert archive_response.status_code == 200
                 archive = archive_response.json()
-                if archive.get("state") != "saving":
+                if archive["evidence"]["state"] != "saving":
                     break
                 await asyncio.sleep(0.05)
             assert archive["evidence"]["state"] == "ready"
@@ -207,5 +208,10 @@ async def test_api_demo_trio_managed_v3_three_leg_archive_survives_restart(
         await service.aclose()
         preview_ingress.close()
         server.should_exit = True
-        await server_task
+        try:
+            await asyncio.wait_for(server_task, 5)
+        except asyncio.TimeoutError:
+            server.force_exit = True
+            server_task.cancel()
+            await asyncio.gather(server_task, return_exceptions=True)
         listener.close()

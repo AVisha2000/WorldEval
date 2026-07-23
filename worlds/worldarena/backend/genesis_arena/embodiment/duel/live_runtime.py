@@ -267,7 +267,6 @@ def default_duel_series_service(
             "duo-spar-v0",
             "duo-resource-relay-v0",
             "rts-skirmish-v0",
-            RTS_SKIRMISH_V1_TASK_ID,
         ),
         certified_modes=(),
         certified_observation_profiles=(),

@@ -90,7 +90,7 @@ uses a live provider credential as an implementation or release dependency.
   legs and never send it to Godot or include it in public evidence.
 - Preserve replay compatibility. Do not rename existing sealed `scripted` provider identities in
   old artifacts.
-- Do not modify frozen `game/duel_protocol/**` (`worldeval-rts/1.0.0`) or claim it is
+- Do not modify frozen `worlds/worldarena/game/duel_protocol/**` (`worldeval-rts/1.0.0`) or claim it is
   interchangeable with the embodiment protocol.
 - Preserve the current `llm-controller/0.1.0` package bytes and lock. Add a multi-version registry
   and a separate immutable `0.2.0` package for new authoritative solo/duo game IDs, then a separate
@@ -424,8 +424,8 @@ checklist.
 - Keep local exports and protected evidence out of git. The current Pages facade accepts YouTube
   IDs, so render export-ready files/posters first and publish only with user-authorized upload
   access. Never invent an ID, upload externally, or mutate repository variables without authority.
-- Extend `dashboard/src/marketing/site-data.ts`, its tests, `.github/workflows/pages.yml`, and
-  `dashboard/README.md` with `VITE_YOUTUBE_TRIO_ID` and the Pages repository variable
+- Extend `apps/worldeval-web/src/marketing/site-data.ts`, its tests, `.github/workflows/pages.yml`, and
+  `apps/worldeval-web/README.md` with `VITE_YOUTUBE_TRIO_ID` and the Pages repository variable
   `YOUTUBE_TRIO_ID`. Keep a local coming-soon poster until a real ID is configured.
 - Replace the gallery's final solo card with the multi-action showcase, add the trio card, and
   deliberately choose the latest finished demo as the featured card instead of leaving an older
@@ -511,7 +511,7 @@ Suggested waves:
 | Wave | Parallel implementation | Integration gate |
 | --- | --- | --- |
 | M0 | DemoProvider/lock; capabilities/budgets; strict failure fixtures | credential-free provider path |
-| S1 | A–D production-path tests; 30 FPS presentation; dashboard/replay reliability | all solo tasks no-key end to end |
+| S1 | A–D production-path tests; 30 FPS presentation; apps/worldeval-web/replay reliability | all solo tasks no-key end to end |
 | S2 | multi-action scenario/evidence; task-boundary call tests | continuous showcase gate |
 | S3 | maze authority/presentation; action-course stations; control matrix | solo control-game gate |
 | E1 | evaluation projection/archive; API; dashboard view | durable per-run evaluation |

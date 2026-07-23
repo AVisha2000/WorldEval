@@ -1,0 +1,5 @@
+{
+  "schema_version": "action-receipt.v1", "protocol": "worldeval-agent/0.1.0", "receipt_id": "fixture-receipt", "observation_seq": 0,
+  "response_type": "plan.replace", "plan_id": "fixture-plan", "step_id": "wait-step", "accepted": true, "disposition": "accepted", "fallback": "none", "no_input_reason": null,
+  "start_tick": 0, "end_tick": 3, "applied_ticks": 3, "codes": ["decision_accepted", "wait_complete"], "effects": []
+}

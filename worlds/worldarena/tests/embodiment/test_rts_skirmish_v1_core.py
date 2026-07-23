@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import pytest
-
 from genesis_arena.embodiment.duo_games.rts_skirmish_v1 import (
     PLAN_PROTOCOL,
-    RtsTaskPlanProvider,
     RtsSkirmishV1Simulation,
+    RtsTaskPlanProvider,
     RtsV1PlanError,
     validate_task_plan,
 )

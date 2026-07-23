@@ -12,6 +12,7 @@ from genesis_arena.embodiment.protocol_registry import (
     SUPPORTED_PROTOCOL_PATHS,
     VersionedEmbodimentProtocolPackage,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
 
 def expected_artifacts(repository_root: Path) -> tuple[tuple[Path, bytes], ...]:
@@ -68,7 +69,7 @@ def main() -> int:
     parser.add_argument(
         "--repository-root",
         type=Path,
-        default=Path(__file__).resolve().parents[1],
+        default=WORLDARENA_ROOT,
     )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

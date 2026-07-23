@@ -1,0 +1,39 @@
+{
+  "schema_version": "object-catalog.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "catalog_id": "waypoint-maze-objects-v1",
+  "object_types": [
+    {
+      "type_id": "navigator",
+      "traits": ["controllable", "mobile"],
+      "affordances": ["movable"],
+      "visible_state_fields": ["position", "visited_waypoints"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "waypoint",
+      "traits": ["route_marker"],
+      "affordances": ["approachable", "ordered_route_marker"],
+      "visible_state_fields": ["position", "order", "visited"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "exit",
+      "traits": ["terminal_target"],
+      "affordances": ["approachable", "ordered_route_marker"],
+      "visible_state_fields": ["position", "order", "open"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    },
+    {
+      "type_id": "wall",
+      "traits": ["fixed_obstacle"],
+      "affordances": ["blocks_movement"],
+      "visible_state_fields": ["position", "blocks_movement"],
+      "lifecycle_events": ["spawned", "updated", "despawned"],
+      "stable_identity": true
+    }
+  ]
+}

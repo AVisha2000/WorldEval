@@ -11,8 +11,9 @@ from genesis_arena.embodiment.native_media import (
     NativeMediaError,
     render_verified_participant_video,
 )
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 Y_BOT_MANIFEST = ROOT / "godot/assets/external/mixamo/approved-y-bot.manifest.json"
 

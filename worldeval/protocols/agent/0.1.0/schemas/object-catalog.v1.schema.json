@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://worldeval.local/agent/0.1.0/object-catalog.v1.schema.json",
+  "title": "WorldEval agent object catalog v1",
+  "$ref": "common.v1.schema.json#/$defs/objectCatalog"
+}

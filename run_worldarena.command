@@ -18,7 +18,7 @@ echo "Starting backend on http://127.0.0.1:8000"
 EXISTING_PID="$(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null | head -1)"
 if [[ -n "$EXISTING_PID" ]]; then
   EXISTING_COMMAND="$(ps -p "$EXISTING_PID" -o command= 2>/dev/null)"
-  if [[ "$EXISTING_COMMAND" == *"$PWD/.venv/bin/genesis-arena"* ]]; then
+  if [[ "$EXISTING_COMMAND" == *"$PWD/.venv/bin/worldarena"* || "$EXISTING_COMMAND" == *"$PWD/.venv/bin/genesis-arena"* ]]; then
     echo "Restarting the existing WorldArena backend..."
     kill "$EXISTING_PID"
     wait "$EXISTING_PID" 2>/dev/null || true
@@ -28,7 +28,7 @@ if [[ -n "$EXISTING_PID" ]]; then
     exit 1
   fi
 fi
-genesis-arena > /tmp/worldarena-backend.log 2>&1 &
+worldarena > /tmp/worldarena-backend.log 2>&1 &
 BACKEND_PID=$!
 trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
 
@@ -50,7 +50,7 @@ else
 fi
 
 echo "Opening WorldArena. Configure three models, or leave the key blank for Demo mode."
-"$GODOT_BIN" --path godot >/tmp/worldarena-godot.log 2>&1 &
+"$GODOT_BIN" --path worlds/worldarena/godot >/tmp/worldarena-godot.log 2>&1 &
 GODOT_PID=$!
 set +e
 wait $GODOT_PID

@@ -29,8 +29,9 @@ from genesis_arena.duel.match_init import MatchInitAssembler
 from genesis_arena.duel.models import ActionBatch, MatchConfig
 from genesis_arena.duel.protocol import ProtocolPackage
 from genesis_arena.duel.replay import verify_replay_bundle
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 MATCH_ID = "m_live-artifact"
 ENGINE_BUILD_ID = "godot-4.5.stable.official.876b29033"
 ENGINE_BUILD_SHA256 = "39b904eb0014941330f6435796ae0a041979802047495eb6fb87d59f327de719"

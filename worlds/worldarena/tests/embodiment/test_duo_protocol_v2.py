@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from genesis_arena.embodiment.protocol import ProtocolValidationError
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 V1 = "llm-controller/0.1.0"
 V2 = "llm-controller/0.2.0"
 DUO_TASKS = (
@@ -112,13 +111,17 @@ def test_manifest_and_capability_contract_claim_exact_integrated_duo_surface(
             "movement-maze-v0",
             "operator-action-course-v0",
             *DUO_TASKS,
+            "rts-skirmish-v0",
         ],
         "certified_modes": [],
         "certified_observation_profiles": [],
         "scored_observation_profiles": [],
     }
     package.validate("capability-status", manifest["capabilities"])
-    assert [item["id"] for item in manifest["curriculum"]][-len(DUO_TASKS) :] == list(DUO_TASKS)
+    assert [item["id"] for item in manifest["curriculum"]][-(len(DUO_TASKS) + 1) :] == [
+        *DUO_TASKS,
+        "rts-skirmish-v0",
+    ]
     # The additive package must not move or rewrite the frozen 0.1 identity.
     assert registry.package(V1).package_sha256 == (
         "ddfc8998dfe33c0bb68aff31f78118a227792f4d568bd438d732c3d3abe0c34d"

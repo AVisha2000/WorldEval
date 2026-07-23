@@ -5,28 +5,28 @@ workspace = "."
 branch_prefix = "codex/"
 preserve_dirty_worktree = true
 require_bounded_scope = true
-shared_handoff = "docs/RTS_REVAMP_RESEARCH.md"
+shared_handoff = "features/in-progress/wev-0001-repository-cutover/progress.md"
 
 [[agents]]
 id = "sol_architect"
 preferred_model = "gpt-5.6-sol"
 reasoning_effort = "high"
 owns = ["architecture", "protocol", "integration", "research synthesis"]
-may_edit = ["docs/**", "backend/genesis_arena/arena/**", "game/**"]
+may_edit = ["docs/**", "worldeval/**", "worlds/worldarena/backend/**", "worlds/worldarena/game/**", "features/**"]
 
 [[agents]]
 id = "terra_simulation"
 preferred_model = "gpt-5.6-terra"
 reasoning_effort = "medium"
 owns = ["deterministic simulation", "task system", "reward vectors", "headless fixtures"]
-may_edit = ["godot/scripts/arena/simulation/**", "godot/data/arena/**", "godot/tests/arena/**"]
+may_edit = ["worlds/worldarena/godot/scripts/arena/simulation/**", "worlds/worldarena/godot/data/arena/**", "worlds/worldarena/godot/tests/arena/**", "worlds/worldarena/games/**"]
 
 [[agents]]
 id = "terra_gameplay"
 preferred_model = "gpt-5.6-terra"
 reasoning_effort = "medium"
 owns = ["Godot scenes", "animation state", "spectator HUD", "setup flow"]
-may_edit = ["godot/scenes/**", "godot/scripts/arena/presentation/**", "godot/art/**"]
+may_edit = ["worlds/worldarena/godot/scenes/**", "worlds/worldarena/godot/scripts/arena/presentation/**", "worlds/worldarena/godot/art/**", "apps/worldeval-web/**"]
 
 [[agents]]
 id = "luna_terminal"
@@ -34,7 +34,7 @@ preferred_model = "gpt-5.6-luna"
 fallback_model = "gpt-5.6-terra"
 reasoning_effort = "medium"
 owns = ["terminal workflows", "asset manifests", "package pinning", "launch and capture scripts"]
-may_edit = ["scripts/**", "*.command", "pyproject.toml", "godot/addons/**", "godot/assets/**"]
+may_edit = ["worlds/worldarena/scripts/**", "tools/**", "*.command", "pyproject.toml", "worlds/worldarena/godot/addons/**", "worlds/worldarena/godot/assets/**", "ops/**", "media/**"]
 note = "The current Codex workspace exposes Sol and Terra overrides only; use Terra-medium as the explicit fallback until a Luna override is callable."
 
 [coordination]
@@ -42,4 +42,3 @@ simulation_before_presentation_contract = true
 avoid_same_file_concurrent_edits = true
 agents_must_report_files_changed = true
 agents_must_not_commit_or_push = true
-

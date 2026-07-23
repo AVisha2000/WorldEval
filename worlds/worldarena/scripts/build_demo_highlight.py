@@ -12,10 +12,10 @@ from __future__ import annotations
 import hashlib
 import json
 from copy import deepcopy
-from pathlib import Path
 
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 OUT = ROOT / "godot" / "showcases" / "demo_highlight"
 REPLAY_PATH = OUT / "replay.json"
 MANIFEST_PATH = OUT / "manifest.json"

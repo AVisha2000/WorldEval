@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.duel import DuelEntrant
 from genesis_arena.embodiment.duel.live_runtime import build_paired_duel_plan
 from genesis_arena.embodiment.duel.service import DuelSeriesSpec
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 def _plan():

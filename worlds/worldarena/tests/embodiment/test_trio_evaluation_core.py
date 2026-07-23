@@ -4,7 +4,6 @@ import copy
 import json
 
 import pytest
-
 from backend.genesis_arena.embodiment.trio_games.evaluation import (
     evaluate_trio_series,
     validate_public_trio_evaluation,

@@ -1,0 +1,32 @@
+{
+  "schema_version": "action-plan.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "plan_id": "example-tree-chop",
+  "source": {"observation_seq": 0, "tick": 0, "state_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+  "lease_ticks": 3,
+  "execution_policy": "confirm_each_boundary",
+  "steps": [
+    {
+      "step_id": "approach-tree",
+      "action": {"action": "move_to", "arguments": {"target": {"object_id": "tree-7", "generation": 1}, "navigation": "direct_only"}},
+      "preconditions": [{"kind": "target_visible", "subject": "tree-7", "parameters": {"generation": 1}}],
+      "expected_completion": {"kind": "agent_at_target", "subject": "tree-7", "parameters": {}},
+      "interrupt_on": ["movement_blocked", "target_disappeared", "hostile_near_target"]
+    },
+    {
+      "step_id": "equip-axe",
+      "action": {"action": "equip", "arguments": {"item": "axe"}},
+      "preconditions": [{"kind": "item_in_inventory", "subject": "worker-1", "parameters": {"item": "axe"}}],
+      "expected_completion": {"kind": "item_equipped", "subject": "worker-1", "parameters": {"item": "axe"}},
+      "interrupt_on": ["inventory_changed"]
+    },
+    {
+      "step_id": "chop-tree",
+      "action": {"action": "use_tool", "arguments": {"tool": "axe", "target": {"object_id": "tree-7", "generation": 1}}},
+      "preconditions": [{"kind": "target_in_range", "subject": "tree-7", "parameters": {}}],
+      "expected_completion": {"kind": "object_destroyed", "subject": "tree-7", "parameters": {"generation": 1}},
+      "interrupt_on": ["target_disappeared", "hostile_near_target"]
+    }
+  ],
+  "abort_behavior": "cancel_current_action"
+}

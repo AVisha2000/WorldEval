@@ -25,8 +25,9 @@ from genesis_arena.embodiment.protocol import (
 )
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.providers.contracts import ProviderRequest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 PROTOCOL_VERSION = "llm-controller/0.2.0"
 

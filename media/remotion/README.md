@@ -31,7 +31,7 @@ pnpm render:frame
 pnpm render:intro
 ```
 
-Outputs are written to `remotion/out/` and are ignored by Git.
+Outputs are written to `media/remotion/out/` and are ignored by Git.
 
 ## Demo media library
 

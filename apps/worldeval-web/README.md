@@ -12,7 +12,7 @@ replay. Demo results are always non-certifying.
 ## Local Controller Lab
 
 ```bash
-cd dashboard
+cd apps/worldeval-web
 pnpm install --frozen-lockfile
 pnpm dev
 ```
@@ -28,11 +28,17 @@ showcase and two solo control games, the seat-swapped 1v1 ladder, and three-seat
 Demo games. The browser receives participant-filtered pixels and allow-listed timeline/evaluation
 data only—never prompts, raw provider output, credentials, hidden state, or spectator views.
 
-The **Pre-run saves** library also exposes four immutable highlights: Solo Multi-Action
-Construction, Labyrinth Run, Mini RTS Skirmish, and **Crossroads Conquest**. Every video is checked
-into the repository and served through a cached `GET` route, so a fresh hosted Lab needs no local
-run archive. Crossroads playback never posts a new run; its Evaluation and Replay tabs fetch the
-public evaluation lazily, while the authority replay stays server-side and has no browser route.
+The **Pre-run saves** library also exposes the Primitive Sandbox protocol lab and four immutable
+video highlights: Solo Multi-Action Construction, Labyrinth Run, Mini RTS Skirmish, and
+**Crossroads Conquest**. Primitive Sandbox runs through the same explicit session contract as its
+Demo policy and appears complete only after the Godot replay verifier publishes a sealed bundle.
+Every showcase video is checked into the repository and served through a cached `GET` route, so a
+fresh hosted Lab needs no local run archive. Crossroads playback never posts a new run; its
+Evaluation and Replay tabs fetch the public evaluation lazily, while the authority replay stays
+server-side and has no browser route.
+
+The Vite development proxy targets `http://127.0.0.1:8000` by default. Parallel checkouts can set
+`VITE_API_PROXY_TARGET=http://127.0.0.1:<port>` without editing the application.
 
 ## Builds
 

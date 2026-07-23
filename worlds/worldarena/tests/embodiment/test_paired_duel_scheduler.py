@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.artifacts import (
@@ -40,8 +39,9 @@ from genesis_arena.embodiment.protocol import (
 )
 from genesis_arena.embodiment.providers.contracts import ProviderCallResult, ProviderTelemetry
 from genesis_arena.embodiment.series import ModelLock, SeriesLock
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 PARTICIPANTS = ("participant_0", "participant_1")
 
 

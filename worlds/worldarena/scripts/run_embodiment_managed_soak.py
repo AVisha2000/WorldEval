@@ -25,13 +25,14 @@ from genesis_arena.embodiment.protocol import (
     canonical_sha256,
 )
 from genesis_arena.embodiment.replay import verify_replay_bytes
+from worldarena.paths import WORLDARENA_ROOT
 
 try:
     from scripts.run_embodiment_live_provider_pilot import _Gateway
 except ModuleNotFoundError:  # Direct `python scripts/...` execution.
     from run_embodiment_live_provider_pilot import _Gateway  # type: ignore[no-redef]
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = WORLDARENA_ROOT
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 
 

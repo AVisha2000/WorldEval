@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
 import pytest
 from genesis_arena.embodiment.control_games.operator_action_course_demo import (
@@ -14,8 +13,9 @@ from genesis_arena.embodiment.demo_provider import DemoPolicyLock, DemoProvider
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from genesis_arena.embodiment.providers.contracts import ProviderFailureKind, ProviderRequest
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 FIXTURE = b"operator-action-visible-v1\n"
 AFFORDANCES = {
     "walk": "move_forward",

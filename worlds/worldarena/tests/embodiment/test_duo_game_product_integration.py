@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -15,8 +14,9 @@ from genesis_arena.embodiment.duel.service import DuelSeriesService, DuelSeriesS
 from genesis_arena.embodiment.duo_games.catalog import DUO_GAME_CATALOG
 from genesis_arena.embodiment.protocol_registry import EmbodimentProtocolRegistry
 from PIL import Image
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 
 
 async def _waiting_executor(spec, credentials, cancel_event):

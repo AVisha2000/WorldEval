@@ -28,17 +28,20 @@ from genesis_arena.embodiment.protocol import (
 )
 from genesis_arena.embodiment.replay import verify_replay_bytes
 from genesis_arena.embodiment.source_fingerprint import (
-    SOURCE_FILES as _SOURCE_FILES,
+    SOURCE_COMPONENTS_V2 as _SOURCE_COMPONENTS,
 )
 from genesis_arena.embodiment.source_fingerprint import (
-    SOURCE_ROOTS as _SOURCE_ROOTS,
-)
-from genesis_arena.embodiment.source_fingerprint import (
+    SOURCE_FINGERPRINT_V2,
     browser_runtime_source_fingerprint,
-    certification_source_fingerprint,
+    component_source_fingerprint,
 )
+from worldeval.workspace import find_workspace
 
-ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = find_workspace(__file__)
+WORKSPACE_ROOT = WORKSPACE.root
+ROOT = WORKSPACE.path("worldarena")
+WEB_ROOT = WORKSPACE.path("worldeval_web")
+VENV_BIN = WORKSPACE_ROOT / ".venv/bin"
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 NODE_BIN = Path("/Users/arlind/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin")
 PNPM_BIN = Path(
@@ -52,14 +55,15 @@ PRESENTATION_SCRIPT = (
 )
 PRESENTATION_SCENE = ROOT / "godot/scenes/embodiment/embodiment_presentation_scene.tscn"
 
-REPORT_FORMAT = "llm-controller-worldarena-mvp-certification/1.1.0"
+REPORT_FORMAT_V1 = "llm-controller-worldarena-mvp-certification/1.1.0"
+REPORT_FORMAT = "llm-controller-worldarena-mvp-certification/1.2.0"
 BROWSER_REPORT_FORMAT = "llm-controller/browser-qa/1.1.0"
 PROVIDER_REPORT_FORMAT = "llm-controller/live-provider-managed-solo/1.0.0"
 LIVE_DUEL_REPORT_FORMAT = "llm-controller/live-paired-duel/1.0.0"
 Y_BOT_FORMAT = "worldarena/mixamo-y-bot-intake/1.0.0"
 FINAL_VIDEO_FORMAT = "llm-controller/final-video-evidence/1.0.0"
 RELEASE_FORMAT = "llm-controller/worldarena-release-capabilities/1.0.0"
-READINESS_REPORT_FORMAT = "llm-controller/embodiment-pilot-readiness/1.1.0"
+READINESS_REPORT_FORMAT = "llm-controller/embodiment-pilot-readiness/1.2.0"
 RELEASE_ENVIRONMENT_ID = "worldarena-embodiment-v0"
 RELEASE_PROTOCOL_VERSION = EmbodimentProtocolPackage.PROTOCOL_VERSION
 RELEASE_CAPABILITIES = {
@@ -167,7 +171,7 @@ def run_certification(
     step(
         "python-static",
         [
-            str(ROOT / ".venv/bin/ruff"),
+            str(VENV_BIN / "ruff"),
             "check",
             "backend/genesis_arena/embodiment",
             "tests/embodiment",
@@ -186,7 +190,7 @@ def run_certification(
     step(
         "protocol-lock",
         [
-            str(ROOT / ".venv/bin/python"),
+            str(VENV_BIN / "python"),
             "scripts/build_embodiment_protocol_lock.py",
             "--check",
         ],
@@ -194,19 +198,19 @@ def run_certification(
     step(
         "golden-fixtures",
         [
-            str(ROOT / ".venv/bin/python"),
+            str(VENV_BIN / "python"),
             "scripts/build_embodiment_golden_fixtures.py",
             "--check",
         ],
     )
     step(
         "python-embodiment",
-        [str(ROOT / ".venv/bin/python"), "-m", "pytest", "tests/embodiment", "-q"],
+        [str(VENV_BIN / "python"), "-m", "pytest", "tests/embodiment", "-q"],
     )
     step(
         "managed-process-soak",
         [
-            str(ROOT / ".venv/bin/python"),
+            str(VENV_BIN / "python"),
             "scripts/run_embodiment_managed_soak.py",
             "--iterations",
             "32",
@@ -232,7 +236,7 @@ def run_certification(
     step(
         "frozen-duel-python-core",
         [
-            str(ROOT / ".venv/bin/python"),
+            str(VENV_BIN / "python"),
             "-m",
             "pytest",
             "tests/duel",
@@ -244,7 +248,7 @@ def run_certification(
     step(
         "frozen-duel-official-replay",
         [
-            str(ROOT / ".venv/bin/python"),
+            str(VENV_BIN / "python"),
             "-m",
             "pytest",
             "tests/duel/test_duel_official_replay.py",
@@ -258,26 +262,26 @@ def run_certification(
     step(
         "dashboard-lint",
         [str(PNPM_BIN / "pnpm"), "lint"],
-        cwd=ROOT / "dashboard",
+        cwd=WEB_ROOT,
         env=dashboard_env,
     )
     step(
         "dashboard-tests",
         [str(PNPM_BIN / "pnpm"), "test", "--", "--run"],
-        cwd=ROOT / "dashboard",
+        cwd=WEB_ROOT,
         env=dashboard_env,
     )
     step(
         "dashboard-build",
         [str(PNPM_BIN / "pnpm"), "build"],
-        cwd=ROOT / "dashboard",
+        cwd=WEB_ROOT,
         env=dashboard_env,
     )
     if preview_video is not None:
         step(
             "native-placeholder-preview",
             [
-                str(ROOT / ".venv/bin/python"),
+                str(VENV_BIN / "python"),
                 "scripts/render_embodiment_mvp_demo.py",
                 "--allow-placeholder",
                 "--output",
@@ -307,6 +311,7 @@ def run_certification(
     return {
         "format": REPORT_FORMAT,
         "source_fingerprint": source_fingerprint,
+        "source_fingerprint_version": SOURCE_FINGERPRINT_V2,
         "offline_certification_passed": offline_passed,
         "selected_steps_passed": selected_passed,
         "mvp_certified": _mvp_certified(offline_passed, external_gates),
@@ -357,11 +362,13 @@ def validate_offline_certification_report(path: Path) -> dict[str, object]:
                 "results",
                 "selected_steps_passed",
                 "source_fingerprint",
+                "source_fingerprint_version",
             },
             "offline_report_shape_invalid",
         )
         if (
             value["format"] != REPORT_FORMAT
+            or value["source_fingerprint_version"] != SOURCE_FINGERPRINT_V2
             or value["source_fingerprint"] != _certification_source_fingerprint()
             or value["offline_certification_passed"] is not True
             or value["selected_steps_passed"] is not True
@@ -444,12 +451,20 @@ def _matching_prior_result(value: object, name: str, fingerprint: str) -> dict |
     }
 
 
-def _step_fingerprint(name: str, command: Sequence[str], cwd: Path, source_fingerprint: str) -> str:
+def _step_fingerprint(
+    name: str,
+    command: Sequence[str],
+    cwd: Path,
+    source_fingerprint: str,
+    *,
+    source_fingerprint_version: str = SOURCE_FINGERPRINT_V2,
+) -> str:
     material = {
         "command": list(command),
         "cwd": str(Path(cwd).resolve()),
         "name": name,
         "source_fingerprint": source_fingerprint,
+        "source_fingerprint_version": source_fingerprint_version,
     }
     return hashlib.sha256(
         json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -457,10 +472,9 @@ def _step_fingerprint(name: str, command: Sequence[str], cwd: Path, source_finge
 
 
 def _certification_source_fingerprint() -> str:
-    return certification_source_fingerprint(
+    return component_source_fingerprint(
         ROOT,
-        source_roots=_SOURCE_ROOTS,
-        source_files=_SOURCE_FILES,
+        components=_SOURCE_COMPONENTS,
     )
 
 
@@ -1500,6 +1514,8 @@ def _exit_code(report: Mapping[str, Any], *, final_seal: bool) -> int:
 def _final_readiness_report(
     report: Mapping[str, Any], *, certification_report: Path
 ) -> dict[str, object]:
+    if report.get("source_fingerprint_version") != SOURCE_FINGERPRINT_V2:
+        raise ValueError("final certification source fingerprint version is invalid")
     external = report.get("external_gates")
     if not isinstance(external, dict):
         raise ValueError("final certification external gates are invalid")
@@ -1524,6 +1540,7 @@ def _final_readiness_report(
         "ready_for_promotion": True,
         "runtime_capabilities": runtime,
         "source_fingerprint": report["source_fingerprint"],
+        "source_fingerprint_version": SOURCE_FINGERPRINT_V2,
     }
 
 

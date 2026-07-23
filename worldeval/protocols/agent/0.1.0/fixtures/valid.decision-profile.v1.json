@@ -1,0 +1,14 @@
+{
+  "schema_version": "decision-profile.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "profile_id": "dynamic-step-locked-v1",
+  "kind": "dynamic-step-locked",
+  "minimum_ticks": 1,
+  "maximum_ticks": 5,
+  "default_ticks": 3,
+  "simulation_pauses_during_inference": true,
+  "observation_policy": "every_boundary",
+  "interrupt_events": ["movement_blocked"],
+  "explicit_response_required": true,
+  "missing_response_behavior": "neutral_noop"
+}

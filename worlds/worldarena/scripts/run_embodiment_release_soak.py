@@ -13,7 +13,9 @@ import time
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-ROOT = Path(__file__).resolve().parents[1]
+from worldarena.paths import WORLDARENA_ROOT
+
+ROOT = WORLDARENA_ROOT
 DEFAULT_GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 EVIDENCE_PREFIX = "EMBODIMENT_RELEASE_SOAK_EVIDENCE="
 MINIMUM_RELEASE_EXECUTIONS = 1_000

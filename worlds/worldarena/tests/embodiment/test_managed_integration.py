@@ -25,8 +25,9 @@ from genesis_arena.embodiment.managed_session import ManagedWorldArenaSession
 from genesis_arena.embodiment.protocol import EmbodimentProtocolPackage, canonical_sha256
 from genesis_arena.embodiment.replay import verify_replay_bytes
 from genesis_arena.embodiment.transport import ManagedWebSocketEndpoint
+from worldarena.paths import WORLDARENA_ROOT
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = WORLDARENA_ROOT
 GODOT = Path("/Applications/Godot.app/Contents/MacOS/Godot")
 TICKET = "T" * 43
 

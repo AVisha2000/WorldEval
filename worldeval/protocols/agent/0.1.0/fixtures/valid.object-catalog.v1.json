@@ -1,0 +1,6 @@
+{
+  "schema_version": "object-catalog.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "catalog_id": "fixture-objects",
+  "object_types": [{"type_id": "worker", "traits": ["controllable"], "affordances": ["movable"], "visible_state_fields": ["position"], "lifecycle_events": ["spawned", "updated", "despawned"], "stable_identity": true}]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "skill-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "skill_id": "harvest.break_resource-v1",
+  "description": "Visible planning template for approaching a resource, equipping a compatible tool, and applying it.",
+  "required_target_affordances": ["choppable"],
+  "required_tool_affordances": ["can_chop"],
+  "suggested_actions": ["move_to", "equip", "use_tool"],
+  "preconditions": [
+    {"kind": "target_visible", "subject": null, "parameters": {}},
+    {"kind": "compatible_tool_in_inventory", "subject": null, "parameters": {}}
+  ],
+  "decision_points": ["movement_blocked", "target_disappeared", "hostile_near_target", "health_threshold_crossed"],
+  "success_predicate": {"kind": "target_destroyed", "subject": null, "parameters": {}},
+  "compatible_action_profiles": ["semantic-grid-actions-v1"],
+  "execution": "agent_expands_to_visible_actions"
+}

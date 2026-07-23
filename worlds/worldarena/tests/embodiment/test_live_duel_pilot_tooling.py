@@ -6,7 +6,6 @@ from typing import Any, Mapping
 
 import pytest
 from genesis_arena.embodiment.protocol import canonical_json_bytes, strict_json_loads
-
 from scripts import run_embodiment_live_duel_pilot as pilot
 
 

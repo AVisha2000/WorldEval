@@ -1,0 +1,57 @@
+{
+  "schema_version": "environment-manifest.v1",
+  "protocol": "worldeval-agent/0.1.0",
+  "environment_id": "worldarena-primitive-sandbox-v0",
+  "game_id": "worldarena-primitive-sandbox-v0",
+  "name": "WorldArena Primitive Sandbox",
+  "briefing": {
+    "premise": "A deterministic resource-gathering sandbox for reusable object and action primitives.",
+    "agent_role": "You control worker-1 and make every navigation, equipment, and interaction decision.",
+    "success_model": "Satisfy the active objective and its safety priorities before the 200-tick limit.",
+    "rules": [
+      "Coordinates use the world_grid frame with x east and y north.",
+      "move_to follows only the direct line to the exact target or waypoint you choose.",
+      "The authority resolves physics and collisions but never chooses a detour or replacement target.",
+      "Every decision boundary requires an explicit continue, replace, abort, or wait response.",
+      "Missing, invalid, timed-out, or stale responses are neutral no-ops."
+    ]
+  },
+  "authority": {"engine": "godot", "simulation_hz": 10, "numeric_model": "integer-grid"},
+  "profiles": {
+    "action": "semantic-grid-actions-v1",
+    "observation": "semantic-grid-visible-v1",
+    "decision": "dynamic-step-locked-v1"
+  },
+  "coordinate_frames": [
+    {
+      "frame_id": "world_grid",
+      "dimensions": 2,
+      "width": 30,
+      "height": 25,
+      "origin": "bottom_left",
+      "x_axis": "east",
+      "y_axis": "north",
+      "units": "cells"
+    }
+  ],
+  "controllable_asset_types": ["worker"],
+  "object_catalog": "catalogs/object-catalog.json",
+  "action_catalog": "catalogs/action-catalog.json",
+  "decision_profile": "decision-profiles/dynamic-step-locked-v1.json",
+  "contracts": {
+    "environment_init": "schemas/environment-init.v1.schema.json",
+    "objective": "schemas/objective.v1.schema.json",
+    "object_catalog": "schemas/object-catalog.v1.schema.json",
+    "action_catalog": "schemas/action-catalog.v1.schema.json",
+    "observation": "schemas/observation.v1.schema.json",
+    "action_plan": "schemas/action-plan.v1.schema.json",
+    "decision_response": "schemas/decision-response.v1.schema.json",
+    "action_receipt": "schemas/action-receipt.v1.schema.json",
+    "decision_profile": "schemas/decision-profile.v1.schema.json",
+    "skill_manifest": "schemas/skill-manifest.v1.schema.json",
+    "replay_bundle": "schemas/replay-bundle.v1.schema.json"
+  },
+  "example_traces": ["examples/tree-chop-plan.json", "examples/barrier-detour-plan.json"],
+  "semantic_world_commands_exposed": true,
+  "exact_world_coordinates_exposed": true
+}
